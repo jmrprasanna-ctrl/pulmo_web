@@ -79,6 +79,35 @@ function buildDbArgs({ host, port, user, database }) {
   return ["-h", host, "-p", String(port), "-U", user, database];
 }
 
+function sanitizeSqlForCompatibility(sqlText) {
+  const unsupportedParams = [
+    "transaction_timeout",
+    "idle_session_timeout",
+    "idle_in_transaction_session_timeout",
+  ];
+  const unsupportedPattern = unsupportedParams.join("|");
+
+  return sqlText
+    .replace(
+      new RegExp(`^\\s*SET\\s+(${unsupportedPattern})\\s*=.*;?\\s*$`, "gim"),
+      "",
+    )
+    .replace(
+      new RegExp(
+        `^\\s*SELECT\\s+pg_catalog\\.set_config\\(\\s*'(${unsupportedPattern})'\\s*,.*;?\\s*$`,
+        "gim",
+      ),
+      "",
+    )
+    .replace(
+      new RegExp(
+        `^\\s*ALTER\\s+(?:SYSTEM|DATABASE|ROLE)\\b.*\\bSET\\s+(${unsupportedPattern})\\b.*;?\\s*$`,
+        "gim",
+      ),
+      "",
+    );
+}
+
 exports.getBackupStatus = async (req, res) => {
   try {
     const pgDumpPath = await resolvePgTool("pg_dump", "PG_DUMP_PATH");
@@ -177,7 +206,12 @@ exports.restoreBackup = async (req, res) => {
     const args = [...buildDbArgs({ host, port, user, database }), "-v", "ON_ERROR_STOP=1", "-f", tempFile];
     const env = { ...process.env, PGPASSWORD: password };
 
-    await fs.writeFile(tempFile, sqlText, "utf8");
+    // Cross-version compatibility:
+    // dumps created by newer PostgreSQL versions may include config parameters
+    // unsupported by older servers (e.g. transaction_timeout).
+    const sanitizedSql = sanitizeSqlForCompatibility(sqlText);
+
+    await fs.writeFile(tempFile, sanitizedSql, "utf8");
     await runProcess(psqlPath, args, env);
     return res.json({ message: "Database restore completed successfully." });
   } catch (err) {
