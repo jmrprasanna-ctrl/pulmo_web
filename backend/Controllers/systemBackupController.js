@@ -108,6 +108,29 @@ function sanitizeSqlForCompatibility(sqlText) {
     );
 }
 
+function buildRestoreSql(sqlText) {
+  const truncateExistingDataSql = `
+DO $$
+DECLARE
+  stmt text;
+BEGIN
+  SELECT string_agg(
+    format('TRUNCATE TABLE %I.%I RESTART IDENTITY CASCADE', schemaname, tablename),
+    '; '
+  )
+  INTO stmt
+  FROM pg_tables
+  WHERE schemaname = 'public';
+
+  IF stmt IS NOT NULL THEN
+    EXECUTE stmt;
+  END IF;
+END $$;
+`;
+
+  return `${truncateExistingDataSql}\n${sqlText}`;
+}
+
 exports.getBackupStatus = async (req, res) => {
   try {
     const pgDumpPath = await resolvePgTool("pg_dump", "PG_DUMP_PATH");
@@ -210,8 +233,9 @@ exports.restoreBackup = async (req, res) => {
     // dumps created by newer PostgreSQL versions may include config parameters
     // unsupported by older servers (e.g. transaction_timeout).
     const sanitizedSql = sanitizeSqlForCompatibility(sqlText);
+    const restoreSql = buildRestoreSql(sanitizedSql);
 
-    await fs.writeFile(tempFile, sanitizedSql, "utf8");
+    await fs.writeFile(tempFile, restoreSql, "utf8");
     await runProcess(psqlPath, args, env);
     return res.json({ message: "Database restore completed successfully." });
   } catch (err) {
