@@ -15,6 +15,31 @@
             display: inline-block;
             vertical-align: middle;
         }
+        .invoice-action-row{
+            display:flex;
+            gap:8px;
+            align-items:center;
+            flex-wrap:nowrap;
+            white-space:nowrap;
+        }
+        .invoice-action-btn{
+            width:84px;
+            min-width:84px;
+            height:36px;
+            margin-top:0;
+            margin-left:0;
+            padding:0 12px;
+        }
+        @media (max-width: 900px){
+            .invoice-action-row{
+                flex-direction: row !important;
+                align-items: center !important;
+                flex-wrap: nowrap !important;
+            }
+            .invoice-action-row > *{
+                width: auto !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -85,11 +110,13 @@
                     <td>${dateText}</td>
                     <td>${inv.total}</td>
                     <td>
-                        <button class="btn btn-success" onclick="viewInvoice(${inv.id})">INV 1</button>
-                        <button class="btn btn-primary btn-inline" onclick="viewQuatation(${inv.id})">QUT 1</button>
-                        <button class="btn btn-primary btn-inline" onclick="viewQuatation2(${inv.id})">QUT 2</button>
-                        <button class="btn btn-primary btn-inline" onclick="viewQuatation3(${inv.id})">QUT 3</button>
-                        ${isAdmin() ? `<button class="btn btn-danger btn-inline" onclick="deleteInvoice(${inv.id})">Delete</button>` : ""}
+                        <div class="invoice-action-row">
+                            <button class="btn btn-success invoice-action-btn" onclick="viewInvoice(${inv.id})">INV 1</button>
+                            <button class="btn btn-primary btn-inline invoice-action-btn" onclick="viewQuatation(${inv.id})">QUT 1</button>
+                            <button class="btn btn-primary btn-inline invoice-action-btn" onclick="viewQuatation2(${inv.id})">QUT 2</button>
+                            <button class="btn btn-primary btn-inline invoice-action-btn" onclick="viewQuatation3(${inv.id})">QUT 3</button>
+                            ${isAdmin() ? `<button class="btn btn-danger btn-inline invoice-action-btn" onclick="deleteInvoice(${inv.id})">Delete</button>` : ""}
+                        </div>
                     </td>
                 `;
                 tbody.appendChild(row);
