@@ -30,7 +30,7 @@ const BASE_URL = resolveBaseUrl();
 window.BASE_URL = BASE_URL;
 const GLOBAL_FOOTER_TEXT = "\u00A9 All Right Recieved with CRONIT SOLLUTIONS - JMR Prasanna.";
 
-const USER_ALLOWED_PATHS = [
+const USER_DEFAULT_ALLOWED_PATHS = [
     "/login.html",
     "/dashboard.html",
     "/products/product-list.html",
@@ -64,6 +64,7 @@ const USER_ALLOWED_PATHS = [
     "/reports/sales-report.html",
     "/sales-report.html"
 ];
+let USER_ALLOWED_PATHS_RUNTIME = [...USER_DEFAULT_ALLOWED_PATHS];
 
 const MANAGER_BLOCKED_PATHS = [
     "/users/add-user.html",
@@ -103,7 +104,7 @@ function enforceUserAccess(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
     if(role !== "user") return;
     const path = window.location.pathname.replace(/\\/g,"/");
-    const allowed = USER_ALLOWED_PATHS.some(suffix => path.endsWith(suffix));
+    const allowed = USER_ALLOWED_PATHS_RUNTIME.some(suffix => path.endsWith(suffix));
     if(allowed) return;
     const idx = path.lastIndexOf("/pages/");
     if(idx !== -1){
@@ -130,7 +131,7 @@ function enforceManagerAccess(){
 function applyUserNavRestrictions(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
     if(role !== "user") return;
-    const allowed = USER_ALLOWED_PATHS;
+    const allowed = USER_ALLOWED_PATHS_RUNTIME;
     document.querySelectorAll(".sidebar a").forEach(a=>{
         const href = (a.getAttribute("href") || "").trim();
         if(!href || href.startsWith("#") || href.toLowerCase().includes("logout")) return;
@@ -402,8 +403,47 @@ async function loadPublicUiSettings(){
     }
 }
 
-window.addEventListener("DOMContentLoaded", () => {
+async function loadUserAccessPermissions(){
+    const role = (localStorage.getItem("role") || "").toLowerCase();
+    if(role !== "user"){
+        USER_ALLOWED_PATHS_RUNTIME = [...USER_DEFAULT_ALLOWED_PATHS];
+        return;
+    }
+    const token = localStorage.getItem("token");
+    if(!token){
+        USER_ALLOWED_PATHS_RUNTIME = [...USER_DEFAULT_ALLOWED_PATHS];
+        return;
+    }
+    try{
+        const res = await fetch(`${BASE_URL}/users/access/me`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        if(!res.ok){
+            USER_ALLOWED_PATHS_RUNTIME = [...USER_DEFAULT_ALLOWED_PATHS];
+            return;
+        }
+        const data = await res.json();
+        const dynamicPages = Array.isArray(data.allowed_pages) ? data.allowed_pages : [];
+        const merged = new Set([
+            "/login.html",
+            "/dashboard.html",
+            ...USER_DEFAULT_ALLOWED_PATHS,
+            ...dynamicPages
+        ]);
+        USER_ALLOWED_PATHS_RUNTIME = Array.from(merged);
+        if(data.database_name){
+            localStorage.setItem("selectedDatabaseName", String(data.database_name));
+        }else{
+            localStorage.removeItem("selectedDatabaseName");
+        }
+    }catch(_err){
+        USER_ALLOWED_PATHS_RUNTIME = [...USER_DEFAULT_ALLOWED_PATHS];
+    }
+}
+
+window.addEventListener("DOMContentLoaded", async () => {
     if(!enforceAuthentication()) return;
+    await loadUserAccessPermissions();
     enforceUserAccess();
     enforceManagerAccess();
     applyUserNavRestrictions();

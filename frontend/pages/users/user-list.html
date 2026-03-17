@@ -38,6 +38,23 @@
             padding: 0 12px;
             margin-top: 0;
         }
+        .user-action-row{
+            display:flex;
+            gap:8px;
+            align-items:center;
+            flex-wrap:nowrap;
+            white-space:nowrap;
+        }
+        @media (max-width: 900px){
+            .user-action-row{
+                flex-direction: row !important;
+                align-items: center !important;
+                flex-wrap: nowrap !important;
+            }
+            .user-action-row > *{
+                width: auto !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -94,8 +111,11 @@
                         <td>${u.email}</td>
                         <td>${u.role}</td>
                         <td>
-                            <a class="btn btn-inline action-btn" href="edit-user.html?id=${u.id}">Edit</a>
-                            <button class="btn btn-danger btn-inline action-btn" type="button" onclick="deleteUser(${u.id})">Delete</button>
+                            <div class="user-action-row">
+                                <a class="btn btn-inline action-btn" href="edit-user.html?id=${u.id}">Edit</a>
+                                <button class="btn btn-primary btn-inline action-btn" type="button" onclick="openAccess(${u.id})">Access</button>
+                                <button class="btn btn-danger btn-inline action-btn" type="button" onclick="deleteUser(${u.id})">Delete</button>
+                            </div>
                         </td>
                     `;
                     tbody.appendChild(row);
@@ -114,6 +134,10 @@
             }catch(err){
                 alert(err.message || "Failed to delete user");
             }
+        }
+
+        function openAccess(id){
+            window.location.href = `user-access.html?userId=${id}`;
         }
 
         async function downloadSystemBackup(){

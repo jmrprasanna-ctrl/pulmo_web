@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Access - PULMO TECHNOLOGIES</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="../../assets/css/dashboard.css">
+    <style>
+        .access-shell{
+            overflow: visible !important;
+        }
+        .access-grid{
+            display:grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .access-pages{
+            border:1px solid #d9e4f0;
+            border-radius:12px;
+            padding:10px;
+            background:#fff;
+            max-height: 440px;
+            overflow:auto;
+        }
+        .access-row{
+            display:flex;
+            align-items:center;
+            gap:10px;
+            padding:8px 6px;
+            border-bottom:1px solid #eef3f9;
+        }
+        .access-row:last-child{
+            border-bottom:0;
+        }
+        .access-row input[type="checkbox"]{
+            width:18px;
+            height:18px;
+            margin:0;
+            accent-color:#0f6abf;
+        }
+        .access-actions{
+            display:flex;
+            gap:10px;
+            align-items:center;
+            flex-wrap:wrap;
+            margin-top: 12px;
+        }
+        .access-actions .btn{
+            margin-top:0;
+            min-width: 110px;
+        }
+        .page-label{
+            font-size: 0.92rem;
+            color:#16395b;
+            font-weight:600;
+        }
+        .path-hint{
+            font-size:0.78rem;
+            color:#67809a;
+        }
+        @media (max-width: 900px){
+            .access-grid{
+                grid-template-columns: 1fr;
+            }
+            .access-actions{
+                flex-direction:row !important;
+                flex-wrap:nowrap !important;
+            }
+            .access-actions > *{
+                width:auto !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <img src="../../assets/images/logo.png" alt="Company Logo">
+            <span>PULMO TECHNOLOGIES</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="../dashboard.html">Dashboard</a></li>
+            <li><a href="../products/product-list.html">Products</a></li>
+            <li><a href="../products/general-machine.html">Machines</a></li>
+            <li><a href="../customers/customer-list.html">Customers</a></li>
+            <li><a href="../invoices/invoice-list.html">Invoices</a></li>
+            <li><a href="../vendors/list-vendor.html">Vendors</a></li>
+            <li><a href="../expenses/expense-list.html">Expenses</a></li>
+            <li><a href="../reports/sales-report.html">Reports</a></li>
+            <li><a href="../analytics/sales-chart.html">Analytics</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <header><h2>User Access</h2></header>
+
+        <div class="form-container access-shell">
+            <div class="access-grid">
+                <div>
+                    <label for="userSelect">Select User (Role: user)</label>
+                    <select id="userSelect">
+                        <option value="">Select user</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="databaseSelect">Database</label>
+                    <select id="databaseSelect">
+                        <option value="">Select database</option>
+                    </select>
+                </div>
+            </div>
+
+            <label>Page Access (without User List page)</label>
+            <div class="access-pages" id="accessPages"></div>
+
+            <div class="access-actions">
+                <button class="btn btn-primary" type="button" onclick="saveAccess()">Save</button>
+                <button class="btn btn-primary" type="button" onclick="editAccess()">Edit</button>
+                <button class="btn btn-secondary" type="button" onclick="selectAllPages()">Select All</button>
+                <button class="btn btn-secondary" type="button" onclick="clearPages()">Clear</button>
+                <a class="btn btn-secondary" href="user-list.html">Back</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../assets/js/api.js"></script>
+    <script>
+        const userSelectEl = document.getElementById("userSelect");
+        const databaseSelectEl = document.getElementById("databaseSelect");
+        const accessPagesEl = document.getElementById("accessPages");
+        let pageOptions = [];
+
+        function getSelectedPageValues(){
+            return Array.from(accessPagesEl.querySelectorAll("input[type='checkbox']:checked"))
+                .map((cb) => cb.value);
+        }
+
+        function renderPageOptions(){
+            accessPagesEl.innerHTML = "";
+            pageOptions.forEach((row) => {
+                const wrapper = document.createElement("label");
+                wrapper.className = "access-row";
+                wrapper.innerHTML = `
+                    <input type="checkbox" value="${row.path}">
+                    <div>
+                        <div class="page-label">${row.label || row.path}</div>
+                        <div class="path-hint">${row.path}</div>
+                    </div>
+                `;
+                accessPagesEl.appendChild(wrapper);
+            });
+        }
+
+        function setCheckedPages(paths){
+            const set = new Set((Array.isArray(paths) ? paths : []).map((x) => String(x || "").trim()));
+            accessPagesEl.querySelectorAll("input[type='checkbox']").forEach((cb) => {
+                cb.checked = set.has(cb.value);
+            });
+        }
+
+        async function loadUsers(){
+            try{
+                const users = await request("/users", "GET");
+                userSelectEl.innerHTML = `<option value="">Select user</option>`;
+                (Array.isArray(users) ? users : [])
+                    .filter((u) => String(u.role || "").toLowerCase() === "user")
+                    .forEach((u) => {
+                        const opt = document.createElement("option");
+                        opt.value = String(u.id);
+                        opt.textContent = `${u.username} (${u.email})`;
+                        userSelectEl.appendChild(opt);
+                    });
+            }catch(err){
+                alert(err.message || "Failed to load users");
+            }
+        }
+
+        async function loadAccessPages(){
+            try{
+                const res = await request("/users/access-pages", "GET");
+                pageOptions = Array.isArray(res.pages) ? res.pages : [];
+                renderPageOptions();
+            }catch(err){
+                alert(err.message || "Failed to load access pages");
+            }
+        }
+
+        async function loadDatabases(){
+            try{
+                const res = await request("/users/databases", "GET");
+                const rows = Array.isArray(res.databases) ? res.databases : [];
+                databaseSelectEl.innerHTML = `<option value="">Select database</option>`;
+                rows.forEach((db) => {
+                    const opt = document.createElement("option");
+                    opt.value = String(db);
+                    opt.textContent = String(db);
+                    databaseSelectEl.appendChild(opt);
+                });
+            }catch(err){
+                alert(err.message || "Failed to load databases");
+            }
+        }
+
+        async function editAccess(){
+            const userId = Number(userSelectEl.value);
+            if(!Number.isFinite(userId) || userId <= 0){
+                alert("Please select a user.");
+                return;
+            }
+            try{
+                const res = await request(`/users/access/${userId}`, "GET");
+                setCheckedPages(res.allowed_pages || []);
+                databaseSelectEl.value = res.database_name || "";
+                showMessageBox("Access loaded");
+            }catch(err){
+                alert(err.message || "Failed to load access settings");
+            }
+        }
+
+        async function saveAccess(){
+            const userId = Number(userSelectEl.value);
+            if(!Number.isFinite(userId) || userId <= 0){
+                alert("Please select a user.");
+                return;
+            }
+            const payload = {
+                allowed_pages: getSelectedPageValues(),
+                database_name: databaseSelectEl.value || null
+            };
+            try{
+                await request(`/users/access/${userId}`, "PUT", payload);
+                showMessageBox("Access saved");
+            }catch(err){
+                alert(err.message || "Failed to save access settings");
+            }
+        }
+
+        function selectAllPages(){
+            accessPagesEl.querySelectorAll("input[type='checkbox']").forEach((cb) => {
+                cb.checked = true;
+            });
+        }
+
+        function clearPages(){
+            accessPagesEl.querySelectorAll("input[type='checkbox']").forEach((cb) => {
+                cb.checked = false;
+            });
+        }
+
+        userSelectEl.addEventListener("change", () => {
+            if(userSelectEl.value){
+                editAccess();
+            }else{
+                clearPages();
+                databaseSelectEl.value = "";
+            }
+        });
+
+        window.saveAccess = saveAccess;
+        window.editAccess = editAccess;
+        window.selectAllPages = selectAllPages;
+        window.clearPages = clearPages;
+
+        (async function init(){
+            const role = (localStorage.getItem("role") || "").toLowerCase();
+            if(role !== "admin"){
+                alert("Only admin can access this page.");
+                window.location.href = "../dashboard.html";
+                return;
+            }
+            await Promise.all([loadUsers(), loadAccessPages(), loadDatabases()]);
+            const queryUserId = new URLSearchParams(window.location.search).get("userId");
+            if(queryUserId){
+                userSelectEl.value = queryUserId;
+                if(userSelectEl.value){
+                    await editAccess();
+                }
+            }
+        })();
+    </script>
+</body>
+</html>
