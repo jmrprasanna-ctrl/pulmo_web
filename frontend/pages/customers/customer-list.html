@@ -13,12 +13,43 @@
         margin-left: 8px;
         margin-top: 0;
     }
+    .customer-action-row{
+        display:flex;
+        gap:8px;
+        align-items:center;
+        flex-wrap:nowrap;
+        white-space:nowrap;
+    }
+    .customer-action-btn{
+        width:84px;
+        min-width:84px;
+        margin-top:0;
+        margin-left:0;
+    }
     .search-inline{
         width: 280px;
         max-width: 100%;
         margin-top: 0;
         display: inline-block;
         vertical-align: middle;
+    }
+    .customer-shell{
+        overflow: visible !important;
+    }
+    .customer-table-wrap{
+        width:100%;
+        overflow-x:auto;
+        margin-top:12px;
+    }
+    @media (max-width: 900px){
+        .customer-action-row{
+            flex-direction: row !important;
+            align-items: center !important;
+            flex-wrap: nowrap !important;
+        }
+        .customer-action-row > *{
+            width: auto !important;
+        }
     }
 </style>
 </head>
@@ -46,24 +77,26 @@
 <div class="main-content">
     <header><h2>Customers List</h2></header>
 
-    <div class="form-container">
+    <div class="form-container customer-shell">
         <a class="btn" href="add-customer.html" id="addCustomerBtn">Add</a>
         <button onclick="exportPDF()">Export as PDF</button>
         <input type="text" id="customerSearch" class="search-inline" placeholder="Search Name, Tel, Email">
-        <table id="customerTable">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Address</th>
-                    <th>Tel</th>
-                    <th>Email</th>
-                    <th>Customer Type</th>
-                    <th>VAT</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+        <div class="customer-table-wrap">
+            <table id="customerTable">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Address</th>
+                        <th>Tel</th>
+                        <th>Email</th>
+                        <th>Customer Type</th>
+                        <th>VAT</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -104,8 +137,10 @@ function renderCustomers(customers){
         if(!isUser){
             tr.innerHTML += `
                 <td>
-                    <a class="btn" href="edit-customer.html?id=${c.id}">Edit</a>
-                    <button class="btn btn-danger btn-inline" type="button" onclick="deleteCustomer(${c.id})">Delete</button>
+                    <div class="customer-action-row">
+                        <a class="btn customer-action-btn" href="edit-customer.html?id=${c.id}">Edit</a>
+                        <button class="btn btn-danger btn-inline customer-action-btn" type="button" onclick="deleteCustomer(${c.id})">Delete</button>
+                    </div>
                 </td>
             `;
         }
