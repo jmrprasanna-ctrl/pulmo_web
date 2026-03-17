@@ -13,6 +13,15 @@
             flex-wrap: wrap;
             margin-bottom: 12px;
         }
+        @media (max-width: 900px){
+            .form-actions{
+                flex-direction: row !important;
+                align-items: center !important;
+            }
+            .form-actions .btn{
+                width: auto !important;
+            }
+        }
         .btn-secondary{
             background: #e9f3fc;
             color: #0b4f93;
@@ -21,6 +30,13 @@
         }
         .btn-secondary:hover{
             filter: brightness(0.98);
+        }
+        .action-btn{
+            width: 84px;
+            min-width: 84px;
+            height: 36px;
+            padding: 0 12px;
+            margin-top: 0;
         }
     </style>
 </head>
@@ -78,8 +94,8 @@
                         <td>${u.email}</td>
                         <td>${u.role}</td>
                         <td>
-                            <a class="btn btn-inline" href="edit-user.html?id=${u.id}">Edit</a>
-                            <button class="btn btn-danger btn-inline" type="button" onclick="deleteUser(${u.id})">Delete</button>
+                            <a class="btn btn-inline action-btn" href="edit-user.html?id=${u.id}">Edit</a>
+                            <button class="btn btn-danger btn-inline action-btn" type="button" onclick="deleteUser(${u.id})">Delete</button>
                         </td>
                     `;
                     tbody.appendChild(row);
