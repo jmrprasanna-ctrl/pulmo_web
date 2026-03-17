@@ -118,12 +118,17 @@ async function fetchSummary(){
         const salesVal = summary.totalSalesPeriod ?? summary.totalSales ?? 0;
         const expenseVal = summary.totalExpensesPeriod ?? summary.totalExpenses ?? 0;
         const technicianPaidVal = summary.technicianPaidPeriod ?? summary.technicianPaid ?? 0;
-        const profitVal = summary.netProfitPeriod ?? summary.netProfit ?? (Number(salesVal) - Number(expenseVal) - Number(technicianPaidVal));
+        const vendorPaidVal = summary.vendorPaidPeriod ?? summary.vendorPaid ?? 0;
+        const profitVal = summary.netProfitPeriod ?? summary.netProfit ?? (Number(salesVal) - Number(expenseVal) - Number(technicianPaidVal) - Number(vendorPaidVal));
         document.getElementById("totalSales").querySelector("p").innerText = Number(salesVal || 0).toFixed(2);
         document.getElementById("totalExpenses").querySelector("p").innerText = Number(expenseVal || 0).toFixed(2);
         const technicianPaidEl = document.getElementById("technicianPaid");
         if(technicianPaidEl){
             technicianPaidEl.querySelector("p").innerText = Number(technicianPaidVal || 0).toFixed(2);
+        }
+        const vendorPaidEl = document.getElementById("vendorPaid");
+        if(vendorPaidEl){
+            vendorPaidEl.querySelector("p").innerText = Number(vendorPaidVal || 0).toFixed(2);
         }
         document.getElementById("netProfit").querySelector("p").innerText = Number(profitVal || 0).toFixed(2);
         const labelEl = document.getElementById("summaryRangeLabel");

@@ -8,6 +8,24 @@ const InvoiceItem = require("../models/InvoiceItem");
 const Expense = require("../models/Expense");
 const { Op } = require("sequelize");
 
+function sumTechnicianPaid(rows){
+    return (Array.isArray(rows) ? rows : []).reduce((sum, inv) => {
+        const total = Number(inv.total_amount || 0);
+        const pct = Number(inv.support_technician_percentage || 0);
+        if(!Number.isFinite(total) || !Number.isFinite(pct) || pct <= 0) return sum;
+        return sum + (total * pct / 100);
+    }, 0);
+}
+
+function sumVendorPaidFromInvoiceItems(rows){
+    return (Array.isArray(rows) ? rows : []).reduce((sum, row) => {
+        const qty = Number(row.qty || 0);
+        const dealer = Number((row.Product && row.Product.dealer_price) || 0);
+        if(!Number.isFinite(qty) || !Number.isFinite(dealer) || qty <= 0 || dealer <= 0) return sum;
+        return sum + (qty * dealer);
+    }, 0);
+}
+
 exports.getSummary = async (req,res)=>{
     try{
         const period = String(req.query.period || "day").toLowerCase();
@@ -31,6 +49,9 @@ exports.getSummary = async (req,res)=>{
         }else if(period === "month"){
             periodStart = new Date(periodStart.getFullYear(), periodStart.getMonth(), 1, 0,0,0,0);
             periodEnd = new Date(periodStart.getFullYear(), periodStart.getMonth() + 1, 0, 23,59,59,999);
+        }else if(period === "year"){
+            periodStart = new Date(periodStart.getFullYear(), 0, 1, 0,0,0,0);
+            periodEnd = new Date(periodStart.getFullYear(), 11, 31, 23,59,59,999);
         }else{
             periodStart.setHours(0,0,0,0);
             periodEnd.setHours(23,59,59,999);
@@ -47,11 +68,38 @@ exports.getSummary = async (req,res)=>{
         const totalExpensesPeriod = await Expense.sum("amount",{
             where:{ date:{ [Op.between]:[periodStart, periodEnd] } }
         }) || 0;
-        const netProfitPeriod = totalSalesPeriod - totalExpensesPeriod;
+        const invoicesPeriod = await Invoice.findAll({
+            where:{ createdAt:{ [Op.between]:[periodStart, periodEnd] } },
+            attributes:["total_amount","support_technician_percentage"]
+        });
+        const technicianPaidPeriod = sumTechnicianPaid(invoicesPeriod);
+        const invoiceItemsPeriod = await InvoiceItem.findAll({
+            include: [
+                {
+                    model: Invoice,
+                    required: true,
+                    attributes: ["id", "createdAt"],
+                    where: { createdAt: { [Op.between]: [periodStart, periodEnd] } }
+                },
+                { model: Product, required: false, attributes: ["id", "dealer_price"] }
+            ],
+            attributes: ["qty"]
+        });
+        const vendorPaidPeriod = sumVendorPaidFromInvoiceItems(invoiceItemsPeriod);
+        const netProfitPeriod = totalSalesPeriod - totalExpensesPeriod - technicianPaidPeriod - vendorPaidPeriod;
 
         const totalSalesAllTime = await Invoice.sum("total_amount") || 0;
         const totalExpensesAllTime = await Expense.sum("amount") || 0;
-        const netProfitAllTime = totalSalesAllTime - totalExpensesAllTime;
+        const invoicesAllTime = await Invoice.findAll({
+            attributes:["total_amount","support_technician_percentage"]
+        });
+        const technicianPaidAllTime = sumTechnicianPaid(invoicesAllTime);
+        const invoiceItemsAllTime = await InvoiceItem.findAll({
+            include: [{ model: Product, required: false, attributes: ["id", "dealer_price"] }],
+            attributes: ["qty"]
+        });
+        const vendorPaidAllTime = sumVendorPaidFromInvoiceItems(invoiceItemsAllTime);
+        const netProfitAllTime = totalSalesAllTime - totalExpensesAllTime - technicianPaidAllTime - vendorPaidAllTime;
 
         // Low stock alerts (<5 items)
         const lowStock = await Product.findAll({
@@ -78,7 +126,8 @@ exports.getSummary = async (req,res)=>{
             let monthProfit = 0;
             salesInvoices.forEach(inv=>{
                 monthSales += inv.total_amount;
-                monthProfit += inv.total_amount - inv.InvoiceItems.reduce((a,b)=>a+b.gross,0);
+                const technicianPaid = (Number(inv.total_amount || 0) * Number(inv.support_technician_percentage || 0)) / 100;
+                monthProfit += inv.total_amount - inv.InvoiceItems.reduce((a,b)=>a+b.gross,0) - technicianPaid;
             });
             months.push(start.toLocaleString('default',{month:'short'}));
             monthlySales.push(monthSales);
@@ -94,12 +143,18 @@ exports.getSummary = async (req,res)=>{
             totalSales: totalSalesPeriod,
             totalExpenses: totalExpensesPeriod,
             netProfit: netProfitPeriod,
+            technicianPaid: technicianPaidPeriod,
+            vendorPaid: vendorPaidPeriod,
             totalSalesAllTime,
             totalExpensesAllTime,
             netProfitAllTime,
+            technicianPaidAllTime,
+            vendorPaidAllTime,
             totalSalesPeriod,
             totalExpensesPeriod,
             netProfitPeriod,
+            technicianPaidPeriod,
+            vendorPaidPeriod,
             lowStock,
             months,
             monthlySales,
