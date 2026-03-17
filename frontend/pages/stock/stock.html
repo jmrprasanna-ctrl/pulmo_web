@@ -28,11 +28,35 @@
         display: flex;
         gap: 6px;
         align-items: center;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        white-space: nowrap;
     }
     .stock-qty{
-        width: 90px;
+        width: 72px;
         margin: 0;
+    }
+    #stockTable{
+        min-width: 1080px;
+    }
+    #stockTable th,
+    #stockTable td{
+        padding: 12px 14px;
+    }
+    .stock-actions .btn{
+        width: auto;
+        min-width: 64px;
+        margin-top: 0;
+        padding: 0 10px;
+    }
+    @media (max-width: 900px){
+        .stock-actions{
+            flex-direction: row !important;
+            align-items: center !important;
+            flex-wrap: nowrap !important;
+        }
+        .stock-actions > *{
+            width: auto !important;
+        }
     }
 </style>
 </head>
