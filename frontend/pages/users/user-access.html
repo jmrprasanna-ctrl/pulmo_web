@@ -199,7 +199,10 @@
                     opt.textContent = String(db);
                     databaseSelectEl.appendChild(opt);
                 });
-                if(currentDb){
+                const hasInventory = rows.some((db) => String(db).toLowerCase() === "inventory");
+                if(hasInventory){
+                    databaseSelectEl.value = "inventory";
+                }else if(currentDb){
                     databaseSelectEl.value = currentDb;
                 }
             }catch(err){
