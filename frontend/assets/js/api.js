@@ -78,8 +78,7 @@ function buildPagesPath(fileName){
     if(idx !== -1){
         return path.slice(0, idx + 7) + fileName;
     }
-    const lastSlash = path.lastIndexOf("/");
-    return (lastSlash >= 0 ? path.slice(0, lastSlash + 1) : "/") + fileName;
+    return `/${fileName}`;
 }
 
 function enforceAuthentication(){
@@ -111,7 +110,7 @@ function enforceUserAccess(){
         window.location.href = path.slice(0, idx + 7) + "dashboard.html";
         return;
     }
-    window.location.href = "dashboard.html";
+    window.location.href = "/dashboard.html";
 }
 
 function enforceManagerAccess(){
@@ -125,7 +124,7 @@ function enforceManagerAccess(){
         window.location.href = path.slice(0, idx + 7) + "dashboard.html";
         return;
     }
-    window.location.href = "dashboard.html";
+    window.location.href = "/dashboard.html";
 }
 
 function applyUserNavRestrictions(){
@@ -172,7 +171,7 @@ function applyManagerNavRestrictions(){
 function getUsersLink(fileName){
     const path = window.location.pathname.replace(/\\/g, "/");
     const idx = path.lastIndexOf("/pages/");
-    if(idx === -1) return `users/${fileName}`;
+    if(idx === -1) return `/users/${fileName}`;
     const rest = path.slice(idx + 7);
     const depth = Math.max(0, rest.split("/").length - 1);
     const prefix = depth === 0 ? "" : "../".repeat(depth);
@@ -182,7 +181,7 @@ function getUsersLink(fileName){
 function getFinanceLink(fileName){
     const path = window.location.pathname.replace(/\\/g, "/");
     const idx = path.lastIndexOf("/pages/");
-    if(idx === -1) return `finance/${fileName}`;
+    if(idx === -1) return `/finance/${fileName}`;
     const rest = path.slice(idx + 7);
     const depth = Math.max(0, rest.split("/").length - 1);
     const prefix = depth === 0 ? "" : "../".repeat(depth);
@@ -192,7 +191,7 @@ function getFinanceLink(fileName){
 function getSupportLink(fileName){
     const path = window.location.pathname.replace(/\\/g, "/");
     const idx = path.lastIndexOf("/pages/");
-    if(idx === -1) return `support/${fileName}`;
+    if(idx === -1) return `/support/${fileName}`;
     const rest = path.slice(idx + 7);
     const depth = Math.max(0, rest.split("/").length - 1);
     const prefix = depth === 0 ? "" : "../".repeat(depth);
@@ -202,7 +201,7 @@ function getSupportLink(fileName){
 function getStockLink(fileName){
     const path = window.location.pathname.replace(/\\/g, "/");
     const idx = path.lastIndexOf("/pages/");
-    if(idx === -1) return `stock/${fileName}`;
+    if(idx === -1) return `/stock/${fileName}`;
     const rest = path.slice(idx + 7);
     const depth = Math.max(0, rest.split("/").length - 1);
     const prefix = depth === 0 ? "" : "../".repeat(depth);

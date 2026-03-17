@@ -104,6 +104,10 @@ p {
   overflow-x: auto;
 }
 
+.form-container {
+  overflow-x: auto;
+}
+
 label {
   display: block;
   margin: 10px 0 6px;
@@ -367,6 +371,37 @@ body.app-has-sidebar-footer .app-global-footer {
     width: 100% !important;
     margin-left: 0 !important;
     display: block !important;
+  }
+
+  .toolbar,
+  .filters-inline,
+  .controls-row,
+  .button-row,
+  .report-controls,
+  .section-actions,
+  .stock-actions,
+  .invoice-action-row,
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .toolbar > *,
+  .filters-inline > *,
+  .controls-row > *,
+  .button-row > *,
+  .report-controls > *,
+  .section-actions > *,
+  .stock-actions > *,
+  .invoice-action-row > *,
+  .form-actions > * {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
+
+  .stock-qty,
+  .model-filter {
+    width: 100% !important;
   }
 }
 
