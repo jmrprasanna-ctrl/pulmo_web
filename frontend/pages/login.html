@@ -244,6 +244,11 @@ async function login(){
         const res = await request("/auth/login","POST",{email,password});
         localStorage.setItem("token",res.token);
         localStorage.setItem("role",res.user.role);
+        if (res.user && res.user.database_name) {
+            localStorage.setItem("selectedDatabaseName", String(res.user.database_name).trim().toLowerCase());
+        } else {
+            localStorage.removeItem("selectedDatabaseName");
+        }
         localStorage.setItem("userId", res.user.id);
         localStorage.setItem("userEmail", res.user.email || email);
         if (res.user.name) {

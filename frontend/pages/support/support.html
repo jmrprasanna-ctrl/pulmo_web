@@ -92,9 +92,15 @@ function getRole(){
     return (localStorage.getItem("role") || "").toLowerCase();
 }
 
+function isTrainingUser(){
+    const role = getRole();
+    const selectedDb = String(localStorage.getItem("selectedDatabaseName") || "").trim().toLowerCase();
+    return role === "user" && selectedDb === "demo";
+}
+
 function canManage(){
     const role = getRole();
-    return role === "admin" || role === "manager";
+    return role === "admin" || role === "manager" || isTrainingUser();
 }
 
 async function loadSupportImportants(){
