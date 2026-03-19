@@ -43,19 +43,21 @@ html, body { overflow-x: hidden; }
     width: 100%;
     max-width: 100%;
     min-width: 0;
-    overflow-x: auto;
+    overflow-x: hidden;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
 }
 .table.product-table {
-    min-width: 980px;
-    width: max-content;
-    max-width: none;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    table-layout: fixed;
 }
 .table.product-table .compact-input,
 .table.product-table .product-search {
     margin: 0;
     width: 100%;
+    min-width: 0;
 }
 .product-picker-wrap { position: relative; min-width: 0; }
 .product-results {
@@ -120,6 +122,15 @@ html, body { overflow-x: hidden; }
         width: 100% !important;
         max-width: 100% !important;
         min-width: 0 !important;
+    }
+    .table-scroll {
+        overflow-x: auto !important;
+    }
+    .table.product-table {
+        min-width: 980px !important;
+        width: 980px !important;
+        max-width: none !important;
+        table-layout: auto !important;
     }
     .product-card,
     .table-scroll,
