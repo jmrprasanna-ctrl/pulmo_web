@@ -34,3 +34,4 @@ pulmo_web_UI_structure.pdf
 # Expo/React Native
 .expo/
 mobile-app/.expo/
+backend/templates/
