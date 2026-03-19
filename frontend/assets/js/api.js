@@ -30,6 +30,7 @@ const BASE_URL = resolveBaseUrl();
 window.BASE_URL = BASE_URL;
 const GLOBAL_FOOTER_TEXT = "\u00A9 All Right Recieved with CRONIT SOLLUTIONS - JMR Prasanna.";
 const UI_SETTINGS_CACHE_KEY = "publicUiSettingsCache";
+const ENABLE_PUBLIC_UI_SETTINGS_RUNTIME = typeof window !== "undefined" && window.__ENABLE_PUBLIC_UI_SETTINGS__ === true;
 
 const USER_DEFAULT_ALLOWED_PATHS = [
     "/login.html",
@@ -458,6 +459,10 @@ function normalizeAppName(appName){
 }
 
 async function loadPublicUiSettings(){
+    if(!ENABLE_PUBLIC_UI_SETTINGS_RUNTIME){
+        return;
+    }
+
     const disableUiSettingsRefresh = typeof window !== "undefined" && window.__DISABLE_PUBLIC_UI_REFRESH__ === true;
     if(disableUiSettingsRefresh){
         return;
