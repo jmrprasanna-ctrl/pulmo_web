@@ -10,7 +10,7 @@ exports.salesChart = async (req,res)=>{
             const start = new Date(currentYear,m,1);
             const end = new Date(currentYear,m+1,0,23,59,59,999);
             const total_sales = await Invoice.sum("total_amount",{
-                where:{ createdAt:{ [Op.between]:[start,end] } }
+                where:{ invoice_date:{ [Op.between]:[start,end] } }
             }) || 0;
             rows.push({
                 month: start.toLocaleString("default",{month:"short"}),
@@ -31,7 +31,7 @@ exports.profitChart = async (req,res)=>{
             const start = new Date(currentYear,m,1);
             const end = new Date(currentYear,m+1,0,23,59,59,999);
             const total_sales = await Invoice.sum("total_amount",{
-                where:{ createdAt:{ [Op.between]:[start,end] } }
+                where:{ invoice_date:{ [Op.between]:[start,end] } }
             }) || 0;
             const total_expenses = await Expense.sum("amount",{
                 where:{ date:{ [Op.between]:[start,end] } }

@@ -74,8 +74,8 @@ function buildBasicPdf(lines){
 }
 
 function buildInvoicePdfBuffer(invoice, customer, items){
-    const createdAt = invoice.createdAt || invoice.invoice_date;
-    const formattedDate = createdAt ? new Date(createdAt).toLocaleDateString("en-GB") : "";
+    const invoiceDateValue = invoice.invoice_date || invoice.createdAt;
+    const formattedDate = invoiceDateValue ? new Date(invoiceDateValue).toLocaleDateString("en-GB") : "";
     const lines = [
         "INVOICE",
         `Invoice No: ${invoice.invoice_no || ""}`,
@@ -194,7 +194,7 @@ exports.listInvoices = async (req,res)=>{
     try{
         const invoices = await Invoice.findAll({
             include:[{ model: Customer, attributes:["id","name","customer_mode"] }],
-            order:[["createdAt","DESC"]]
+            order:[["invoice_date","DESC"],["createdAt","DESC"]]
         });
         const rows = invoices.map(inv=>({
             id: inv.id,
@@ -203,7 +203,7 @@ exports.listInvoices = async (req,res)=>{
             customer_name: inv.Customer ? inv.Customer.name : "",
             customer_mode: inv.Customer ? inv.Customer.customer_mode : "",
             total: inv.total_amount,
-            invoice_date: inv.createdAt,
+            invoice_date: inv.invoice_date || inv.createdAt,
             payment_method: inv.payment_method || "Cash",
             cheque_no: inv.cheque_no || "",
             payment_status: inv.payment_status || "Pending"
@@ -305,7 +305,7 @@ exports.deleteInvoice = async (req,res)=>{
 
 exports.generateInvoiceNo = async (req,res)=>{
     const year = new Date().getFullYear().toString().slice(-2);
-    const lastInvoice = await Invoice.findOne({order:[["createdAt","DESC"]]});
+    const lastInvoice = await Invoice.findOne({order:[["invoice_date","DESC"],["createdAt","DESC"]]});
     let num = 1;
     if(lastInvoice && lastInvoice.invoice_no){
         const lastNum = parseInt(lastInvoice.invoice_no.slice(4));
@@ -459,7 +459,7 @@ exports.getSealVImage = async (req,res)=>{
 };
 
 exports.createInvoice = async (req,res)=>{
-    const { invoice_no, customer_id, items, importants, machine_description, serial_no, machine_count, support_technician, support_technician_percentage, payment_method } = req.body;
+    const { invoice_no, invoice_date, customer_id, items, importants, machine_description, serial_no, machine_count, support_technician, support_technician_percentage, payment_method } = req.body;
     if(!customer_id || !invoice_no || !items || !items.length) {
         return res.status(400).json({message:"Invalid data"});
     }
@@ -478,8 +478,15 @@ exports.createInvoice = async (req,res)=>{
             support_technician_percentage === ""
                 ? null
                 : Number(support_technician_percentage);
+        const parsedInvoiceDate = String(invoice_date || "").trim();
+        const invoiceDateValue = parsedInvoiceDate || new Date().toISOString().slice(0, 10);
+        const isValidInvoiceDate = /^\d{4}-\d{2}-\d{2}$/.test(invoiceDateValue) && !Number.isNaN(new Date(`${invoiceDateValue}T00:00:00`).getTime());
+        if(!isValidInvoiceDate){
+            return res.status(400).json({ message: "Invalid invoice date." });
+        }
         const invoice = await Invoice.create({
             invoice_no,
+            invoice_date: invoiceDateValue,
             customer_id,
             machine_description: String(machine_description || "").trim() || null,
             serial_no: String(serial_no || "").trim() || null,
@@ -613,7 +620,7 @@ exports.sendInvoiceEmail = async (req, res) => {
             invoice_no: String(invoice.invoice_no || ""),
             customer_name: String(customer.name || "Customer"),
             total_amount: Number(invoice.total_amount || 0).toFixed(2),
-            invoice_date: new Date(invoice.createdAt || Date.now()).toLocaleDateString("en-GB")
+            invoice_date: new Date(invoice.invoice_date || invoice.createdAt || Date.now()).toLocaleDateString("en-GB")
         };
 
         const subjectTemplate = setup?.subject_template || "Invoice {{invoice_no}} - PULMO TECHNOLOGIES";

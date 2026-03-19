@@ -642,7 +642,7 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null){
 
     // Invoice meta block
     if(getLayoutVisible("date")){
-        fitText(ctx, asDate(data.invoice.createdAt || data.invoice.invoice_date), m.x(POS.meta.dateX + 205 + dateCfg.x), m.y(POS.meta.dateY - 105 + dateCfg.y), m.w(POS.meta.w), dateFont, dateWeight, dateFamily);
+        fitText(ctx, asDate(data.invoice.invoice_date || data.invoice.createdAt), m.x(POS.meta.dateX + 205 + dateCfg.x), m.y(POS.meta.dateY - 105 + dateCfg.y), m.w(POS.meta.w), dateFont, dateWeight, dateFamily);
     }
     if(getLayoutVisible("invoiceNo")){
         fitText(ctx, data.invoice.invoice_no || "", m.x(POS.meta.noX + 205 + invoiceNoCfg.x), m.y(POS.meta.noY - 112 + invoiceNoCfg.y), m.w(POS.meta.w), invoiceNoFont, invoiceNoWeight, invoiceNoFamily);

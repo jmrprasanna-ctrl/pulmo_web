@@ -238,6 +238,26 @@ async function ensureCustomerCodeSchema() {
   });
 }
 
+async function ensureInvoiceDateSchema() {
+  await runOnBusinessDatabases(async () => {
+    await db.query(`
+      ALTER TABLE invoices
+      ADD COLUMN IF NOT EXISTS invoice_date DATE;
+    `);
+
+    await db.query(`
+      UPDATE invoices
+      SET invoice_date = COALESCE(invoice_date, DATE("createdAt"), CURRENT_DATE)
+      WHERE invoice_date IS NULL;
+    `);
+
+    await db.query(`
+      ALTER TABLE invoices
+      ALTER COLUMN invoice_date SET DEFAULT CURRENT_DATE;
+    `);
+  });
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
@@ -302,6 +322,7 @@ async function startServer() {
     await ensureRentalConsumableSchema();
     await ensureRentalMachineCountSchema();
     await ensureCustomerCodeSchema();
+    await ensureInvoiceDateSchema();
     await ensureDefaultCategories();
     await ensureDefaultCategoryModelOptions();
     await ensureDefaultUiSettings();

@@ -51,19 +51,19 @@ exports.salesReport = async (req,res)=>{
     try{
         const period = String(req.query.period || "all").toLowerCase();
         const range = getRange(period, req.query.date);
-        const where = range ? { createdAt: { [Op.between]: [range.start, range.end] } } : {};
+        const where = range ? { invoice_date: { [Op.between]: [range.start, range.end] } } : {};
 
         const invoices = await Invoice.findAll({
             where,
             include:[Customer],
-            order:[["createdAt","DESC"]]
+            order:[["invoice_date","DESC"],["createdAt","DESC"]]
         });
         const rows = invoices.map(inv=>({
             id: inv.id,
             invoice_id: inv.id,
             invoice_no: inv.invoice_no,
             customer_name: inv.Customer ? inv.Customer.name : "",
-            date: inv.createdAt,
+            date: inv.invoice_date || inv.createdAt,
             total_amount: inv.total_amount
         }));
         const totalSales = rows.reduce((sum, row) => sum + (Number(row.total_amount) || 0), 0);
@@ -100,7 +100,7 @@ exports.profitLossReport = async (req,res)=>{
             const end = new Date(currentYear,m+1,0,23,59,59,999);
 
             const total_sales = await Invoice.sum("total_amount",{
-                where:{ createdAt:{ [Op.between]:[start,end] } }
+                where:{ invoice_date:{ [Op.between]:[start,end] } }
             }) || 0;
 
             const total_expense = await Expense.sum("amount",{
@@ -131,11 +131,11 @@ exports.technicianInvoicesMonthlyReport = async (req,res)=>{
 
         const invoices = await Invoice.findAll({
             where: {
-                createdAt: { [Op.between]: [start, end] },
+                invoice_date: { [Op.between]: [start, end] },
                 support_technician: { [Op.not]: null }
             },
             include: [{ model: Customer, attributes: ["id", "name"] }],
-            order: [["createdAt", "DESC"]]
+            order: [["invoice_date", "DESC"], ["createdAt", "DESC"]]
         });
 
         const normalized = invoices
@@ -145,7 +145,7 @@ exports.technicianInvoicesMonthlyReport = async (req,res)=>{
                 invoice_no: inv.invoice_no,
                 technician: String(inv.support_technician || "").trim(),
                 customer_name: inv.Customer ? inv.Customer.name : "",
-                date: inv.createdAt,
+                date: inv.invoice_date || inv.createdAt,
                 total_amount: Number(inv.total_amount || 0)
             }));
 
@@ -411,8 +411,8 @@ exports.rentalMachineCopyCountPriceReport = async (req,res)=>{
         });
 
         const invoices = await Invoice.findAll({
-            attributes: ["id", "invoice_no", "customer_id", "serial_no", "machine_description", "machine_count", "total_amount", "createdAt"],
-            order: [["createdAt", "DESC"]]
+            attributes: ["id", "invoice_no", "invoice_date", "customer_id", "serial_no", "machine_description", "machine_count", "total_amount", "createdAt"],
+            order: [["invoice_date", "DESC"], ["createdAt", "DESC"]]
         });
 
         const rows = machines.map((m) => {
@@ -453,7 +453,7 @@ exports.rentalMachineCopyCountPriceReport = async (req,res)=>{
                 updated_copy_count: updatedCopyCount,
                 copied_pages: deltaCopies > 0 ? deltaCopies : 0,
                 latest_invoice_no: latestInvoice ? latestInvoice.invoice_no || "" : "",
-                latest_invoice_date: latestInvoice ? latestInvoice.createdAt : null,
+                latest_invoice_date: latestInvoice ? (latestInvoice.invoice_date || latestInvoice.createdAt) : null,
                 latest_invoice_total: Number(totalAmount.toFixed(2)),
                 price_per_page: Number(pricePerPage.toFixed(4))
             };
@@ -494,7 +494,7 @@ exports.financeOverview = async (req,res)=>{
         for(const key of periodKeys){
             const range = periods[key];
             const sales = Number(await Invoice.sum("total_amount", {
-                where: { createdAt: { [Op.between]: [range.start, range.end] } }
+                where: { invoice_date: { [Op.between]: [range.start, range.end] } }
             }) || 0);
             const expenses = Number(await Expense.sum("amount", {
                 where: { date: { [Op.between]: [range.start, range.end] } }
@@ -530,7 +530,7 @@ exports.financeOverview = async (req,res)=>{
 
         const techInvoices = await Invoice.findAll({
             where: {
-                createdAt: { [Op.between]: [techStart, techEnd] },
+                invoice_date: { [Op.between]: [techStart, techEnd] },
                 support_technician: { [Op.not]: null }
             },
             attributes: ["support_technician", "support_technician_percentage", "total_amount"]
@@ -582,8 +582,8 @@ exports.financeOverview = async (req,res)=>{
                     {
                         model: Invoice,
                         required: true,
-                        attributes: ["id", "createdAt"],
-                        where: { createdAt: { [Op.between]: [range.start, range.end] } }
+                        attributes: ["id", "invoice_date"],
+                        where: { invoice_date: { [Op.between]: [range.start, range.end] } }
                     },
                     {
                         model: Product,

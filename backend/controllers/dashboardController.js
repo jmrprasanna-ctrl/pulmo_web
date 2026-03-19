@@ -63,13 +63,13 @@ exports.getSummary = async (req,res)=>{
         const totalCustomers = await Customer.count();
         const totalVendors = await Vendor.count();
         const totalSalesPeriod = await Invoice.sum("total_amount",{
-            where:{ createdAt:{ [Op.between]:[periodStart, periodEnd] } }
+            where:{ invoice_date:{ [Op.between]:[periodStart, periodEnd] } }
         }) || 0;
         const totalExpensesPeriod = await Expense.sum("amount",{
             where:{ date:{ [Op.between]:[periodStart, periodEnd] } }
         }) || 0;
         const invoicesPeriod = await Invoice.findAll({
-            where:{ createdAt:{ [Op.between]:[periodStart, periodEnd] } },
+            where:{ invoice_date:{ [Op.between]:[periodStart, periodEnd] } },
             attributes:["total_amount","support_technician_percentage"]
         });
         const technicianPaidPeriod = sumTechnicianPaid(invoicesPeriod);
@@ -78,8 +78,8 @@ exports.getSummary = async (req,res)=>{
                 {
                     model: Invoice,
                     required: true,
-                    attributes: ["id", "createdAt"],
-                    where: { createdAt: { [Op.between]: [periodStart, periodEnd] } }
+                    attributes: ["id", "invoice_date"],
+                    where: { invoice_date: { [Op.between]: [periodStart, periodEnd] } }
                 },
                 { model: Product, required: false, attributes: ["id", "dealer_price"] }
             ],
@@ -118,7 +118,7 @@ exports.getSummary = async (req,res)=>{
             const end = new Date(currentYear,m+1,0);
 
             const salesInvoices = await Invoice.findAll({
-                where:{ createdAt:{ [Op.between]:[start,end] } },
+                where:{ invoice_date:{ [Op.between]:[start,end] } },
                 include:[InvoiceItem]
             });
 

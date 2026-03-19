@@ -249,6 +249,11 @@ html, body { overflow-x: hidden; }
                     <input class="readonly-input" type="text" id="invoiceNo" readonly>
                 </div>
 
+                <div class="field">
+                    <label for="invoiceDate">Invoice Date</label>
+                    <input type="date" id="invoiceDate" required>
+                </div>
+
                 <div class="card product-card field-span-full">
                     <div class="product-toolbar">
                         <button class="btn btn-inline-add" type="button" onclick="addProductRow()">Add Product</button>
@@ -549,6 +554,7 @@ async function initInvoice(){
         buildMachineLookup(rentalMachines, generalMachines);
         resetMachineSelect();
         document.getElementById("invoiceNo").value = lastInvoice.invoice_no || "";
+        document.getElementById("invoiceDate").value = new Date().toISOString().slice(0,10);
         await initSupportTechnicians();
         await loadSupportImportantLibrary();
         resetDefaultImportantNotes();
@@ -869,6 +875,7 @@ document.getElementById("invoiceForm").addEventListener("submit", async function
     const supportTechPercentage = supportTechPercentageRaw === "" ? null : Number(supportTechPercentageRaw);
     const paymentMethod = document.getElementById("paymentMethod").value || "Cash";
     const invoiceNo = document.getElementById("invoiceNo").value;
+    const invoiceDate = document.getElementById("invoiceDate").value;
     const items = Array.from(document.querySelectorAll(".product-row")).map(r=>{
         return {
             productId: parseInt(r.querySelector(".productId").value, 10),
@@ -881,7 +888,7 @@ document.getElementById("invoiceForm").addEventListener("submit", async function
         }
     });
 
-    if(!customerId || !invoiceNo || items.length===0 || items.some(i => !i.productId)){
+    if(!customerId || !invoiceNo || !invoiceDate || items.length===0 || items.some(i => !i.productId)){
         alert("Select customer and add products");
         return;
     }
@@ -891,6 +898,7 @@ document.getElementById("invoiceForm").addEventListener("submit", async function
         await request("/invoices","POST",{
             customer_id:customerId,
             invoice_no:invoiceNo,
+            invoice_date:invoiceDate,
             importants: importantNotes,
             machine_description: machineDescription,
             serial_no: serialNo,
@@ -916,6 +924,7 @@ document.getElementById("invoiceForm").addEventListener("submit", async function
                     await request("/invoices","POST",{
                         customer_id:customerId,
                         invoice_no:retryNo,
+                        invoice_date:invoiceDate,
                         importants: importantNotes,
                         machine_description: machineDescription,
                         serial_no: serialNo,
