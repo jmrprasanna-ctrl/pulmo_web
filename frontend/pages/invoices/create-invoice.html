@@ -255,6 +255,35 @@ body,
         overflow-x: auto;
     }
 }
+@media (max-width: 900px) {
+    .invoice-shell .invoice-action-row {
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+    }
+    .invoice-shell .invoice-action-row > * {
+        width: auto !important;
+        min-width: 140px !important;
+        max-width: 100% !important;
+    }
+    .invoice-shell .add-product-actions {
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+    }
+    .invoice-shell .add-product-actions > * {
+        width: auto !important;
+        min-width: 140px !important;
+        max-width: 100% !important;
+        margin-top: 0 !important;
+    }
+    .invoice-shell table,
+    .invoice-shell .table {
+        min-width: 0 !important;
+        width: 100% !important;
+        table-layout: auto;
+    }
+}
 </style>
 </head>
 <body>
