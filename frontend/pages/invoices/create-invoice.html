@@ -73,8 +73,8 @@ body {
     grid-template-columns: 2.6fr 2fr 0.7fr 1fr 0.8fr 1fr auto;
     gap: 10px;
     align-items: start;
-    min-width: 980px;
-    width: 980px;
+    min-width: 0;
+    width: 100%;
     padding: 10px;
     border: 1px solid #dbe5ef;
     border-radius: 10px;
@@ -179,6 +179,11 @@ body {
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch;
     }
+    .invoice-shell .product-row {
+        grid-template-columns: 1fr !important;
+        min-width: 0 !important;
+        width: 100% !important;
+    }
     .invoice-shell .invoice-action-row,
     .invoice-shell .add-product-actions {
         flex-direction: row !important;
@@ -212,10 +217,17 @@ body {
     }
     .invoice-shell table,
     .invoice-shell .table {
-        min-width: 640px !important;
-        width: 640px !important;
-        table-layout: auto !important;
-        white-space: nowrap !important;
+        min-width: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        table-layout: fixed !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+    }
+    .invoice-shell th,
+    .invoice-shell td {
+        white-space: normal !important;
+        word-break: break-word !important;
     }
 }
 </style>
