@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 set -euo pipefail
 
 BRANCH="${1:-main}"
@@ -13,11 +12,6 @@ echo "    app: ${APP_DIR}"
 echo "    branch: ${BRANCH}"
 echo "    pm2: ${PM2_NAME}"
 
-if [[ ! -d "${APP_DIR}" ]]; then
-  echo "ERROR: app directory not found: ${APP_DIR}"
-  exit 1
-fi
-
 cd "${APP_DIR}"
 
 echo "==> Fetching latest code"
@@ -25,12 +19,12 @@ git fetch origin
 git checkout "${BRANCH}"
 git pull --ff-only origin "${BRANCH}"
 
-echo "==> Installing Node dependencies (root)"
-npm install
+echo "==> Installing Node dependencies (no lockfile write)"
+npm install --no-package-lock
 
 if [[ -f "${APP_DIR}/backend/package.json" ]]; then
-  echo "==> Installing backend dependencies"
-  npm --prefix backend install
+  echo "==> Installing backend dependencies (no lockfile write)"
+  npm --prefix backend install --no-package-lock
 fi
 
 if [[ "${RUN_DB_CLEANUP}" == "true" ]]; then
@@ -49,7 +43,16 @@ pm2 save
 echo "==> Health checks"
 curl -fsS -I "${WEB_HEALTH_URL}" >/dev/null
 echo "    web ok: ${WEB_HEALTH_URL}"
-curl -fsS "${API_HEALTH_URL}" >/dev/null
-echo "    api ok: ${API_HEALTH_URL}"
 
-echo "==> Update completed successfully"
+for i in {1..15}; do
+  if curl -fsS "${API_HEALTH_URL}" >/dev/null; then
+    echo "    api ok: ${API_HEALTH_URL}"
+    echo "==> Update completed successfully"
+    exit 0
+  fi
+  sleep 2
+done
+
+echo "ERROR: api health check failed after retries"
+pm2 logs "${PM2_NAME}" --lines 120
+exit 1
