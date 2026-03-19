@@ -11,30 +11,19 @@ window.__DISABLE_PUBLIC_UI_REFRESH__ = true;
 <link rel="stylesheet" href="../../assets/css/dashboard.css">
 <link rel="stylesheet" href="../../assets/css/add-product.css">
 <style>
-html,
-body {
-    overflow-x: hidden;
-}
-.main-content.add-product-main {
-    overflow-x: visible;
-}
-.invoice-shell {
-    margin-bottom: 16px;
-    overflow-x: visible;
-}
-.invoice-shell .field {
-    min-width: 0 !important;
-}
-.invoice-grid .field-span-full {
-    grid-column: 1 / -1;
-}
+html, body { overflow-x: hidden; }
+.main-content.add-product-main { overflow-x: hidden; }
+.invoice-shell { margin-bottom: 16px; }
+.invoice-grid .field-span-full { grid-column: 1 / -1; }
+.invoice-grid .field { min-width: 0; }
+.invoice-grid .field input,
+.invoice-grid .field select,
+.invoice-grid .field textarea { box-sizing: border-box; }
+
 .product-card {
     margin-top: 12px;
     border: 1px solid #d9e4f0;
     border-radius: 14px;
-    overflow-x: auto;
-    overflow-y: visible;
-    -webkit-overflow-scrolling: touch;
 }
 .product-toolbar {
     display: flex;
@@ -43,58 +32,24 @@ body {
     gap: 10px;
     padding: 12px 14px 0 14px;
 }
-.product-toolbar .product-hint {
-    font-size: 12px;
-    color: #556b84;
-}
-.product-toolbar .btn-inline-add {
-    margin: 0;
-    height: 38px;
-    padding: 0 14px;
-}
-.product-rows {
-    margin-top: 10px;
-    padding: 0 14px 14px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+.product-toolbar .product-hint { font-size: 12px; color: #556b84; }
+.product-toolbar .btn-inline-add { margin: 0; height: 38px; padding: 0 14px; }
+.table-scroll {
     width: 100%;
-    min-width: 100%;
-}
-.product-rows-scroll {
-    width: 100%;
-    max-width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
 }
-.product-row {
-    display: grid;
-    grid-template-columns: 2.6fr 2fr 0.7fr 1fr 0.8fr 1fr auto;
-    gap: 10px;
-    align-items: start;
-    min-width: 0;
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #dbe5ef;
-    border-radius: 10px;
-    background: #fff;
+.table.product-table {
+    min-width: 980px;
+    width: 980px;
 }
-.compact-input {
-    margin: 0;
-    min-width: 90px;
-    width: 100%;
-    box-sizing: border-box;
-}
-.product-picker-wrap {
-    position: relative;
-    min-width: 0;
-    z-index: 50;
-}
-.product-search {
+.table.product-table .compact-input,
+.table.product-table .product-search {
     margin: 0;
     width: 100%;
 }
+.product-picker-wrap { position: relative; min-width: 0; }
 .product-results {
     display: none;
     position: absolute;
@@ -102,13 +57,12 @@ body {
     top: calc(100% + 4px);
     left: 0;
     right: 0;
-    max-height: 420px;
+    max-height: 340px;
     overflow-y: auto;
-    overflow-x: hidden;
     border: 1px solid #cfd8e3;
     background: #fff;
     border-radius: 8px;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.12);
     padding: 4px;
 }
 .product-option {
@@ -123,16 +77,8 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.product-option:hover,
-.product-option.active {
-    background: #e8f2fe;
-}
-.selected-product {
-    margin-top: 6px;
-    font-size: 12px;
-    color: #334155;
-    min-height: 18px;
-}
+.product-option:hover, .product-option.active { background: #e8f2fe; }
+.selected-product { margin-top: 6px; font-size: 12px; color: #334155; min-height: 18px; }
 .invoice-action-row {
     margin-top: 12px;
     display: flex;
@@ -140,110 +86,41 @@ body {
     align-items: center;
     flex-wrap: wrap;
 }
+.invoice-action-row .btn,
+.add-product-actions .btn,
+.add-product-actions button { margin-top: 0; }
+
 @media (max-width: 1100px) {
-    .add-product-grid {
-        grid-template-columns: 1fr;
-    }
-    .add-product-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
+    .add-product-grid { grid-template-columns: 1fr; }
+    .add-product-header { flex-direction: column; align-items: flex-start; }
 }
+
 @media (max-width: 900px) {
-    body {
-        display: block !important;
-        overflow-x: hidden !important;
-    }
-    body.mobile-nav-open .sidebar {
-        transform: translateX(0) !important;
-    }
-    .sidebar {
-        transform: translateX(-100%);
-    }
+    body.mobile-nav-open .sidebar { transform: translateX(0) !important; }
     .main-content.add-product-main {
         margin-left: 0 !important;
         width: 100% !important;
         max-width: 100% !important;
         padding: 14px !important;
         box-sizing: border-box !important;
-        overflow-x: hidden !important;
     }
-    .invoice-shell {
-        padding: 14px !important;
+    .invoice-shell { width: 100%; max-width: 100%; box-sizing: border-box; }
+    .invoice-grid .field,
+    .invoice-grid .field input,
+    .invoice-grid .field select,
+    .invoice-grid .field textarea {
         width: 100% !important;
         max-width: 100% !important;
-        box-sizing: border-box !important;
-    }
-    .invoice-shell .field {
-        width: 100% !important;
         min-width: 0 !important;
     }
-    .invoice-shell .field input,
-    .invoice-shell .field select,
-    .invoice-shell .field textarea {
-        width: 100% !important;
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-    }
-    .invoice-shell .product-rows-scroll {
-        width: 100% !important;
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch;
-    }
-    .invoice-shell .product-row {
-        grid-template-columns: 1fr !important;
-        min-width: 0 !important;
-        width: 100% !important;
-    }
-    .invoice-shell .invoice-action-row,
-    .invoice-shell .add-product-actions {
-        flex-direction: row !important;
-        flex-wrap: wrap !important;
-        align-items: center !important;
-    }
-    .invoice-shell .invoice-action-row > *,
-    .invoice-shell .add-product-actions > * {
-        width: auto !important;
-        min-width: 140px !important;
-        max-width: 100% !important;
-        margin-top: 0 !important;
-        flex: 0 0 auto !important;
-    }
-    .invoice-shell #supportImportantSelect {
-        min-width: 220px !important;
-        max-width: 100% !important;
-    }
-    .invoice-shell .product-toolbar {
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .invoice-shell .product-toolbar .btn-inline-add {
-        width: auto !important;
-        min-width: 140px !important;
-    }
-    .invoice-shell .card,
-    .invoice-shell .table-scroll {
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch;
-    }
-    .invoice-shell table,
-    .invoice-shell .table {
-        min-width: 0 !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        table-layout: fixed !important;
-        white-space: normal !important;
-        word-break: break-word !important;
-    }
-    .invoice-shell th,
-    .invoice-shell td {
-        white-space: normal !important;
-        word-break: break-word !important;
-    }
-    body.app-has-sidebar-footer #app-global-footer {
-        left: 0 !important;
-        width: 100% !important;
-    }
+    .product-toolbar { flex-wrap: wrap; }
+    .product-toolbar .btn-inline-add { width: auto; min-width: 140px; }
+    .invoice-action-row { flex-direction: column; align-items: stretch; }
+    .invoice-action-row > * { width: 100%; min-width: 0; }
+    #supportImportantSelect { min-width: 0 !important; width: 100% !important; }
+    .add-product-actions { flex-direction: row; flex-wrap: wrap; gap: 8px; }
+    .add-product-actions > * { flex: 1 1 140px; max-width: 100%; }
+    body.app-has-sidebar-footer #app-global-footer { left: 0 !important; width: 100% !important; }
 }
 </style>
 </head>
@@ -359,10 +236,23 @@ body {
                         <button class="btn btn-inline-add" type="button" onclick="addProductRow()">Add Product</button>
                         <span class="product-hint">Search by Product ID, Description, or Model</span>
                     </div>
-                    <div class="product-rows-scroll">
-                        <div id="productRows" class="product-rows"></div>
+                        <div class="table-scroll">
+                            <table class="table product-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:300px;">Product</th>
+                                        <th style="width:240px;">Description</th>
+                                        <th style="width:90px;">Qty</th>
+                                        <th style="width:110px;">Rate</th>
+                                        <th style="width:90px;">VAT %</th>
+                                        <th style="width:130px;">Gross</th>
+                                        <th style="width:120px;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="productRows"></tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
 
                 <div class="field-span-full">
                     <div class="invoice-action-row">
@@ -399,18 +289,6 @@ body {
 <script src="../../assets/js/api.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-function lockMobileHorizontalShift(){
-    if(window.innerWidth > 900) return;
-    try{
-        window.scrollTo({ left: 0, top: window.scrollY, behavior: "auto" });
-    }catch(_err){
-        window.scrollTo(0, window.scrollY || 0);
-    }
-}
-
-window.addEventListener("load", lockMobileHorizontalShift);
-window.addEventListener("resize", lockMobileHorizontalShift);
-
 let products = [];
 let invoiceCounter = 1;
 let customersCache = [];
@@ -695,23 +573,25 @@ async function fillCustomerDetails(){
 async function addProductRow(){
     try{
         const rowId = `row_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
-        const row = document.createElement("div");
+        const row = document.createElement("tr");
         row.className = "product-row";
         row.dataset.rowId = rowId;
         row.innerHTML = `
-            <div class="product-picker-wrap">
-                <input type="text" class="product-search compact-input" placeholder="Type product id / description / model">
-                <div class="product-results" role="listbox"></div>
-                <input type="hidden" class="productId">
-                <input type="hidden" class="productCode">
-                <div class="selected-product">No product selected</div>
-            </div>
-            <input type="text" class="description compact-input" placeholder="Description" readonly>
-            <input type="number" class="qty compact-input" value="1" min="1" title="Qty">
-            <input type="number" class="rate compact-input" readonly title="Rate">
-            <input type="number" class="vat compact-input" value="0" title="VAT">
-            <input type="number" class="gross compact-input" readonly title="Gross">
-            <button class="btn btn-danger btn-inline" type="button" onclick="removeRow(this)">Remove</button>
+            <td>
+                <div class="product-picker-wrap">
+                    <input type="text" class="product-search compact-input" placeholder="Type product id / description / model">
+                    <div class="product-results" role="listbox"></div>
+                    <input type="hidden" class="productId">
+                    <input type="hidden" class="productCode">
+                    <div class="selected-product">No product selected</div>
+                </div>
+            </td>
+            <td><input type="text" class="description compact-input" placeholder="Description" readonly></td>
+            <td><input type="number" class="qty compact-input" value="1" min="1" title="Qty"></td>
+            <td><input type="number" class="rate compact-input" readonly title="Rate"></td>
+            <td><input type="number" class="vat compact-input" value="0" title="VAT"></td>
+            <td><input type="number" class="gross compact-input" readonly title="Gross"></td>
+            <td><button class="btn btn-danger btn-inline" type="button" onclick="removeRow(this)">Remove</button></td>
         `;
 
         document.getElementById("productRows").appendChild(row);
