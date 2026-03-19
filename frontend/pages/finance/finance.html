@@ -7,11 +7,15 @@
 <link rel="stylesheet" href="../../assets/css/style.css">
 <link rel="stylesheet" href="../../assets/css/dashboard.css">
 <style>
-    .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+    .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;margin-bottom:12px;white-space:nowrap;overflow-x:auto;}
     .toolbar input,
     .toolbar select{
         width: auto;
         min-width: 170px;
+    }
+    .toolbar .btn,
+    .toolbar button{
+        margin-top:0;
     }
     .grid-3{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:12px;margin-bottom:14px;}
     .card-block{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:12px;}
@@ -20,7 +24,11 @@
     .section{margin-bottom:14px;}
     .section h3{margin-bottom:8px;}
     .section-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
-    .section-actions{display:flex;gap:8px;flex-wrap:wrap;}
+    .section-actions{display:flex;gap:8px;flex-wrap:nowrap;white-space:nowrap;overflow-x:auto;}
+    .section-actions .btn,
+    .section-actions button{
+        margin-top:0;
+    }
     @media (max-width: 980px){.grid-3{grid-template-columns:1fr;}}
 </style>
 </head>
@@ -50,7 +58,8 @@
 
     <div class="toolbar">
         <a class="btn" href="payments.html">Payments</a>
-        <button type="button" onclick="loadFinanceOverview()">Refresh</button>
+        <button class="btn" type="button" onclick="loadFinanceOverview()">Refresh</button>
+        <a class="btn btn-secondary" href="../dashboard.html">Back</a>
     </div>
 
     <div class="grid-3">
@@ -72,8 +81,8 @@
         <div class="section-head">
             <h3>Expense Entries Used for Total Expenses (Month)</h3>
             <div class="section-actions">
-                <button type="button" onclick="exportMonthExpensePDF()">Save PDF</button>
-                <button type="button" onclick="exportMonthExpenseXlsx()">Save XLSX</button>
+                <button class="btn" type="button" onclick="exportMonthExpensePDF()">Save PDF</button>
+                <button class="btn" type="button" onclick="exportMonthExpenseXlsx()">Save XLSX</button>
             </div>
         </div>
         <table id="monthExpenseTable">
@@ -94,8 +103,8 @@
         <div class="section-head">
             <h3>Total Sales / Expenses / Net Profit (Week, Month, Annual)</h3>
             <div class="section-actions">
-                <button type="button" onclick="exportSummaryPDF()">Save PDF</button>
-                <button type="button" onclick="exportSummaryXlsx()">Save XLSX</button>
+                <button class="btn" type="button" onclick="exportSummaryPDF()">Save PDF</button>
+                <button class="btn" type="button" onclick="exportSummaryXlsx()">Save XLSX</button>
             </div>
         </div>
         <table id="summaryTable">
@@ -115,8 +124,8 @@
         <div class="section-head">
             <h3>Support Technicians Invoice Percentage Amount (Technician Wise, Month Wise)</h3>
             <div class="section-actions">
-                <button type="button" onclick="exportTechnicianPDF()">Save PDF</button>
-                <button type="button" onclick="exportTechnicianXlsx()">Save XLSX</button>
+                <button class="btn" type="button" onclick="exportTechnicianPDF()">Save PDF</button>
+                <button class="btn" type="button" onclick="exportTechnicianXlsx()">Save XLSX</button>
             </div>
         </div>
         <table id="technicianTable">
@@ -137,8 +146,8 @@
         <div class="section-head">
             <h3>Sold Product Selling Price (Week, Month, Annual)</h3>
             <div class="section-actions">
-                <button type="button" onclick="exportSoldPricePDF()">Save PDF</button>
-                <button type="button" onclick="exportSoldPriceXlsx()">Save XLSX</button>
+                <button class="btn" type="button" onclick="exportSoldPricePDF()">Save PDF</button>
+                <button class="btn" type="button" onclick="exportSoldPriceXlsx()">Save XLSX</button>
             </div>
         </div>
         <table id="soldPriceTable">
@@ -156,8 +165,8 @@
         <div class="section-head">
             <h3>Vendor Buy Products Dealer Price (Week, Month, Annual)</h3>
             <div class="section-actions">
-                <button type="button" onclick="exportVendorPDF()">Save PDF</button>
-                <button type="button" onclick="exportVendorXlsx()">Save XLSX</button>
+                <button class="btn" type="button" onclick="exportVendorPDF()">Save PDF</button>
+                <button class="btn" type="button" onclick="exportVendorXlsx()">Save XLSX</button>
             </div>
         </div>
         <table id="vendorTotalTable">
@@ -186,8 +195,8 @@
         <div class="section-head">
             <h3>Rental Consumables Total Amount (Month Wise / Annual Wise / Customer Wise)</h3>
             <div class="section-actions">
-                <button type="button" onclick="exportRentalConsumablesPDF()">Save PDF</button>
-                <button type="button" onclick="exportRentalConsumablesXlsx()">Save XLSX</button>
+                <button class="btn" type="button" onclick="exportRentalConsumablesPDF()">Save PDF</button>
+                <button class="btn" type="button" onclick="exportRentalConsumablesXlsx()">Save XLSX</button>
             </div>
         </div>
         <h3>Month Wise</h3>
@@ -211,8 +220,8 @@
         <div class="section-head">
             <h3>Rental Count Machines with Customers (Month Wise)</h3>
             <div class="section-actions">
-                <button type="button" onclick="exportRentalCountPDF()">Save PDF</button>
-                <button type="button" onclick="exportRentalCountXlsx()">Save XLSX</button>
+                <button class="btn" type="button" onclick="exportRentalCountPDF()">Save PDF</button>
+                <button class="btn" type="button" onclick="exportRentalCountXlsx()">Save XLSX</button>
             </div>
         </div>
         <table id="rentalCountTable">

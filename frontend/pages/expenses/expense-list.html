@@ -14,6 +14,17 @@
         flex-wrap: wrap;
         margin-bottom: 12px;
     }
+    .action-row{
+        display:flex;
+        align-items:center;
+        gap:8px;
+        flex-wrap:nowrap;
+        white-space:nowrap;
+    }
+    .action-row .btn,
+    .action-row button{
+        margin-top:0;
+    }
     .date-filter{
         display: grid;
         gap: 6px;
@@ -97,8 +108,11 @@
                     <option value="year">Annual</option>
                 </select>
             </div>
-            <a class="btn" href="add-expense.html" id="addExpenseBtn">Add</a>
-            <button onclick="exportPDF()">Export as PDF</button>
+            <div class="action-row">
+                <a class="btn" href="add-expense.html" id="addExpenseBtn">Add</a>
+                <button class="btn" type="button" onclick="exportPDF()">Save PDF</button>
+                <a class="btn btn-secondary" href="../dashboard.html">Back</a>
+            </div>
             <input type="text" id="expenseSearch" class="search-inline" placeholder="Search Title, Customer, Category">
         </div>
         <div class="summary-row">
