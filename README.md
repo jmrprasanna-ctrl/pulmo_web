@@ -105,3 +105,24 @@ pulmotech_inhouse/
 ```bash
 git clone https://github.com/jmrprasanna-ctrl/pulmo_web.git
 cd pulmo_web
+
+## AWS Server Commands
+
+Use these scripts on your EC2 Ubuntu server:
+
+```bash
+# 1) System check
+bash deploy/ubuntu24/aws_system_check.sh
+
+# 2) Update app from git + restart PM2
+bash deploy/ubuntu24/aws_update.sh main
+
+# Optional: remove system sample/test data from inventory + demo DB while updating
+RUN_DB_CLEANUP=true bash deploy/ubuntu24/aws_update.sh main
+```
+
+Legacy command still works:
+
+```bash
+bash deploy.sh main
+```

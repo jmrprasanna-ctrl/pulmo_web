@@ -1,46 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_DIR="/var/www/pulmo_web_UI"
-BRANCH="${1:-main}"
-PM2_NAME="pulmo-backend"
-API_HEALTH_URL="http://127.0.0.1:5000/api/health"
-WEB_HEALTH_URL="http://127.0.0.1"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "==> Deploy started"
-echo "    app:    ${APP_DIR}"
-echo "    branch: ${BRANCH}"
-
-if [[ ! -d "${APP_DIR}" ]]; then
-  echo "ERROR: app directory not found: ${APP_DIR}"
+if [[ ! -f "${SCRIPT_DIR}/deploy/ubuntu24/aws_update.sh" ]]; then
+  echo "ERROR: missing deploy script: ${SCRIPT_DIR}/deploy/ubuntu24/aws_update.sh"
   exit 1
 fi
 
-cd "${APP_DIR}"
-
-echo "==> Fetching latest code"
-git fetch origin
-git checkout "${BRANCH}"
-git pull --ff-only origin "${BRANCH}"
-
-echo "==> Installing dependencies"
-npm install
-
-echo "==> Restarting app via PM2"
-if pm2 describe "${PM2_NAME}" >/dev/null 2>&1; then
-  pm2 reload "${PM2_NAME}" || pm2 restart "${PM2_NAME}"
-else
-  pm2 start npm --name "${PM2_NAME}" -- run start
-fi
-pm2 save
-
-echo "==> Health checks"
-echo "    web: ${WEB_HEALTH_URL}"
-curl -fsS -I "${WEB_HEALTH_URL}" >/dev/null
-echo "    ok"
-
-echo "    api: ${API_HEALTH_URL}"
-curl -fsS "${API_HEALTH_URL}" >/dev/null
-echo "    ok"
-
-echo "==> Deploy complete"
+bash "${SCRIPT_DIR}/deploy/ubuntu24/aws_update.sh" "${1:-main}"
