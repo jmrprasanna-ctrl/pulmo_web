@@ -275,6 +275,33 @@ async function ensureInvoiceDateSchema() {
   });
 }
 
+async function ensureVendorCategorySchema() {
+  await runOnBusinessDatabases(async () => {
+    await db.query(`
+      ALTER TABLE vendors
+      ALTER COLUMN category TYPE VARCHAR(255);
+    `);
+
+    await db.query(`
+      DO $$
+      DECLARE
+        constraint_name TEXT;
+      BEGIN
+        FOR constraint_name IN
+          SELECT c.conname
+          FROM pg_constraint c
+          JOIN pg_class t ON t.oid = c.conrelid
+          WHERE t.relname = 'vendors'
+            AND c.contype = 'c'
+            AND pg_get_constraintdef(c.oid) ILIKE '%category%'
+        LOOP
+          EXECUTE format('ALTER TABLE vendors DROP CONSTRAINT IF EXISTS %I', constraint_name);
+        END LOOP;
+      END $$;
+    `);
+  });
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
@@ -339,6 +366,7 @@ async function startServer() {
     await ensureRentalConsumableSchema();
     await ensureRentalMachineCountSchema();
     await ensureCustomerCodeSchema();
+    await ensureVendorCategorySchema();
     await ensureInvoiceDateSchema();
     await ensureDefaultCategories();
     await ensureDefaultCategoryModelOptions();

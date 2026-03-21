@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS vendors (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     address TEXT,
-    category VARCHAR(100),
+    category VARCHAR(255),
     "createdAt" TIMESTAMP DEFAULT NOW(),
     "updatedAt" TIMESTAMP DEFAULT NOW()
 );

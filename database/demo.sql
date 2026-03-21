@@ -53,7 +53,7 @@ CREATE TABLE vendors (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     address TEXT,
-    category VARCHAR(50) CHECK(category IN ('Photocopier','Printer','Plotter','Computer','Laptop','Accessory','Consumable','Machine'))
+    category VARCHAR(255)
 );
 
 
