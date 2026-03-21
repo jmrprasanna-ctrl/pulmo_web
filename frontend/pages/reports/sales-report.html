@@ -223,8 +223,12 @@
 
         <div class="report-block">
             <div class="report-head">
-                <h3>Rental Count Report (Customer Wise + Machine Wise)</h3>
+                <h3>Rental Machine Count</h3>
                 <div class="report-controls">
+                    <label for="rentalMachineFilter">Rental Machines</label>
+                    <select id="rentalMachineFilter">
+                        <option value="">All Rental Machines</option>
+                    </select>
                     <button type="button" onclick="loadRentalCountReport()">Load</button>
                     <button type="button" onclick="exportRentalCountPDF()">Export PDF</button>
                 </div>
@@ -582,7 +586,9 @@ async function loadRentalCustomerFilterOptions(){
 
 async function loadRentalCountReport(){
     try{
-        const data = await request("/reports/rental-counts","GET");
+        const rentalMachineId = String(document.getElementById("rentalMachineFilter").value || "").trim();
+        const query = rentalMachineId ? `?rental_machine_id=${encodeURIComponent(rentalMachineId)}` : "";
+        const data = await request(`/reports/rental-counts${query}`,"GET");
         const tbody = document.querySelector("#rentalCountTable tbody");
         tbody.innerHTML = "";
         (data.rows || []).forEach((row) => {
@@ -604,6 +610,38 @@ async function loadRentalCountReport(){
         applyTableScrollLimit("rentalCountTable");
     }catch(err){
         alert(err.message || "Failed to load rental count report");
+    }
+}
+
+async function loadRentalMachineFilterOptions(){
+    try{
+        const select = document.getElementById("rentalMachineFilter");
+        if(!select) return;
+        const previous = String(select.value || "");
+        const machines = await request("/rental-machines","GET");
+        const rows = Array.isArray(machines) ? machines : [];
+        const sorted = rows.slice().sort((a, b) => String(a.machine_id || "").localeCompare(String(b.machine_id || "")));
+
+        select.innerHTML = "";
+        const allOpt = document.createElement("option");
+        allOpt.value = "";
+        allOpt.textContent = "All Rental Machines";
+        select.appendChild(allOpt);
+
+        sorted.forEach((m) => {
+            const opt = document.createElement("option");
+            opt.value = String(m.id);
+            const machineId = String(m.machine_id || "");
+            const model = String(m.model || "");
+            const serial = String(m.serial_no || "");
+            opt.textContent = [machineId, model, serial].filter(Boolean).join(" - ");
+            select.appendChild(opt);
+        });
+
+        if(previous && sorted.some((m) => String(m.id) === previous)){
+            select.value = previous;
+        }
+    }catch(_err){
     }
 }
 
@@ -682,9 +720,11 @@ document.getElementById("techTechnician").addEventListener("change", loadTechnic
 document.getElementById("stockVendorReport").addEventListener("change", loadStockReports);
 document.getElementById("minStockLevel").addEventListener("change", loadStockReports);
 document.getElementById("rentalCustomerFilter").addEventListener("change", loadRentalConsumablesReport);
+document.getElementById("rentalMachineFilter").addEventListener("change", loadRentalCountReport);
 
 loadSales();
 loadRentalCustomerFilterOptions();
+loadRentalMachineFilterOptions();
 loadRentalConsumablesReport();
 loadRentalCountReport();
 if(isAdminManager){

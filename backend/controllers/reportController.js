@@ -444,7 +444,13 @@ exports.rentalConsumablesMachineCustomerReport = async (req,res)=>{
 
 exports.rentalCountMachineCustomerReport = async (req,res)=>{
     try{
+        const rentalMachineId = Number(req.query.rental_machine_id);
+        const where = {};
+        if(Number.isFinite(rentalMachineId) && rentalMachineId > 0){
+            where.rental_machine_id = rentalMachineId;
+        }
         const counts = await RentalMachineCount.findAll({
+            where,
             include: [
                 { model: Customer, attributes: ["id", "name"] },
                 { model: RentalMachine, attributes: ["id", "machine_id", "model", "serial_no", "start_count", "updated_count"] }
@@ -496,7 +502,11 @@ exports.rentalCountMachineCustomerReport = async (req,res)=>{
                 return String(a.machine_id || "").localeCompare(String(b.machine_id || ""));
             });
 
-        res.json({ total: rows.length, rows });
+        res.json({
+            rental_machine_id: Number.isFinite(rentalMachineId) && rentalMachineId > 0 ? rentalMachineId : null,
+            total: rows.length,
+            rows
+        });
     }catch(err){
         res.status(500).json({ message: err.message || "Failed to load rental count report." });
     }

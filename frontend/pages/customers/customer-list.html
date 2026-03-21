@@ -81,6 +81,11 @@
         <a class="btn" href="add-customer.html" id="addCustomerBtn">Add</a>
         <button onclick="exportPDF()">Export as PDF</button>
         <input type="text" id="customerSearch" class="search-inline" placeholder="Search ID, Name, Tel, Email">
+        <select id="customerModeFilter" class="search-inline" style="width:170px;">
+            <option value="">All Modes</option>
+            <option value="general">General</option>
+            <option value="rental">Rental</option>
+        </select>
         <div class="customer-table-wrap">
             <table id="customerTable">
                 <thead>
@@ -120,6 +125,7 @@ const canAccessPath = (path) => canManage
     : (role === "user" && allowedPaths.has(String(path || "").trim().toLowerCase()));
 const canAddCustomer = canAccessPath("/customers/add-customer.html");
 const customerSearchEl = document.getElementById("customerSearch");
+const customerModeFilterEl = document.getElementById("customerModeFilter");
 let allCustomers = [];
 
 const addCustomerBtn = document.getElementById("addCustomerBtn");
@@ -163,13 +169,16 @@ function renderCustomers(customers){
 
 function applyCustomerFilter(){
     const query = (customerSearchEl?.value || "").trim().toLowerCase();
-    if(!query){
+    const mode = (customerModeFilterEl?.value || "").trim().toLowerCase();
+    if(!query && !mode){
         renderCustomers(allCustomers);
         return;
     }
-    const filtered = allCustomers.filter(c =>
-        [c.customer_id, c.name, c.tel, c.email].some(v => String(v || "").toLowerCase().includes(query))
-    );
+    const filtered = allCustomers.filter(c => {
+        const modeMatch = !mode || String(c.customer_mode || "").toLowerCase() === mode;
+        if(!modeMatch) return false;
+        return [c.customer_id, c.name, c.tel, c.email].some(v => String(v || "").toLowerCase().includes(query));
+    });
     renderCustomers(filtered);
 }
 
@@ -184,6 +193,9 @@ async function loadCustomers(){
 
 if(customerSearchEl){
     customerSearchEl.addEventListener("input", applyCustomerFilter);
+}
+if(customerModeFilterEl){
+    customerModeFilterEl.addEventListener("change", applyCustomerFilter);
 }
 
 function exportPDF(){
