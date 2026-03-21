@@ -84,11 +84,13 @@
                 <h3>Sales Report (Week / Month / Annual)</h3>
                 <div class="report-controls">
                     <select id="salesPeriod">
-                        <option value="week">Week Wise</option>
-                        <option value="month" selected>Month Wise</option>
-                        <option value="year">Annual Wise</option>
+                        <option value="week">Week</option>
+                        <option value="month" selected>Month</option>
+                        <option value="year">Year</option>
                         <option value="all">All</option>
                     </select>
+                    <select id="salesYearSelect" style="display:none;"></select>
+                    <select id="salesMonthSelect" style="display:none;"></select>
                     <input type="date" id="salesDate">
                     <button type="button" onclick="loadSales()">Load</button>
                     <button type="button" onclick="exportSalesPDF()">Export PDF</button>
@@ -562,8 +564,71 @@ function logout(){
     window.location.href="../login.html";
 }
 
+const REPORT_MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+function populateSalesYearOptions(){
+    const yearEl = document.getElementById("salesYearSelect");
+    if(!yearEl) return;
+    const currentYear = new Date().getFullYear();
+    const startYear = currentYear - 15;
+    const opts = [];
+    for(let y = currentYear; y >= startYear; y--){
+        opts.push(`<option value="${y}">${y}</option>`);
+    }
+    yearEl.innerHTML = opts.join("");
+}
+
+function populateSalesMonthOptions(){
+    const monthEl = document.getElementById("salesMonthSelect");
+    if(!monthEl) return;
+    monthEl.innerHTML = REPORT_MONTH_NAMES
+        .map((name, i) => `<option value="${String(i + 1).padStart(2,"0")}">${name}</option>`)
+        .join("");
+}
+
+function toggleSalesPeriodSelectors(){
+    const period = (document.getElementById("salesPeriod")?.value || "month").toLowerCase();
+    const yearEl = document.getElementById("salesYearSelect");
+    const monthEl = document.getElementById("salesMonthSelect");
+    const dateEl = document.getElementById("salesDate");
+    if(!yearEl || !monthEl || !dateEl) return;
+    yearEl.style.display = (period === "year" || period === "month") ? "" : "none";
+    monthEl.style.display = period === "month" ? "" : "none";
+    dateEl.style.display = (period === "week" || period === "all") ? "" : "none";
+}
+
+function syncSalesDateFromSelectors(){
+    const period = (document.getElementById("salesPeriod")?.value || "month").toLowerCase();
+    const dateEl = document.getElementById("salesDate");
+    const year = document.getElementById("salesYearSelect")?.value || String(new Date().getFullYear());
+    const month = document.getElementById("salesMonthSelect")?.value || String(new Date().getMonth() + 1).padStart(2,"0");
+    if(!dateEl) return;
+
+    if(period === "year"){
+        dateEl.value = `${year}-01-01`;
+    }else if(period === "month"){
+        dateEl.value = `${year}-${month}-01`;
+    }else if(!dateEl.value){
+        dateEl.value = new Date().toISOString().slice(0,10);
+    }
+}
+
 document.getElementById("salesDate").value = new Date().toISOString().slice(0,10);
 document.getElementById("techMonth").value = new Date().toISOString().slice(0,7);
+populateSalesYearOptions();
+populateSalesMonthOptions();
+document.getElementById("salesYearSelect").value = String(new Date().getFullYear());
+document.getElementById("salesMonthSelect").value = String(new Date().getMonth() + 1).padStart(2,"0");
+toggleSalesPeriodSelectors();
+syncSalesDateFromSelectors();
+
+document.getElementById("salesPeriod").addEventListener("change", () => {
+    toggleSalesPeriodSelectors();
+    syncSalesDateFromSelectors();
+});
+document.getElementById("salesYearSelect").addEventListener("change", syncSalesDateFromSelectors);
+document.getElementById("salesMonthSelect").addEventListener("change", syncSalesDateFromSelectors);
+
 loadSales();
 loadVendorProductsReport();
 loadRentalConsumablesReport();
