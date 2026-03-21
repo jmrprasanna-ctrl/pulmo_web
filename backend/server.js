@@ -134,8 +134,8 @@ async function ensureDefaultCategoryModelOptions() {
     Computer: ["HP", "DELL", "ASUS", "SONY", "SINGER", "SAMSUNG", "OTHER"],
     Laptop: ["HP", "DELL", "ASUS", "SONY", "SINGER", "SAMSUNG", "OTHER"],
     Plotter: ["CANON", "HP", "EPSON", "OTHER"],
-    CCTV: ["OTHER"],
-    Duplo: ["OTHER"],
+    CCTV: ["HICKVISION", "DAHUA", "OTHER"],
+    Duplo: ["DUPLO", "OTHER"],
     Other: ["OTHER"],
     Service: ["OTHER"],
   };
