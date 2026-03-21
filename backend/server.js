@@ -244,16 +244,29 @@ async function ensureInvoiceDateSchema() {
       ALTER TABLE invoices
       ADD COLUMN IF NOT EXISTS invoice_date DATE;
     `);
+    await db.query(`
+      ALTER TABLE invoices
+      ADD COLUMN IF NOT EXISTS quotation_date DATE;
+    `);
 
     await db.query(`
       UPDATE invoices
       SET invoice_date = COALESCE(invoice_date, DATE("createdAt"), CURRENT_DATE)
       WHERE invoice_date IS NULL;
     `);
+    await db.query(`
+      UPDATE invoices
+      SET quotation_date = COALESCE(quotation_date, invoice_date, DATE("createdAt"), CURRENT_DATE)
+      WHERE quotation_date IS NULL;
+    `);
 
     await db.query(`
       ALTER TABLE invoices
       ALTER COLUMN invoice_date SET DEFAULT CURRENT_DATE;
+    `);
+    await db.query(`
+      ALTER TABLE invoices
+      ALTER COLUMN quotation_date SET DEFAULT CURRENT_DATE;
     `);
   });
 }

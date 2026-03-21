@@ -296,6 +296,10 @@ html, body { overflow-x: hidden; }
                     <label for="invoiceDate">Invoice Date</label>
                     <input type="date" id="invoiceDate" required>
                 </div>
+                <div class="field">
+                    <label for="quotationDate">Quotation Date</label>
+                    <input type="date" id="quotationDate" required>
+                </div>
 
                 <div class="card product-card field-span-full">
                     <div class="product-toolbar">
@@ -597,7 +601,9 @@ async function initInvoice(){
         buildMachineLookup(rentalMachines, generalMachines);
         resetMachineSelect();
         document.getElementById("invoiceNo").value = lastInvoice.invoice_no || "";
-        document.getElementById("invoiceDate").value = new Date().toISOString().slice(0,10);
+        const today = new Date().toISOString().slice(0,10);
+        document.getElementById("invoiceDate").value = today;
+        document.getElementById("quotationDate").value = today;
         await initSupportTechnicians();
         await loadSupportImportantLibrary();
         resetDefaultImportantNotes();
@@ -951,6 +957,7 @@ document.getElementById("invoiceForm").addEventListener("submit", async function
     const paymentMethod = document.getElementById("paymentMethod").value || "Cash";
     const invoiceNo = document.getElementById("invoiceNo").value;
     const invoiceDate = document.getElementById("invoiceDate").value;
+    const quotationDate = document.getElementById("quotationDate").value;
     const items = Array.from(document.querySelectorAll(".invoice-product-row")).map(r=>{
         return {
             productId: parseInt(r.querySelector(".productId").value, 10),
@@ -963,7 +970,7 @@ document.getElementById("invoiceForm").addEventListener("submit", async function
         }
     });
 
-    if(!customerId || !invoiceNo || !invoiceDate || items.length===0 || items.some(i => !i.productId)){
+    if(!customerId || !invoiceNo || !invoiceDate || !quotationDate || items.length===0 || items.some(i => !i.productId)){
         alert("Select customer and add products");
         return;
     }
@@ -974,6 +981,7 @@ document.getElementById("invoiceForm").addEventListener("submit", async function
             customer_id:customerId,
             invoice_no:invoiceNo,
             invoice_date:invoiceDate,
+            quotation_date:quotationDate,
             importants: importantNotes,
             machine_description: machineDescription,
             serial_no: serialNo,
@@ -1001,6 +1009,7 @@ document.getElementById("invoiceForm").addEventListener("submit", async function
                         customer_id:customerId,
                         invoice_no:retryNo,
                         invoice_date:invoiceDate,
+                        quotation_date:quotationDate,
                         importants: importantNotes,
                         machine_description: machineDescription,
                         serial_no: serialNo,

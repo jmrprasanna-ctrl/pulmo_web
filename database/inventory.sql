@@ -133,6 +133,8 @@ CREATE TABLE invoices (
     id SERIAL PRIMARY KEY,
     invoice_no VARCHAR(20) UNIQUE,
     customer_id INT REFERENCES customers(id),
+    invoice_date DATE DEFAULT CURRENT_DATE,
+    quotation_date DATE DEFAULT CURRENT_DATE,
     total_amount FLOAT DEFAULT 0,
     createdAt TIMESTAMP DEFAULT NOW(),
     updatedAt TIMESTAMP DEFAULT NOW()

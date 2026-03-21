@@ -204,6 +204,7 @@ exports.listInvoices = async (req,res)=>{
             customer_mode: inv.Customer ? inv.Customer.customer_mode : "",
             total: inv.total_amount,
             invoice_date: inv.invoice_date || inv.createdAt,
+            quotation_date: inv.quotation_date || inv.invoice_date || inv.createdAt,
             payment_method: inv.payment_method || "Cash",
             cheque_no: inv.cheque_no || "",
             payment_status: inv.payment_status || "Pending"
@@ -459,7 +460,7 @@ exports.getSealVImage = async (req,res)=>{
 };
 
 exports.createInvoice = async (req,res)=>{
-    const { invoice_no, invoice_date, customer_id, items, importants, machine_description, serial_no, machine_count, support_technician, support_technician_percentage, payment_method } = req.body;
+    const { invoice_no, invoice_date, quotation_date, customer_id, items, importants, machine_description, serial_no, machine_count, support_technician, support_technician_percentage, payment_method } = req.body;
     if(!customer_id || !invoice_no || !items || !items.length) {
         return res.status(400).json({message:"Invalid data"});
     }
@@ -484,9 +485,16 @@ exports.createInvoice = async (req,res)=>{
         if(!isValidInvoiceDate){
             return res.status(400).json({ message: "Invalid invoice date." });
         }
+        const parsedQuotationDate = String(quotation_date || "").trim();
+        const quotationDateValue = parsedQuotationDate || invoiceDateValue;
+        const isValidQuotationDate = /^\d{4}-\d{2}-\d{2}$/.test(quotationDateValue) && !Number.isNaN(new Date(`${quotationDateValue}T00:00:00`).getTime());
+        if(!isValidQuotationDate){
+            return res.status(400).json({ message: "Invalid quotation date." });
+        }
         const invoice = await Invoice.create({
             invoice_no,
             invoice_date: invoiceDateValue,
+            quotation_date: quotationDateValue,
             customer_id,
             machine_description: String(machine_description || "").trim() || null,
             serial_no: String(serial_no || "").trim() || null,
