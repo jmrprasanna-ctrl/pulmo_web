@@ -89,7 +89,7 @@ html, body { overflow-x: hidden; }
     display: none;
     position: absolute;
     z-index: 9999;
-    top: calc(100% + 4px);
+    top: calc(40px + 4px);
     left: 0;
     right: 0;
     max-height: 340px;
@@ -113,7 +113,13 @@ html, body { overflow-x: hidden; }
     text-overflow: ellipsis;
 }
 .product-option:hover, .product-option.active { background: #e8f2fe; }
-.selected-product { margin-top: 6px; font-size: 12px; color: #334155; min-height: 18px; }
+.selected-product {
+    display: none;
+    margin-top: 6px;
+    font-size: 12px;
+    color: #334155;
+    min-height: 0;
+}
 .important-actions {
     margin-top: 12px;
     display: flex;
