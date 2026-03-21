@@ -41,7 +41,7 @@
             Logo with Name
         </label>
         <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
-            <input type="checkbox" id="editModeChk" checked>
+            <input type="checkbox" id="editModeChk">
             Edit
         </label>
         <input type="file" id="logoFileInput" accept="image/*" style="display:none;">
@@ -1008,7 +1008,7 @@ function updateNavigationTileByEditToggle(){
 function initEditModeControl(){
     const editChk = document.getElementById("editModeChk");
     if(!editChk) return;
-    editChk.checked = true;
+    editChk.checked = false;
     editChk.addEventListener("change", () => {
         updateNavigationTileByEditToggle();
     });
