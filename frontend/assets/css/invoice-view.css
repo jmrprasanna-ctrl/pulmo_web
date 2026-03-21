@@ -121,6 +121,30 @@ body {
     flex: 1 1 140px;
   }
 
+  .invoice-date-inline {
+    flex: 1 1 100%;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .invoice-date-inline label {
+    flex: 0 0 100%;
+  }
+
+  .invoice-date-inline #invDateInput {
+    flex: 1 1 0;
+    width: auto !important;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .invoice-date-inline #saveInvDateBtn {
+    margin-top: 0;
+    flex: 0 0 auto;
+  }
+
   .invoice-image-wrap {
     padding: 8px;
   }
@@ -131,5 +155,14 @@ body {
 
   .invoice-actions .btn {
     min-width: 100px;
+  }
+}
+
+@media (max-width: 520px) {
+  .invoice-date-inline #invDateInput,
+  .invoice-date-inline #saveInvDateBtn {
+    flex: 1 1 100%;
+    width: 100% !important;
+    max-width: 100%;
   }
 }
