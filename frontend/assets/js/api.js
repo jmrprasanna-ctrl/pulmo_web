@@ -33,6 +33,8 @@ const UI_SETTINGS_CACHE_KEY = "publicUiSettingsCache";
 const ENABLE_PUBLIC_UI_SETTINGS_RUNTIME = typeof window !== "undefined" && window.__ENABLE_PUBLIC_UI_SETTINGS__ === true;
 const LAST_ACTIVITY_KEY = "lastActivityAt";
 const ACTIVITY_EVENTS = ["mousemove", "keydown", "touchstart"];
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+const IDLE_CHECK_INTERVAL_MS = 30 * 1000;
 
 const USER_DEFAULT_ALLOWED_PATHS = [
     "/login.html",
@@ -121,6 +123,45 @@ function setupActivityTracking(){
         window.addEventListener(eventName, markUserActivity, { passive: true });
     });
     markUserActivity();
+}
+
+function isLoginPagePath(){
+    const path = window.location.pathname.replace(/\\/g, "/").toLowerCase();
+    return path.endsWith("/login.html") || path.endsWith("login.html");
+}
+
+function logoutForInactivity(){
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("userId");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("userName");
+    localStorage.removeItem("selectedDatabaseName");
+    localStorage.removeItem(LAST_ACTIVITY_KEY);
+    window.location.replace(buildPagesPath("login.html"));
+}
+
+function enforceIdleTimeout(){
+    const token = localStorage.getItem("token");
+    if(!token || isLoginPagePath()) return true;
+    const lastActivityAt = Number(localStorage.getItem(LAST_ACTIVITY_KEY) || 0);
+    if(!Number.isFinite(lastActivityAt) || lastActivityAt <= 0){
+        markUserActivity();
+        return true;
+    }
+    if(Date.now() - lastActivityAt > IDLE_TIMEOUT_MS){
+        logoutForInactivity();
+        return false;
+    }
+    return true;
+}
+
+function startIdleTimeoutWatcher(){
+    if(window.__idleTimeoutWatcherStarted) return;
+    window.__idleTimeoutWatcherStarted = true;
+    window.setInterval(() => {
+        enforceIdleTimeout();
+    }, IDLE_CHECK_INTERVAL_MS);
 }
 
 function enforceUserAccess(){
@@ -559,6 +600,8 @@ async function loadUserAccessPermissions(){
 
 window.addEventListener("DOMContentLoaded", async () => {
     setupActivityTracking();
+    startIdleTimeoutWatcher();
+    if(!enforceIdleTimeout()) return;
     if(!enforceAuthentication()) return;
     await loadUserAccessPermissions();
     enforceUserAccess();
@@ -575,15 +618,18 @@ window.addEventListener("DOMContentLoaded", async () => {
 });
 
 window.addEventListener("pageshow", () => {
+    if(!enforceIdleTimeout()) return;
     enforceAuthentication();
 });
 
 window.addEventListener("popstate", () => {
+    if(!enforceIdleTimeout()) return;
     enforceAuthentication();
 });
 
 document.addEventListener("visibilitychange", () => {
     if(document.visibilityState === "visible"){
+        if(!enforceIdleTimeout()) return;
         enforceAuthentication();
     }
 });
@@ -633,6 +679,9 @@ function showMessageBox(message, type="success", duration=2200){
 window.showMessageBox = showMessageBox;
 
 async function request(endpoint, method="GET", data=null){
+    if(!enforceIdleTimeout()){
+        throw new Error("Session expired due to inactivity.");
+    }
     const token = localStorage.getItem("token");
     const isAuthEndpoint = endpoint.startsWith("/auth/");
     if(!token && !isAuthEndpoint){
