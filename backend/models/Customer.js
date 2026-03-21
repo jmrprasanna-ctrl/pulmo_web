@@ -8,6 +8,7 @@ const Customer = db.define("Customer",{
     address:{ type: DataTypes.STRING },
     quotation2_address:{ type: DataTypes.STRING, allowNull: true },
     tel:{ type: DataTypes.STRING },
+    contact_person:{ type: DataTypes.STRING, allowNull: true },
     customer_type:{ type: DataTypes.STRING, defaultValue:"Silver" },
     customer_mode:{ type: DataTypes.STRING, defaultValue:"General" },
     vat_number:{ type: DataTypes.STRING, allowNull:true },

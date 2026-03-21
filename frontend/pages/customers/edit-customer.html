@@ -74,6 +74,8 @@
 
             <label>Telephone</label>
             <input type="text" id="tel" placeholder="Telephone">
+            <label>Contact person</label>
+            <input type="text" id="contactPerson" placeholder="Contact person">
 
             <label>Email</label>
             <input type="email" id="email" placeholder="Email">
@@ -129,6 +131,7 @@ async function loadCustomer(){
         document.getElementById("address").value = (customer.address || "").toUpperCase();
         document.getElementById("quotation2Address").value = (customer.quotation2_address || "").toUpperCase();
         document.getElementById("tel").value = customer.tel || "";
+        document.getElementById("contactPerson").value = customer.contact_person || "";
         document.getElementById("email").value = customer.email || "";
         document.getElementById("customerType").value = customer.customer_type || "Silver";
         document.getElementById("customerMode").value = customer.customer_mode || "General";
@@ -146,6 +149,7 @@ document.getElementById("customerForm").addEventListener("submit", async functio
         address: document.getElementById("address").value.trim().toUpperCase(),
         quotation2_address: document.getElementById("quotation2Address").value.trim().toUpperCase(),
         tel: document.getElementById("tel").value.trim(),
+        contact_person: document.getElementById("contactPerson").value.trim(),
         email: document.getElementById("email").value.trim(),
         customer_type: document.getElementById("customerType").value,
         customer_mode: document.getElementById("customerMode").value,

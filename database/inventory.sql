@@ -85,6 +85,7 @@ CREATE TABLE customers (
     name VARCHAR(100) NOT NULL,
     address TEXT,
     tel VARCHAR(50),
+    contact_person VARCHAR(100),
     customer_type VARCHAR(20) DEFAULT 'Silver',
     email VARCHAR(100) UNIQUE,
     createdAt TIMESTAMP DEFAULT NOW(),

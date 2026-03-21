@@ -27,13 +27,14 @@ exports.getCustomerById = async (req,res)=>{
 
 exports.createCustomer = async (req,res)=>{
     try{
-        const { name, address, quotation2_address, tel, customer_type, customer_mode, vat_number, email } = req.body;
+        const { name, address, quotation2_address, tel, contact_person, customer_type, customer_mode, vat_number, email } = req.body;
         if(!name){
             return res.status(400).json({ message: "Customer name is required." });
         }
         const normalizedName = toUpper(name);
         const normalizedAddress = toUpper(address);
         const normalizedQuotation2Address = toUpper(quotation2_address);
+        const normalizedContactPerson = String(contact_person || "").trim();
 
         let created = null;
         for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -50,6 +51,7 @@ exports.createCustomer = async (req,res)=>{
                         address: normalizedAddress,
                         quotation2_address: normalizedQuotation2Address,
                         tel,
+                        contact_person: normalizedContactPerson || null,
                         customer_type,
                         customer_mode,
                         vat_number,
@@ -73,7 +75,7 @@ exports.createCustomer = async (req,res)=>{
 exports.updateCustomer = async (req,res)=>{
     try{
         const { id } = req.params;
-        const { name, address, quotation2_address, tel, customer_type, customer_mode, vat_number, email } = req.body;
+        const { name, address, quotation2_address, tel, contact_person, customer_type, customer_mode, vat_number, email } = req.body;
         if(!name){
             return res.status(400).json({ message: "Customer name is required." });
         }
@@ -99,6 +101,7 @@ exports.updateCustomer = async (req,res)=>{
                 address: toUpper(address),
                 quotation2_address: toUpper(quotation2_address),
                 tel,
+                contact_person: String(contact_person || "").trim() || null,
                 customer_type,
                 customer_mode,
                 vat_number,

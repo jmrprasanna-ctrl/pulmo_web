@@ -208,6 +208,10 @@ async function ensureCustomerCodeSchema() {
       ALTER TABLE customers
       ADD COLUMN IF NOT EXISTS customer_id VARCHAR(20);
     `);
+    await db.query(`
+      ALTER TABLE customers
+      ADD COLUMN IF NOT EXISTS contact_person VARCHAR(100);
+    `);
 
     await db.query(`
       CREATE UNIQUE INDEX IF NOT EXISTS customers_customer_id_unique_idx

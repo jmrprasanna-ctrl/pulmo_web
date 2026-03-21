@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS customers (
     name VARCHAR(100) NOT NULL,
     address TEXT,
     tel VARCHAR(50),
+    contact_person VARCHAR(100),
     customer_type VARCHAR(20) DEFAULT 'Silver',
     customer_mode VARCHAR(20) DEFAULT 'General',
     vat_number VARCHAR(100),
@@ -99,6 +100,7 @@ ALTER TABLE customers ADD COLUMN IF NOT EXISTS customer_type VARCHAR(20) DEFAULT
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS customer_mode VARCHAR(20) DEFAULT 'General';
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS vat_number VARCHAR(100);
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS customer_id VARCHAR(20);
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS contact_person VARCHAR(100);
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP DEFAULT NOW();
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP DEFAULT NOW();
 

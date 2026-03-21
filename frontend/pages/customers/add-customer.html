@@ -65,6 +65,10 @@
                     <label for="tel">Tel</label>
                     <input type="text" id="tel" placeholder="Telephone" required>
                 </div>
+                <div class="field">
+                    <label for="contactPerson">Contact person</label>
+                    <input type="text" id="contactPerson" placeholder="Contact person">
+                </div>
 
                 <div class="field">
                     <label for="email">Email</label>
@@ -124,6 +128,7 @@ document.getElementById("customerForm").addEventListener("submit", async functio
         address: document.getElementById("address").value.trim().toUpperCase(),
         quotation2_address: document.getElementById("quotation2Address").value.trim().toUpperCase(),
         tel: document.getElementById("tel").value.trim(),
+        contact_person: document.getElementById("contactPerson").value.trim(),
         email: document.getElementById("email").value.trim(),
         customer_type: document.getElementById("customerType").value,
         customer_mode: document.getElementById("customerMode").value,
