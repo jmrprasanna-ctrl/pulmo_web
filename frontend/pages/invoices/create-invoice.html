@@ -69,7 +69,7 @@ html, body { overflow-x: hidden; }
     display: table-row !important;
 }
 .table.product-table .invoice-product-row td {
-    vertical-align: top;
+    vertical-align: middle;
     padding-top: 8px;
     padding-bottom: 8px;
 }
@@ -87,11 +87,12 @@ html, body { overflow-x: hidden; }
 .product-picker-wrap { position: relative; min-width: 0; }
 .product-results {
     display: none;
-    position: absolute;
+    position: fixed;
     z-index: 9999;
-    top: calc(40px + 4px);
+    top: 0;
     left: 0;
-    right: 0;
+    right: auto;
+    width: 320px;
     max-height: 340px;
     overflow-y: auto;
     border: 1px solid #cfd8e3;
@@ -114,7 +115,7 @@ html, body { overflow-x: hidden; }
 }
 .product-option:hover, .product-option.active { background: #e8f2fe; }
 .selected-product {
-    display: none;
+    display: none !important;
     margin-top: 6px;
     font-size: 12px;
     color: #334155;
@@ -649,7 +650,6 @@ async function addProductRow(){
                     <div class="product-results" role="listbox"></div>
                     <input type="hidden" class="productId">
                     <input type="hidden" class="productCode">
-                    <div class="selected-product">No product selected</div>
                 </div>
             </td>
             <td><input type="text" class="description compact-input" placeholder="Description" readonly></td>
@@ -793,16 +793,22 @@ function applySelectedProduct(row, product){
     const codeHidden = row.querySelector(".productCode");
     const descEl = row.querySelector(".description");
     const rateEl = row.querySelector(".rate");
-    const summaryEl = row.querySelector(".selected-product");
     const searchEl = row.querySelector(".product-search");
 
     hidden.value = product.id;
     codeHidden.value = product.product_id || "";
     descEl.value = product.description || "";
     rateEl.value = Number(product.selling_price || 0);
-    summaryEl.textContent = `${product.product_id || ""} - ${product.description || ""}`.trim();
     searchEl.value = product.product_id || "";
     calculateRow(row.querySelector(".qty"));
+}
+
+function positionProductResults(searchEl, listEl){
+    if(!searchEl || !listEl) return;
+    const rect = searchEl.getBoundingClientRect();
+    listEl.style.left = `${Math.round(rect.left)}px`;
+    listEl.style.top = `${Math.round(rect.bottom + 4)}px`;
+    listEl.style.width = `${Math.round(rect.width)}px`;
 }
 
 function initProductRowHandlers(row){
@@ -811,6 +817,10 @@ function initProductRowHandlers(row){
     const qtyEl = row.querySelector(".qty");
     const vatEl = row.querySelector(".vat");
     row._activeOptionIndex = -1;
+    row._productResultsEl = listEl;
+    if(listEl && listEl.parentElement !== document.body){
+        document.body.appendChild(listEl);
+    }
 
     qtyEl.addEventListener("input", () => calculateRow(qtyEl));
     vatEl.addEventListener("input", () => calculateRow(vatEl));
@@ -823,6 +833,7 @@ function initProductRowHandlers(row){
         row._productSearchTimer = setTimeout(async () => {
             const rows = await searchProducts(query);
             renderProductSearchOptions(listEl, rows);
+            positionProductResults(searchEl, listEl);
             row._activeOptionIndex = setActiveOption(listEl, 0) ?? -1;
         }, 250);
     });
@@ -873,9 +884,21 @@ function initProductRowHandlers(row){
         if((searchEl.value || "").trim().length >= 2){
             const rows = await searchProducts(searchEl.value);
             renderProductSearchOptions(listEl, rows);
+            positionProductResults(searchEl, listEl);
             row._activeOptionIndex = setActiveOption(listEl, 0) ?? -1;
         }
     });
+
+    window.addEventListener("resize", () => {
+        if(listEl.style.display === "block"){
+            positionProductResults(searchEl, listEl);
+        }
+    });
+    window.addEventListener("scroll", () => {
+        if(listEl.style.display === "block"){
+            positionProductResults(searchEl, listEl);
+        }
+    }, true);
 
     document.addEventListener("click", (e) => {
         if(!row.contains(e.target)){
@@ -897,7 +920,17 @@ function calculateRow(input){
 // Remove row
 function removeRow(button){
     const row = button.closest(".invoice-product-row");
-    if(row) row.remove();
+    if(row){
+        const listEl = row._productResultsEl;
+        if(listEl && listEl.parentElement === document.body){
+            listEl.remove();
+        }
+        row.remove();
+    }
+}
+
+function clearAllFloatingProductResults(){
+    document.querySelectorAll("body > .product-results").forEach((el) => el.remove());
 }
 
 // Save invoice & generate PDF
@@ -953,6 +986,7 @@ document.getElementById("invoiceForm").addEventListener("submit", async function
         showMessageBox("Invoice saved successfully!");
         document.getElementById("invoiceForm").reset();
         document.getElementById("productRows").innerHTML="";
+        clearAllFloatingProductResults();
         importantNotes = [];
         initInvoice();
     }catch(err){
@@ -979,6 +1013,7 @@ document.getElementById("invoiceForm").addEventListener("submit", async function
                     showMessageBox("Invoice saved successfully!");
                     document.getElementById("invoiceForm").reset();
                     document.getElementById("productRows").innerHTML="";
+                    clearAllFloatingProductResults();
                     importantNotes = [];
                     initInvoice();
                     return;
