@@ -362,7 +362,13 @@ exports.vendorWiseProductsReport = async (req,res)=>{
 
 exports.rentalConsumablesMachineCustomerReport = async (req,res)=>{
     try{
+        const customerId = Number(req.query.customer_id);
+        const where = {};
+        if(Number.isFinite(customerId) && customerId > 0){
+            where.customer_id = customerId;
+        }
         const consumables = await RentalMachineConsumable.findAll({
+            where,
             include: [
                 { model: Customer, attributes: ["id", "name"] },
                 { model: RentalMachine, attributes: ["id", "machine_id", "model", "serial_no", "start_count", "updated_count"] },
@@ -426,7 +432,11 @@ exports.rentalConsumablesMachineCustomerReport = async (req,res)=>{
                 total_amount: Number((r.total_amount || 0).toFixed(2))
             }));
 
-        res.json({ total: rows.length, rows });
+        res.json({
+            customer_id: Number.isFinite(customerId) && customerId > 0 ? customerId : null,
+            total: rows.length,
+            rows
+        });
     }catch(err){
         res.status(500).json({ message: err.message || "Failed to load rental consumables report." });
     }

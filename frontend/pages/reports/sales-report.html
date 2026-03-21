@@ -192,33 +192,12 @@
 
         <div class="report-block">
             <div class="report-head">
-                <h3>Vendor Wise Product Report</h3>
-                <div class="report-controls">
-                    <button type="button" onclick="loadVendorProductsReport()">Load</button>
-                    <button type="button" onclick="exportVendorProductsPDF()">Export PDF</button>
-                </div>
-            </div>
-            <div class="table-scroll-wrap">
-                <table id="vendorProductsTable">
-                    <thead>
-                        <tr>
-                            <th>Vendor</th>
-                            <th>Product ID</th>
-                            <th>Description</th>
-                            <th>Model</th>
-                            <th>Category</th>
-                            <th>Qty</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="report-block">
-            <div class="report-head">
                 <h3>Rental Consumables Report</h3>
                 <div class="report-controls">
+                    <label for="rentalCustomerFilter">Rental Customer</label>
+                    <select id="rentalCustomerFilter">
+                        <option value="">All Rental Customers</option>
+                    </select>
                     <button type="button" onclick="loadRentalConsumablesReport()">Load</button>
                     <button type="button" onclick="exportRentalConsumablesPDF()">Export PDF</button>
                 </div>
@@ -360,10 +339,6 @@ function exportStockReportsPDF(){
     writeTableToDoc(doc, "Stock of Products", "outStockTable", y);
 
     doc.save("Stock_Reports.pdf");
-}
-
-function exportVendorProductsPDF(){
-    exportTablePDF("vendorProductsTable", "Vendor Wise Product Report", "Vendor_Product_Report.pdf");
 }
 
 function exportRentalConsumablesPDF(){
@@ -537,40 +512,22 @@ async function loadStockFilterOptions(){
                 opt.textContent = String(v.name || "");
                 vendorEl.appendChild(opt);
             });
+            const pulmoVendor = (Array.isArray(vendors) ? vendors : []).find((v) => String(v?.name || "").trim().toLowerCase().includes("pulmo"));
             if(previousVendor && Array.from(vendorEl.options).some((o) => o.value === previousVendor)){
                 vendorEl.value = previousVendor;
+            }else if(pulmoVendor && Number.isFinite(Number(pulmoVendor.id))){
+                vendorEl.value = String(pulmoVendor.id);
             }
         }
     }catch(_err){
     }
 }
 
-async function loadVendorProductsReport(){
-    try{
-        const data = await request("/reports/vendor-products","GET");
-        const tbody = document.querySelector("#vendorProductsTable tbody");
-        tbody.innerHTML = "";
-        (data.rows || []).forEach((row) => {
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-                <td>${row.vendor || ""}</td>
-                <td>${row.product_id || ""}</td>
-                <td>${row.description || ""}</td>
-                <td>${row.model || ""}</td>
-                <td>${row.category || ""}</td>
-                <td>${row.count || 0}</td>
-            `;
-            tbody.appendChild(tr);
-        });
-        applyTableScrollLimit("vendorProductsTable");
-    }catch(err){
-        alert(err.message || "Failed to load vendor-wise products report");
-    }
-}
-
 async function loadRentalConsumablesReport(){
     try{
-        const data = await request("/reports/rental-consumables","GET");
+        const customerId = String(document.getElementById("rentalCustomerFilter").value || "").trim();
+        const query = customerId ? `?customer_id=${encodeURIComponent(customerId)}` : "";
+        const data = await request(`/reports/rental-consumables${query}`,"GET");
         const tbody = document.querySelector("#rentalConsumablesTable tbody");
         tbody.innerHTML = "";
         (data.rows || []).forEach((row) => {
@@ -590,6 +547,36 @@ async function loadRentalConsumablesReport(){
         applyTableScrollLimit("rentalConsumablesTable");
     }catch(err){
         alert(err.message || "Failed to load rental consumables report");
+    }
+}
+
+async function loadRentalCustomerFilterOptions(){
+    try{
+        const select = document.getElementById("rentalCustomerFilter");
+        if(!select) return;
+        const previous = String(select.value || "");
+        const customers = await request("/customers","GET");
+        const rentalCustomers = (Array.isArray(customers) ? customers : [])
+            .filter((c) => String(c.customer_mode || "").toLowerCase() === "rental")
+            .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+
+        select.innerHTML = "";
+        const allOpt = document.createElement("option");
+        allOpt.value = "";
+        allOpt.textContent = "All Rental Customers";
+        select.appendChild(allOpt);
+
+        rentalCustomers.forEach((c) => {
+            const opt = document.createElement("option");
+            opt.value = String(c.id);
+            opt.textContent = String(c.name || "");
+            select.appendChild(opt);
+        });
+
+        if(previous && rentalCustomers.some((c) => String(c.id) === previous)){
+            select.value = previous;
+        }
+    }catch(_err){
     }
 }
 
@@ -694,9 +681,10 @@ document.getElementById("techMonth").addEventListener("change", loadTechnicianRe
 document.getElementById("techTechnician").addEventListener("change", loadTechnicianReport);
 document.getElementById("stockVendorReport").addEventListener("change", loadStockReports);
 document.getElementById("minStockLevel").addEventListener("change", loadStockReports);
+document.getElementById("rentalCustomerFilter").addEventListener("change", loadRentalConsumablesReport);
 
 loadSales();
-loadVendorProductsReport();
+loadRentalCustomerFilterOptions();
 loadRentalConsumablesReport();
 loadRentalCountReport();
 if(isAdminManager){
