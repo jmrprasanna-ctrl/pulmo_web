@@ -614,6 +614,36 @@ exports.updateInvoicePayment = async (req,res)=>{
     }
 };
 
+exports.deleteInvoicePayment = async (req,res)=>{
+    const { id } = req.params;
+    try{
+        const invoice = await Invoice.findByPk(id);
+        if(!invoice){
+            return res.status(404).json({ message: "Invoice not found" });
+        }
+
+        await invoice.update({
+            payment_method: "Cash",
+            cheque_no: null,
+            payment_status: "Pending"
+        });
+
+        res.json({
+            message: "Payment data deleted successfully.",
+            invoice: {
+                id: invoice.id,
+                invoice_no: invoice.invoice_no,
+                payment_method: invoice.payment_method,
+                cheque_no: invoice.cheque_no,
+                payment_status: invoice.payment_status
+            }
+        });
+    }catch(err){
+        console.error(err);
+        res.status(500).json({ message: err.message || "Failed to delete payment data." });
+    }
+};
+
 exports.sendInvoiceEmail = async (req, res) => {
     const { id } = req.params;
     try{

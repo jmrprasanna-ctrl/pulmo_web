@@ -119,6 +119,7 @@
                     <th>Payment Mode</th>
                     <th>Cheque No</th>
                     <th>Payment Recived</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -215,7 +216,7 @@ function renderTable(){
 
     if(!rows.length){
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td colspan="7">No data found.</td>`;
+        tr.innerHTML = `<td colspan="8">No data found.</td>`;
         tbody.appendChild(tr);
         return;
     }
@@ -232,9 +233,28 @@ function renderTable(){
             <td>${inv.payment_method || "Cash"}</td>
             <td>${inv.cheque_no || ""}</td>
             <td><span class="${badgeClass}">${status}</span></td>
+            <td><button type="button" class="btn btn-secondary" onclick="deletePaymentEntry(${Number(inv.id)}, '${String(inv.invoice_no || "").replace(/'/g, "\\'")}')">Delete</button></td>
         `;
         tbody.appendChild(tr);
     });
+}
+
+async function deletePaymentEntry(invoiceId, invoiceNo){
+    if(!invoiceId){
+        alert("Invalid invoice id.");
+        return;
+    }
+    const safeNo = invoiceNo || String(invoiceId);
+    if(!confirm(`Delete payment data for invoice ${safeNo}?`)){
+        return;
+    }
+    try{
+        await request(`/invoices/${invoiceId}/payment`, "DELETE");
+        showMessageBox("Payment data deleted successfully!");
+        await loadInvoices();
+    }catch(err){
+        alert(err.message || "Failed to delete payment data.");
+    }
 }
 
 function exportPaymentsPDF(){

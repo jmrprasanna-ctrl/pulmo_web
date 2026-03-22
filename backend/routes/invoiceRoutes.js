@@ -15,6 +15,7 @@ router.get("/sealv-image", authMiddleware, roleMiddleware(["admin","manager","us
 router.get("/", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.listInvoices);
 router.get("/:id", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.getInvoice);
 router.put("/:id/payment", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.updateInvoicePayment);
+router.delete("/:id/payment", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.deleteInvoicePayment);
 router.post("/:id/send-email", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.sendInvoiceEmail);
 router.post("/", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.createInvoice);
 router.delete("/:id", authMiddleware, roleMiddleware(["admin"]), invoiceController.deleteInvoice);
