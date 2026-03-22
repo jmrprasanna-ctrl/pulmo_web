@@ -77,9 +77,7 @@ async function fetchSummary(){
         document.getElementById("totalCustomers").querySelector("p").innerText = summary.totalCustomers || 0;
         document.getElementById("totalVendors").querySelector("p").innerText = summary.totalVendors || 0;
         const salesVal = summary.totalSalesPeriod ?? summary.totalSales ?? 0;
-        // Finance > Payments lists General customer invoices across all records,
-        // so show that same received amount source in this tile.
-        const receivedPaymentVal = summary.receivedPaymentAllTime ?? summary.receivedPaymentPeriod ?? summary.receivedPayment ?? 0;
+        const receivedPaymentVal = summary.receivedPaymentPeriod ?? summary.receivedPayment ?? 0;
         const expenseVal = summary.totalExpensesPeriod ?? summary.totalExpenses ?? 0;
         const technicianPaidVal = summary.technicianPaidPeriod ?? summary.technicianPaid ?? 0;
         const vendorPaidVal = summary.vendorPaidPeriod ?? summary.vendorPaid ?? 0;
