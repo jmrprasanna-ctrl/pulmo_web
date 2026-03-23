@@ -89,6 +89,10 @@ async function fetchSummary(){
             ?? summary.rentalMachinesCountsPriceAllTime
             ?? summary.rentalMachinesCountsPrice
             ?? 0;
+        const rentalConsumablesVal = summary.rentalConsumablesPriceAllInputs
+            ?? summary.rentalConsumablesPriceAllTime
+            ?? summary.rentalConsumablesPrice
+            ?? 0;
         const expenseVal = summary.totalExpensesPeriod ?? summary.totalExpenses ?? 0;
         const technicianPaidVal = summary.technicianPaidPeriod ?? summary.technicianPaid ?? 0;
         const vendorPaidVal = summary.vendorPaidPeriod ?? summary.vendorPaid ?? 0;
@@ -101,6 +105,10 @@ async function fetchSummary(){
         const rentalMachinesCountsEl = document.getElementById("rentalMachinesCountsPrice");
         if(rentalMachinesCountsEl){
             rentalMachinesCountsEl.querySelector("p").innerText = Number(rentalMachinesCountsVal || 0).toFixed(2);
+        }
+        const rentalConsumablesEl = document.getElementById("rentalConsumablesPrice");
+        if(rentalConsumablesEl){
+            rentalConsumablesEl.querySelector("p").innerText = Number(rentalConsumablesVal || 0).toFixed(2);
         }
         document.getElementById("totalExpenses").querySelector("p").innerText = Number(expenseVal || 0).toFixed(2);
         const technicianPaidEl = document.getElementById("technicianPaid");

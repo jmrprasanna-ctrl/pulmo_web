@@ -8,6 +8,7 @@ const Invoice = require("../models/Invoice");
 const InvoiceItem = require("../models/InvoiceItem");
 const Expense = require("../models/Expense");
 const RentalMachineCount = require("../models/RentalMachineCount");
+const RentalMachineConsumable = require("../models/RentalMachineConsumable");
 const { Op } = require("sequelize");
 
 function sumTechnicianPaid(rows){
@@ -56,6 +57,15 @@ function sumRentalCountPrice(rows){
         const updated = Number(row.updated_count || 0);
         if(!Number.isFinite(input) || !Number.isFinite(updated)) return sum;
         return sum + ((updated - input) * 1);
+    }, 0);
+}
+
+function sumRentalConsumablesPrice(rows){
+    return (Array.isArray(rows) ? rows : []).reduce((sum, row) => {
+        const qty = Number(row.quantity || 0);
+        const dealer = Number((row.Product && row.Product.dealer_price) || 0);
+        if(!Number.isFinite(qty) || !Number.isFinite(dealer) || qty <= 0 || dealer <= 0) return sum;
+        return sum + (qty * dealer);
     }, 0);
 }
 
@@ -144,6 +154,12 @@ exports.getSummary = async (req,res)=>{
             attributes: ["input_count", "updated_count"]
         });
         const rentalMachinesCountsPricePeriod = sumRentalCountPrice(rentalCountsPeriodRows);
+        const rentalConsumablesPeriodRows = await RentalMachineConsumable.findAll({
+            where: { createdAt: { [Op.between]: [periodStart, periodEnd] } },
+            include: [{ model: Product, required: false, attributes: ["id", "dealer_price"] }],
+            attributes: ["quantity"]
+        });
+        const rentalConsumablesPricePeriod = sumRentalConsumablesPrice(rentalConsumablesPeriodRows);
 
         const totalSalesAllTime = await Invoice.sum("total_amount") || 0;
         const totalExpensesAllTime = await Expense.sum("amount") || 0;
@@ -182,6 +198,11 @@ exports.getSummary = async (req,res)=>{
             attributes: ["input_count", "updated_count"]
         });
         const rentalMachinesCountsPriceAllTime = sumRentalCountPrice(rentalCountsAllTimeRows);
+        const rentalConsumablesAllTimeRows = await RentalMachineConsumable.findAll({
+            include: [{ model: Product, required: false, attributes: ["id", "dealer_price"] }],
+            attributes: ["quantity"]
+        });
+        const rentalConsumablesPriceAllTime = sumRentalConsumablesPrice(rentalConsumablesAllTimeRows);
 
         // Low stock alerts (<5 items)
         const lowStock = await Product.findAll({
@@ -226,6 +247,7 @@ exports.getSummary = async (req,res)=>{
             totalSales: totalSalesPeriod,
             receivedPayment: receivedPaymentPeriod,
             rentalMachinesCountsPrice: rentalMachinesCountsPriceAllTime,
+            rentalConsumablesPrice: rentalConsumablesPriceAllTime,
             totalExpenses: totalExpensesPeriod,
             netProfit: netProfitPeriod,
             technicianPaid: technicianPaidPeriod,
@@ -234,6 +256,8 @@ exports.getSummary = async (req,res)=>{
             receivedPaymentAllTime,
             rentalMachinesCountsPriceAllTime,
             rentalMachinesCountsPriceAllInputs: rentalMachinesCountsPriceAllTime,
+            rentalConsumablesPriceAllTime,
+            rentalConsumablesPriceAllInputs: rentalConsumablesPriceAllTime,
             totalExpensesAllTime,
             netProfitAllTime,
             technicianPaidAllTime,
@@ -241,6 +265,7 @@ exports.getSummary = async (req,res)=>{
             totalSalesPeriod,
             receivedPaymentPeriod,
             rentalMachinesCountsPricePeriod,
+            rentalConsumablesPricePeriod,
             totalExpensesPeriod,
             netProfitPeriod,
             technicianPaidPeriod,
