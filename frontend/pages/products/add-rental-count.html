@@ -161,21 +161,17 @@ async function loadMachines(){
 function populateMachineTitleFilter(){
     const filter = document.getElementById("machineTitleFilter");
     const current = String(filter.value || "");
-    const uniqueTitles = Array.from(new Set(
-        allMachines
-            .map(m => String(m.machine_title || "").trim())
-            .filter(Boolean)
-    )).sort((a, b) => a.localeCompare(b));
-
     filter.innerHTML = "<option value=''>All Machine Titles</option>";
-    uniqueTitles.forEach(title => {
+    allMachines.forEach(m => {
         const opt = document.createElement("option");
-        opt.value = title;
-        opt.textContent = title;
+        const title = String(m.machine_title || "").trim();
+        const customer = String(m.customer_name || (m.Customer ? m.Customer.name : "") || "").trim();
+        opt.value = String(m.id);
+        opt.textContent = `${title || "UNTITLED"} - ${customer || "NO CUSTOMER"}`;
         filter.appendChild(opt);
     });
 
-    if(uniqueTitles.includes(current)){
+    if(current && allMachines.some(m => String(m.id) === current)){
         filter.value = current;
     }
 }
@@ -211,16 +207,13 @@ async function onMachineChange(){
 function renderRentalCounts(){
     const tbody = document.querySelector("#rentalCountTable tbody");
     const selectedMachineId = Number(document.getElementById("rentalMachineId").value);
-    const selectedTitle = String(document.getElementById("machineTitleFilter").value || "").trim();
+    const selectedTitleMachineId = Number(document.getElementById("machineTitleFilter").value);
     const rows = allRentalCounts.filter(r => {
         if(selectedMachineId && Number(r.rental_machine_id) !== selectedMachineId){
             return false;
         }
-        if(selectedTitle){
-            const rowTitle = String((r.RentalMachine && r.RentalMachine.machine_title) || "").trim();
-            if(rowTitle !== selectedTitle){
-                return false;
-            }
+        if(selectedTitleMachineId && Number(r.rental_machine_id) !== selectedTitleMachineId){
+            return false;
         }
         return true;
     });
