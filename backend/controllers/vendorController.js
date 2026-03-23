@@ -12,6 +12,7 @@ const ALLOWED_VENDOR_CATEGORIES = new Set([
     "Machine",
     "CCTV",
     "Duplo",
+    "Service",
     "Other"
 ]);
 
