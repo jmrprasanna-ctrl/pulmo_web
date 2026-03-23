@@ -228,6 +228,7 @@ exports.getSummary = async (req,res)=>{
             totalSalesAllTime,
             receivedPaymentAllTime,
             rentalMachinesCountsPriceAllTime,
+            rentalMachinesCountsPriceAllInputs: rentalMachinesCountsPriceAllTime,
             totalExpensesAllTime,
             netProfitAllTime,
             technicianPaidAllTime,

@@ -78,7 +78,10 @@ async function fetchSummary(){
         document.getElementById("totalVendors").querySelector("p").innerText = summary.totalVendors || 0;
         const salesVal = summary.totalSalesPeriod ?? summary.totalSales ?? 0;
         const receivedPaymentVal = summary.receivedPaymentPeriod ?? summary.receivedPayment ?? 0;
-        const rentalMachinesCountsVal = summary.rentalMachinesCountsPriceAllTime ?? summary.rentalMachinesCountsPrice ?? 0;
+        const rentalMachinesCountsVal = summary.rentalMachinesCountsPriceAllInputs
+            ?? summary.rentalMachinesCountsPriceAllTime
+            ?? summary.rentalMachinesCountsPrice
+            ?? 0;
         const expenseVal = summary.totalExpensesPeriod ?? summary.totalExpenses ?? 0;
         const technicianPaidVal = summary.technicianPaidPeriod ?? summary.technicianPaid ?? 0;
         const vendorPaidVal = summary.vendorPaidPeriod ?? summary.vendorPaid ?? 0;
