@@ -6,6 +6,7 @@ const Vendor = require("../models/Vendor");
 const Invoice = require("../models/Invoice");
 const InvoiceItem = require("../models/InvoiceItem");
 const Expense = require("../models/Expense");
+const RentalMachineCount = require("../models/RentalMachineCount");
 const { Op } = require("sequelize");
 
 function sumTechnicianPaid(rows){
@@ -46,6 +47,15 @@ function getGeneralCustomerInclude(){
             }
         }
     };
+}
+
+function sumRentalCountPrice(rows){
+    return (Array.isArray(rows) ? rows : []).reduce((sum, row) => {
+        const input = Number(row.input_count || 0);
+        const updated = Number(row.updated_count || 0);
+        if(!Number.isFinite(input) || !Number.isFinite(updated)) return sum;
+        return sum + ((updated - input) * 1);
+    }, 0);
 }
 
 exports.getSummary = async (req,res)=>{
@@ -125,6 +135,11 @@ exports.getSummary = async (req,res)=>{
         });
         const vendorPaidPeriod = sumVendorPaidFromInvoiceItems(invoiceItemsPeriod);
         const netProfitPeriod = receivedPaymentPeriod - totalExpensesPeriod - technicianPaidPeriod - vendorPaidPeriod;
+        const rentalCountsPeriodRows = await RentalMachineCount.findAll({
+            where: { createdAt: { [Op.between]: [periodStart, periodEnd] } },
+            attributes: ["input_count", "updated_count"]
+        });
+        const rentalMachinesCountsPricePeriod = sumRentalCountPrice(rentalCountsPeriodRows);
 
         const totalSalesAllTime = await Invoice.sum("total_amount") || 0;
         const totalExpensesAllTime = await Expense.sum("amount") || 0;
@@ -159,6 +174,10 @@ exports.getSummary = async (req,res)=>{
         });
         const vendorPaidAllTime = sumVendorPaidFromInvoiceItems(invoiceItemsAllTime);
         const netProfitAllTime = receivedPaymentAllTime - totalExpensesAllTime - technicianPaidAllTime - vendorPaidAllTime;
+        const rentalCountsAllTimeRows = await RentalMachineCount.findAll({
+            attributes: ["input_count", "updated_count"]
+        });
+        const rentalMachinesCountsPriceAllTime = sumRentalCountPrice(rentalCountsAllTimeRows);
 
         // Low stock alerts (<5 items)
         const lowStock = await Product.findAll({
@@ -201,18 +220,21 @@ exports.getSummary = async (req,res)=>{
             totalVendors,
             totalSales: totalSalesPeriod,
             receivedPayment: receivedPaymentPeriod,
+            rentalMachinesCountsPrice: rentalMachinesCountsPriceAllTime,
             totalExpenses: totalExpensesPeriod,
             netProfit: netProfitPeriod,
             technicianPaid: technicianPaidPeriod,
             vendorPaid: vendorPaidPeriod,
             totalSalesAllTime,
             receivedPaymentAllTime,
+            rentalMachinesCountsPriceAllTime,
             totalExpensesAllTime,
             netProfitAllTime,
             technicianPaidAllTime,
             vendorPaidAllTime,
             totalSalesPeriod,
             receivedPaymentPeriod,
+            rentalMachinesCountsPricePeriod,
             totalExpensesPeriod,
             netProfitPeriod,
             technicianPaidPeriod,
