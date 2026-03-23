@@ -83,6 +83,12 @@ const ACCESS_MODULE_OPTIONS = [
       { path: "/users/add-user.html", label: "Add User", actions: ["view", "add"] },
       { path: "/users/edit-user.html", label: "Edit User", actions: ["view", "edit"] },
       { path: "/users/user-access.html", label: "User Access", actions: ["view", "edit"] },
+      { path: "/users/preference.html", label: "Preference", actions: ["view", "edit"] },
+      { path: "/users/user-logged.html", label: "User Logged Times", actions: ["view"] },
+      { path: "/support/email-setup.html", label: "Email Setup", actions: ["view", "edit"] },
+      { path: "/tools/check-backup.html", label: "Check Tools Button", actions: ["view"] },
+      { path: "/tools/backup-download.html", label: "Backup Button", actions: ["view"] },
+      { path: "/tools/upload-db.html", label: "Upload DB Button", actions: ["view"] },
     ],
   },
   {
@@ -135,6 +141,39 @@ function normalizeActions(rawActions) {
         .filter((x) => ACCESS_ACTION_SET.has(x))
     )
   );
+}
+
+function expandImplicitActionDependencies(actionKeys) {
+  const set = new Set((Array.isArray(actionKeys) ? actionKeys : []).map((x) => String(x || "").trim().toLowerCase()).filter(Boolean));
+  const add = (path, action) => set.add(toActionKey(path, action));
+
+  // If a list page has edit permission, allow opening its edit-form page too.
+  if (set.has(toActionKey("/products/product-list.html", "edit"))) {
+    add("/products/edit-product.html", "view");
+    add("/products/edit-product.html", "edit");
+  }
+  if (set.has(toActionKey("/products/general-machine.html", "edit"))) {
+    add("/products/edit-general-machine.html", "view");
+    add("/products/edit-general-machine.html", "edit");
+  }
+  if (set.has(toActionKey("/products/machine.html", "edit"))) {
+    add("/products/edit-rental-machine.html", "view");
+    add("/products/edit-rental-machine.html", "edit");
+  }
+  if (set.has(toActionKey("/customers/customer-list.html", "edit"))) {
+    add("/customers/edit-customer.html", "view");
+    add("/customers/edit-customer.html", "edit");
+  }
+  if (set.has(toActionKey("/vendors/list-vendor.html", "edit"))) {
+    add("/vendors/edit-vendor.html", "view");
+    add("/vendors/edit-vendor.html", "edit");
+  }
+  if (set.has(toActionKey("/expenses/expense-list.html", "edit"))) {
+    add("/expenses/edit-expense.html", "view");
+    add("/expenses/edit-expense.html", "edit");
+  }
+
+  return normalizeActions(Array.from(set));
 }
 
 function parseAllowedPages(row) {
@@ -478,7 +517,7 @@ exports.saveUserAccess = async (req, res) => {
     return res.status(404).json({ message: "User not found" });
   }
 
-  const allowedActions = normalizeActions(req.body.allowed_actions);
+  const allowedActions = expandImplicitActionDependencies(normalizeActions(req.body.allowed_actions));
   const requestedPages = normalizePages(req.body.allowed_pages);
   const allowedPages = derivePagesFromActions(allowedActions, requestedPages);
   const databaseName = normalizeDatabaseName(req.body.database_name);

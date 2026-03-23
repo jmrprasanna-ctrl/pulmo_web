@@ -65,14 +65,14 @@
     <div class="main-content">
         <header><h2>User List</h2></header>
         <div class="form-actions">
-            <button class="btn btn-primary" onclick="window.location.href='add-user.html'">Add User</button>
-            <button class="btn btn-primary" onclick="window.location.href='preference.html'">Preference</button>
-            <button class="btn btn-primary" onclick="window.location.href='user-access.html'">Access</button>
-            <button class="btn btn-primary" onclick="window.location.href='user-logged.html'">Logged</button>
-            <button class="btn btn-primary" onclick="window.location.href='../support/email-setup.html'">email</button>
-            <button class="btn btn-primary" type="button" onclick="checkBackupTools()">Check Tools</button>
-            <button class="btn btn-primary" type="button" onclick="downloadSystemBackup()">Backup</button>
-            <button class="btn btn-primary" type="button" onclick="openRestorePicker()">Upload DB</button>
+            <button id="btnAddUser" class="btn btn-primary" onclick="window.location.href='add-user.html'">Add User</button>
+            <button id="btnPreference" class="btn btn-primary" onclick="window.location.href='preference.html'">Preference</button>
+            <button id="btnAccess" class="btn btn-primary" onclick="window.location.href='user-access.html'">Access</button>
+            <button id="btnLogged" class="btn btn-primary" onclick="window.location.href='user-logged.html'">Logged</button>
+            <button id="btnEmailSetup" class="btn btn-primary" onclick="window.location.href='../support/email-setup.html'">email</button>
+            <button id="btnCheckTools" class="btn btn-primary" type="button" onclick="checkBackupTools()">Check Tools</button>
+            <button id="btnBackup" class="btn btn-primary" type="button" onclick="downloadSystemBackup()">Backup</button>
+            <button id="btnUploadDb" class="btn btn-primary" type="button" onclick="openRestorePicker()">Upload DB</button>
             <input id="restore-db-file" type="file" accept=".sql" style="display:none" onchange="restoreSystemBackup(event)">
             <a class="btn btn-secondary" href="../dashboard.html">Back</a>
         </div>
@@ -115,6 +115,33 @@
 
     <script src="../../assets/js/api.js"></script>
     <script>
+        function canShowAdminTool(path){
+            const role = (localStorage.getItem("role") || "").toLowerCase();
+            if(role === "admin") return true;
+            if(role === "manager") return false;
+            return typeof hasUserGrantedPath === "function" && hasUserGrantedPath(path);
+        }
+
+        function applyTopButtonVisibility(){
+            const map = [
+                { id: "btnAddUser", path: "/users/add-user.html" },
+                { id: "btnPreference", path: "/users/preference.html" },
+                { id: "btnAccess", path: "/users/user-access.html" },
+                { id: "btnLogged", path: "/users/user-logged.html" },
+                { id: "btnEmailSetup", path: "/support/email-setup.html" },
+                { id: "btnCheckTools", path: "/tools/check-backup.html" },
+                { id: "btnBackup", path: "/tools/backup-download.html" },
+                { id: "btnUploadDb", path: "/tools/upload-db.html" }
+            ];
+            map.forEach((item) => {
+                const el = document.getElementById(item.id);
+                if(!el) return;
+                if(!canShowAdminTool(item.path)){
+                    el.style.display = "none";
+                }
+            });
+        }
+
         async function loadUsers(){
             try{
                 const users = await request("/users","GET");
@@ -321,6 +348,7 @@
         }
 
         window.addEventListener('DOMContentLoaded', async () => {
+            applyTopButtonVisibility();
             const healthRefreshBtn = document.getElementById("healthRefreshBtn");
             if(healthRefreshBtn){
                 healthRefreshBtn.addEventListener("click", loadSystemHealthPreview);
