@@ -69,7 +69,7 @@
     </div>
 
     <div class="form-container">
-        <header><h3>Added Rental Counts</h3></header>
+        <header><h3>Rental Machines Counts</h3></header>
         <table id="rentalCountTable">
             <thead>
                 <tr>
@@ -96,6 +96,7 @@ if(!localStorage.getItem("token")){
 const role = (localStorage.getItem("role") || "").toLowerCase();
 
 let allMachines = [];
+let allRentalCounts = [];
 
 function normalizeTransaction(raw){
     const value = String(raw || "").trim().toUpperCase();
@@ -145,6 +146,7 @@ async function onMachineChange(){
     if(!machineId){
         document.getElementById("inputCount").value = "";
         document.getElementById("updatedCount").value = "";
+        renderRentalCounts();
         return;
     }
 
@@ -153,37 +155,55 @@ async function onMachineChange(){
         const input = Number(next.next_input_count || 0);
         document.getElementById("inputCount").value = String(input);
         document.getElementById("updatedCount").value = String(input);
+        renderRentalCounts();
     }catch(err){
         document.getElementById("inputCount").value = String(machine ? (machine.updated_count ?? machine.start_count ?? 0) : 0);
         document.getElementById("updatedCount").value = document.getElementById("inputCount").value;
+        renderRentalCounts();
         alert(err.message || "Failed to load next input count");
+    }
+}
+
+function renderRentalCounts(){
+    const tbody = document.querySelector("#rentalCountTable tbody");
+    const selectedMachineId = Number(document.getElementById("rentalMachineId").value);
+    const rows = selectedMachineId
+        ? allRentalCounts.filter(r => Number(r.rental_machine_id) === selectedMachineId)
+        : allRentalCounts;
+
+    tbody.innerHTML = "";
+    rows.forEach(r => {
+        const tr = document.createElement("tr");
+        const dateText = r.createdAt ? new Date(r.createdAt).toLocaleString() : "";
+        const machineId = r.RentalMachine ? (r.RentalMachine.machine_id || "") : "";
+        const customer = r.Customer ? (r.Customer.name || "") : "";
+        const inputCount = Number(r.input_count || 0);
+        const updatedCount = Number(r.updated_count || 0);
+        const priceAmount = (updatedCount - inputCount) * 1;
+        tr.innerHTML = `
+            <td>${r.transaction_id || ""}</td>
+            <td>${machineId}</td>
+            <td>${customer}</td>
+            <td>${inputCount}</td>
+            <td>${updatedCount}</td>
+            <td>${priceAmount.toFixed(2)}</td>
+            <td>${dateText}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    if(!rows.length){
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="7" style="text-align:center;">No rental count records found.</td>`;
+        tbody.appendChild(tr);
     }
 }
 
 async function loadRentalCounts(){
     try{
         const rows = await request("/rental-machine-counts", "GET");
-        const tbody = document.querySelector("#rentalCountTable tbody");
-        tbody.innerHTML = "";
-        rows.forEach(r => {
-            const tr = document.createElement("tr");
-            const dateText = r.createdAt ? new Date(r.createdAt).toLocaleString() : "";
-            const machineId = r.RentalMachine ? (r.RentalMachine.machine_id || "") : "";
-            const customer = r.Customer ? (r.Customer.name || "") : "";
-            const inputCount = Number(r.input_count || 0);
-            const updatedCount = Number(r.updated_count || 0);
-            const priceAmount = (updatedCount - inputCount) * 1;
-            tr.innerHTML = `
-                <td>${r.transaction_id || ""}</td>
-                <td>${machineId}</td>
-                <td>${customer}</td>
-                <td>${inputCount}</td>
-                <td>${updatedCount}</td>
-                <td>${priceAmount.toFixed(2)}</td>
-                <td>${dateText}</td>
-            `;
-            tbody.appendChild(tr);
-        });
+        allRentalCounts = Array.isArray(rows) ? rows : [];
+        renderRentalCounts();
     }catch(err){
         alert(err.message || "Failed to load rental counts");
     }
@@ -224,6 +244,7 @@ document.getElementById("rentalCountForm").addEventListener("submit", async (e) 
         document.getElementById("customerName").value = "";
         document.getElementById("inputCount").value = "";
         document.getElementById("updatedCount").value = "";
+        renderRentalCounts();
     }catch(err){
         alert(err.message || "Failed to save rental count");
     }
