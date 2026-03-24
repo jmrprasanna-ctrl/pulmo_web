@@ -29,46 +29,34 @@ function resolveBaseUrl(){
 const BASE_URL = resolveBaseUrl();
 window.BASE_URL = BASE_URL;
 const GLOBAL_FOOTER_TEXT = "\u00A9 All Right Recieved with CRONIT SOLLUTIONS - JMR Prasanna.";
+const UI_SETTINGS_CACHE_KEY = "publicUiSettingsCache";
+const ENABLE_PUBLIC_UI_SETTINGS_RUNTIME = typeof window !== "undefined" && window.__ENABLE_PUBLIC_UI_SETTINGS__ === true;
 const LAST_ACTIVITY_KEY = "lastActivityAt";
 const ACTIVITY_EVENTS = ["mousemove", "keydown", "touchstart"];
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 const IDLE_CHECK_INTERVAL_MS = 30 * 1000;
 
-const USER_ALLOWED_PATHS = [
+const USER_DEFAULT_ALLOWED_PATHS = [
     "/login.html",
-    "/dashboard.html",
-    "/products/product-list.html",
-    "/products/machine.html",
-    "/products/general-machine.html",
-    "/product-list.html",
-    "/machine.html",
-    "/general-machine.html",
-    "/customers/customer-list.html",
-    "/customer-list.html",
-    "/vendors/list-vendor.html",
-    "/list-vendor.html",
-    "/expenses/expense-list.html",
-    "/expense-list.html",
-    "/messages/messages.html",
-    "/messages.html",
-    "/notifications/notifications.html",
-    "/notifications.html",
-    "/invoices/invoice-list.html",
-    "/invoices/create-invoice.html",
-    "/invoices/view-invoice.html",
-    "/invoices/view-quotation.html",
-    "/invoices/view-quotation-2.html",
-    "/invoices/view-quotation-3.html",
-    "/invoice-list.html",
-    "/create-invoice.html",
-    "/view-invoice.html",
-    "/view-quotation.html",
-    "/view-quotation-2.html",
-    "/view-quotation-3.html",
-    "/reports/sales-report.html",
-    "/sales-report.html"
+    "/dashboard.html"
 ];
+let USER_ALLOWED_PATHS_RUNTIME = [...USER_DEFAULT_ALLOWED_PATHS];
 const USER_ALLOWED_CACHE_KEY = "userAllowedPathsRuntime";
+let USER_ALLOWED_ACTIONS_RUNTIME = [];
+const USER_ALLOWED_ACTIONS_CACHE_KEY = "userAllowedActionsRuntime";
+let USER_ACCESS_CONFIG_APPLIES_RUNTIME = false;
+const USER_ACCESS_CONFIG_ENABLED_CACHE_KEY = "userAccessConfigEnabledRuntime";
+window.__userAccessPermissionsLoaded = false;
+window.__waitForUserAccessPermissions = function __waitForUserAccessPermissions(){
+    if(window.__userAccessPermissionsLoaded){
+        return Promise.resolve();
+    }
+    return new Promise((resolve) => {
+        const done = () => resolve();
+        document.addEventListener("app:user-access-ready", done, { once: true });
+        window.setTimeout(done, 1500);
+    });
+};
 
 const MANAGER_BLOCKED_PATHS = [
     "/users/add-user.html",
@@ -135,6 +123,9 @@ function logoutForInactivity(){
     localStorage.removeItem("userName");
     localStorage.removeItem("selectedDatabaseName");
     localStorage.removeItem(LAST_ACTIVITY_KEY);
+    localStorage.removeItem(USER_ALLOWED_CACHE_KEY);
+    localStorage.removeItem(USER_ALLOWED_ACTIONS_CACHE_KEY);
+    localStorage.removeItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY);
     window.location.replace(buildPagesPath("login.html"));
 }
 
@@ -161,20 +152,43 @@ function startIdleTimeoutWatcher(){
     }, IDLE_CHECK_INTERVAL_MS);
 }
 
+function hasAccessConfigRestrictions(){
+    if(USER_ACCESS_CONFIG_APPLIES_RUNTIME === true){
+        return true;
+    }
+    if(USER_ACCESS_CONFIG_APPLIES_RUNTIME === false){
+        return false;
+    }
+    return String(localStorage.getItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY) || "") === "1";
+}
+window.hasAccessConfigRestrictions = hasAccessConfigRestrictions;
+
+function getAccessConfigState(){
+    if(USER_ACCESS_CONFIG_APPLIES_RUNTIME === true || USER_ACCESS_CONFIG_APPLIES_RUNTIME === false){
+        return USER_ACCESS_CONFIG_APPLIES_RUNTIME;
+    }
+    const cached = String(localStorage.getItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY) || "");
+    if(cached === "1") return true;
+    if(cached === "0") return false;
+    return null;
+}
+
 function enforceUserAccess(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
-    if(role !== "user") return;
+    if(role !== "user" && role !== "admin" && role !== "manager") return;
     const selectedDb = String(localStorage.getItem("selectedDatabaseName") || "").trim().toLowerCase();
-    if(selectedDb === "demo") return;
+    if(role === "user" && selectedDb === "demo"){
+        return;
+    }
     const path = window.location.pathname.replace(/\\/g,"/");
-    const allowed = USER_ALLOWED_PATHS.some(suffix => path.endsWith(suffix));
+    const allowed = USER_ALLOWED_PATHS_RUNTIME.some(suffix => path.endsWith(suffix));
     if(allowed) return;
     const idx = path.lastIndexOf("/pages/");
     if(idx !== -1){
         window.location.href = path.slice(0, idx + 7) + "dashboard.html";
         return;
     }
-    window.location.href = "dashboard.html";
+    window.location.href = "/dashboard.html";
 }
 
 function enforceManagerAccess(){
@@ -188,13 +202,14 @@ function enforceManagerAccess(){
         window.location.href = path.slice(0, idx + 7) + "dashboard.html";
         return;
     }
-    window.location.href = "dashboard.html";
+    window.location.href = "/dashboard.html";
 }
 
 function applyUserNavRestrictions(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
-    if(role !== "user") return;
-    const allowed = USER_ALLOWED_PATHS;
+    const enforceByConfiguredRole = (role === "admin" || role === "manager") && getAccessConfigState() === true;
+    if(role !== "user" && !enforceByConfiguredRole) return;
+    const allowed = USER_ALLOWED_PATHS_RUNTIME;
     document.querySelectorAll(".sidebar a").forEach(a=>{
         const href = (a.getAttribute("href") || "").trim();
         if(!href || href.startsWith("#") || href.toLowerCase().includes("logout")) return;
@@ -240,7 +255,7 @@ function applyManagerNavRestrictions(){
 function getUsersLink(fileName){
     const path = window.location.pathname.replace(/\\/g, "/");
     const idx = path.lastIndexOf("/pages/");
-    if(idx === -1) return `users/${fileName}`;
+    if(idx === -1) return `/users/${fileName}`;
     const rest = path.slice(idx + 7);
     const depth = Math.max(0, rest.split("/").length - 1);
     const prefix = depth === 0 ? "" : "../".repeat(depth);
@@ -250,7 +265,7 @@ function getUsersLink(fileName){
 function getFinanceLink(fileName){
     const path = window.location.pathname.replace(/\\/g, "/");
     const idx = path.lastIndexOf("/pages/");
-    if(idx === -1) return `finance/${fileName}`;
+    if(idx === -1) return `/finance/${fileName}`;
     const rest = path.slice(idx + 7);
     const depth = Math.max(0, rest.split("/").length - 1);
     const prefix = depth === 0 ? "" : "../".repeat(depth);
@@ -260,7 +275,7 @@ function getFinanceLink(fileName){
 function getSupportLink(fileName){
     const path = window.location.pathname.replace(/\\/g, "/");
     const idx = path.lastIndexOf("/pages/");
-    if(idx === -1) return `support/${fileName}`;
+    if(idx === -1) return `/support/${fileName}`;
     const rest = path.slice(idx + 7);
     const depth = Math.max(0, rest.split("/").length - 1);
     const prefix = depth === 0 ? "" : "../".repeat(depth);
@@ -270,17 +285,67 @@ function getSupportLink(fileName){
 function getStockLink(fileName){
     const path = window.location.pathname.replace(/\\/g, "/");
     const idx = path.lastIndexOf("/pages/");
-    if(idx === -1) return `stock/${fileName}`;
+    if(idx === -1) return `/stock/${fileName}`;
     const rest = path.slice(idx + 7);
     const depth = Math.max(0, rest.split("/").length - 1);
     const prefix = depth === 0 ? "" : "../".repeat(depth);
     return `${prefix}stock/${fileName}`;
 }
 
+function toMenuHref(canonicalPath){
+    const clean = String(canonicalPath || "").trim().replace(/\\/g, "/").replace(/^\/+/, "");
+    if(!clean) return "#";
+    const path = window.location.pathname.replace(/\\/g, "/");
+    const idx = path.lastIndexOf("/pages/");
+    if(idx === -1){
+        return `/${clean}`;
+    }
+    const rest = path.slice(idx + 7);
+    const depth = Math.max(0, rest.split("/").length - 1);
+    const prefix = depth === 0 ? "" : "../".repeat(depth);
+    return `${prefix}${clean}`;
+}
+
+function renderSidebarMenuByAccess(){
+    const role = (localStorage.getItem("role") || "").toLowerCase();
+    if(role !== "admin" && role !== "manager" && role !== "user") return;
+    const menuEntries = [
+        { path: "/dashboard.html", label: "Dashboard" },
+        { path: "/products/product-list.html", label: "Products" },
+        { path: "/products/general-machine.html", label: "Machines" },
+        { path: "/customers/customer-list.html", label: "Customers" },
+        { path: "/invoices/invoice-list.html", label: "Invoices" },
+        { path: "/vendors/list-vendor.html", label: "Vendors" },
+        { path: "/expenses/expense-list.html", label: "Expenses" },
+        { path: "/reports/sales-report.html", label: "Reports" },
+        { path: "/analytics/sales-chart.html", label: "Analytics" },
+        { path: "/finance/finance.html", label: "Finance" },
+        { path: "/support/support.html", label: "Support" },
+        { path: "/stock/stock.html", label: "Stock" },
+        { path: "/users/user-list.html", label: "Users" }
+    ];
+    const granted = menuEntries.filter((entry) => hasUserGrantedPath(entry.path));
+    const finalMenu = granted.length ? granted : [{ path: "/dashboard.html", label: "Dashboard" }];
+
+    window.__accessMenuRenderLock = true;
+    document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach((nav) => {
+        nav.innerHTML = finalMenu
+            .map((entry) => `<li><a href="${toMenuHref(entry.path)}">${entry.label}</a></li>`)
+            .join("");
+    });
+    window.__accessMenuRenderLock = false;
+}
+
+function setupSidebarAccessObserver(){
+    // Disabled: Mutation observer can cause render loops on some browsers.
+    // We enforce menu restrictions through explicit guard passes instead.
+}
+
 function applyFinanceNav(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
-    const isUserAllowed = role === "user" && hasUserGrantedPath("/finance/finance.html");
-    if(role !== "admin" && role !== "manager" && !isUserAllowed) return;
+    if(role !== "admin" && role !== "manager" && role !== "user") return;
+    const isAllowed = hasUserGrantedPath("/finance/finance.html");
+    if(!isAllowed) return;
 
     document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach(nav => {
         const hasFinance = Array.from(nav.querySelectorAll("a")).some(a => {
@@ -298,8 +363,9 @@ function applyFinanceNav(){
 
 function applySupportNav(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
-    const isUserAllowed = role === "user" && hasUserGrantedPath("/support/support.html");
-    if(role !== "admin" && role !== "manager" && !isUserAllowed) return;
+    if(role !== "admin" && role !== "manager" && role !== "user") return;
+    const isAllowed = hasUserGrantedPath("/support/support.html");
+    if(!isAllowed) return;
 
     document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach(nav => {
         const hasSupport = Array.from(nav.querySelectorAll("a")).some(a => {
@@ -328,6 +394,7 @@ function applySupportNav(){
 function applyAdminUsersNav(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
     if(role !== "admin") return;
+    if(!hasUserGrantedPath("/users/user-list.html")) return;
 
     document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach(nav => {
         const hasUsers = Array.from(nav.querySelectorAll("a")).some(a => {
@@ -345,8 +412,9 @@ function applyAdminUsersNav(){
 
 function applyStockNav(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
-    const isUserAllowed = role === "user" && hasUserGrantedPath("/stock/stock.html");
-    if(role !== "admin" && role !== "manager" && !isUserAllowed) return;
+    if(role !== "admin" && role !== "manager" && role !== "user") return;
+    const isAllowed = hasUserGrantedPath("/stock/stock.html");
+    if(!isAllowed) return;
 
     document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach(nav => {
         const hasStock = Array.from(nav.querySelectorAll("a")).some(a => {
@@ -369,6 +437,14 @@ function applyStockNav(){
             nav.appendChild(stockLi);
         }
     });
+}
+
+function applyAccessGuards(){
+    renderSidebarMenuByAccess();
+    enforceUserAccess();
+    enforceManagerAccess();
+    applyUserNavRestrictions();
+    applyManagerNavRestrictions();
 }
 
 function ensureGlobalFooter(){
@@ -515,40 +591,146 @@ function normalizeAppName(appName){
 }
 
 async function loadPublicUiSettings(){
+    if(!ENABLE_PUBLIC_UI_SETTINGS_RUNTIME){
+        return;
+    }
+
+    const disableUiSettingsRefresh = typeof window !== "undefined" && window.__DISABLE_PUBLIC_UI_REFRESH__ === true;
+    if(disableUiSettingsRefresh){
+        return;
+    }
+
+    try{
+        const cached = localStorage.getItem(UI_SETTINGS_CACHE_KEY);
+        if(cached){
+            const parsed = JSON.parse(cached);
+            if(parsed && typeof parsed === "object"){
+                applyUiSettingsToPage(parsed);
+            }
+        }
+    }catch(_cacheErr){
+    }
+
     try{
         const res = await fetch(`${BASE_URL}/ui-settings/public`);
         if(!res.ok) return;
         const data = await res.json();
+        try{
+            localStorage.setItem(UI_SETTINGS_CACHE_KEY, JSON.stringify(data || {}));
+        }catch(_cacheWriteErr){
+        }
         applyUiSettingsToPage(data);
     }catch(_err){
     }
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-    setupActivityTracking();
-    startIdleTimeoutWatcher();
-    if(!enforceIdleTimeout()) return;
-    if(!enforceAuthentication()) return;
+async function loadUserAccessPermissions(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
+    if(role !== "user" && role !== "admin" && role !== "manager"){
+        USER_ALLOWED_PATHS_RUNTIME = [...USER_DEFAULT_ALLOWED_PATHS];
+        USER_ALLOWED_ACTIONS_RUNTIME = [];
+        USER_ACCESS_CONFIG_APPLIES_RUNTIME = false;
+        localStorage.removeItem(USER_ALLOWED_CACHE_KEY);
+        localStorage.removeItem(USER_ALLOWED_ACTIONS_CACHE_KEY);
+        localStorage.removeItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY);
+        return;
+    }
     if(role === "user"){
         const cachedRaw = localStorage.getItem(USER_ALLOWED_CACHE_KEY);
         if(cachedRaw){
             try{
                 const cached = JSON.parse(cachedRaw);
                 if(Array.isArray(cached) && cached.length){
-                    USER_ALLOWED_PATHS.splice(0, USER_ALLOWED_PATHS.length, ...Array.from(new Set(cached.map((x)=>String(x || "").trim()).filter(Boolean))));
+                    USER_ALLOWED_PATHS_RUNTIME = Array.from(new Set(cached.map((x)=>String(x || "").trim()).filter(Boolean)));
                 }
             }catch(_e){}
         }
+        const cachedActionsRaw = localStorage.getItem(USER_ALLOWED_ACTIONS_CACHE_KEY);
+        if(cachedActionsRaw){
+            try{
+                const cached = JSON.parse(cachedActionsRaw);
+                if(Array.isArray(cached) && cached.length){
+                    USER_ALLOWED_ACTIONS_RUNTIME = Array.from(new Set(cached.map((x)=>String(x || "").trim().toLowerCase()).filter(Boolean)));
+                }
+            }catch(_e){}
+        }
+    }else{
+        USER_ALLOWED_PATHS_RUNTIME = [...USER_DEFAULT_ALLOWED_PATHS];
+        USER_ALLOWED_ACTIONS_RUNTIME = [];
     }
-    enforceUserAccess();
-    enforceManagerAccess();
-    applyUserNavRestrictions();
-    applyManagerNavRestrictions();
-    applyFinanceNav();
-    applySupportNav();
-    applyStockNav();
-    applyAdminUsersNav();
+    const cachedConfigState = String(localStorage.getItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY) || "");
+    const previousConfigState = cachedConfigState === "1"
+        ? true
+        : (cachedConfigState === "0" ? false : null);
+    if(cachedConfigState === "1"){
+        USER_ACCESS_CONFIG_APPLIES_RUNTIME = true;
+    }else if(cachedConfigState === "0"){
+        USER_ACCESS_CONFIG_APPLIES_RUNTIME = false;
+    }else{
+        USER_ACCESS_CONFIG_APPLIES_RUNTIME = null;
+    }
+    const token = localStorage.getItem("token");
+    if(!token){
+        return;
+    }
+    try{
+        const res = await fetch(`${BASE_URL}/users/access/me`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        if(!res.ok){
+            return;
+        }
+        const data = await res.json();
+        const dynamicPages = Array.isArray(data.allowed_pages)
+            ? data.allowed_pages.map((x) => String(x || "").trim()).filter(Boolean)
+            : [];
+        const dynamicActions = Array.isArray(data.allowed_actions) ? data.allowed_actions : [];
+        if(typeof data?.has_access_config === "boolean"){
+            let nextConfigState = data.has_access_config;
+            // For admin/manager, once a restricted config is known, keep it sticky across refreshes.
+            // This prevents accidental broad access when backend lookup is temporarily inconsistent.
+            if((role === "admin" || role === "manager") && previousConfigState === true && nextConfigState === false){
+                nextConfigState = true;
+            }
+            USER_ACCESS_CONFIG_APPLIES_RUNTIME = nextConfigState;
+            localStorage.setItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY, nextConfigState ? "1" : "0");
+        }else if(role === "admin" || role === "manager"){
+            if(dynamicPages.length > 0 || dynamicActions.length > 0){
+                USER_ACCESS_CONFIG_APPLIES_RUNTIME = true;
+                localStorage.setItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY, "1");
+            }
+        }
+        const merged = new Set([
+            "/login.html",
+            "/dashboard.html",
+            ...dynamicPages
+        ]);
+        USER_ALLOWED_PATHS_RUNTIME = Array.from(merged);
+        USER_ALLOWED_ACTIONS_RUNTIME = Array.from(new Set(dynamicActions.map((x)=>String(x || "").trim().toLowerCase()).filter(Boolean)));
+        localStorage.setItem(USER_ALLOWED_CACHE_KEY, JSON.stringify(USER_ALLOWED_PATHS_RUNTIME));
+        localStorage.setItem(USER_ALLOWED_ACTIONS_CACHE_KEY, JSON.stringify(USER_ALLOWED_ACTIONS_RUNTIME));
+        if(data.database_name){
+            localStorage.setItem("selectedDatabaseName", String(data.database_name));
+        }else{
+            // keep previous selected DB to avoid accidental runtime DB drift on transient API failures
+        }
+    }catch(_err){
+        // keep cached or current runtime permissions
+    }
+}
+
+window.addEventListener("DOMContentLoaded", async () => {
+    setupActivityTracking();
+    startIdleTimeoutWatcher();
+    if(!enforceIdleTimeout()) return;
+    if(!enforceAuthentication()) return;
+    await loadUserAccessPermissions();
+    window.__userAccessPermissionsLoaded = true;
+    document.dispatchEvent(new CustomEvent("app:user-access-ready"));
+    applyAccessGuards();
+    // Some pages inject sidebar/nav slightly later; re-apply once after render settles.
+    window.setTimeout(applyAccessGuards, 250);
+    window.setTimeout(applyAccessGuards, 1000);
     ensureMobileSidebar();
     ensureGlobalFooter();
     loadPublicUiSettings();
@@ -557,6 +739,11 @@ window.addEventListener("DOMContentLoaded", () => {
 window.addEventListener("pageshow", () => {
     if(!enforceIdleTimeout()) return;
     enforceAuthentication();
+    if(window.__userAccessPermissionsLoaded){
+        applyAccessGuards();
+    }else{
+        document.addEventListener("app:user-access-ready", applyAccessGuards, { once: true });
+    }
 });
 
 window.addEventListener("popstate", () => {
@@ -683,6 +870,10 @@ async function login(){
     }
 
     try{
+        // Prevent permission cache from a previous session/user leaking into current session.
+        localStorage.removeItem(USER_ALLOWED_CACHE_KEY);
+        localStorage.removeItem(USER_ALLOWED_ACTIONS_CACHE_KEY);
+        localStorage.removeItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY);
         const res = await request("/auth/login","POST",{email,password});
         if(res.user.role !== role){
             alert("Selected role does not match your account role!");
@@ -716,13 +907,21 @@ async function forgotPassword(){
 function hasUserGrantedPath(path){
     const target = String(path || "").trim().toLowerCase();
     if(!target) return false;
-    if(USER_ALLOWED_PATHS.some((x) => String(x || "").trim().toLowerCase() === target)){
-        return true;
-    }
-    try{
-        const cached = JSON.parse(localStorage.getItem(USER_ALLOWED_CACHE_KEY) || "[]");
-        return Array.isArray(cached) && cached.some((x) => String(x || "").trim().toLowerCase() === target);
-    }catch(_err){
+    return USER_ALLOWED_PATHS_RUNTIME.some((x) => String(x || "").trim().toLowerCase() === target);
+}
+window.hasUserGrantedPath = hasUserGrantedPath;
+
+function hasUserActionPermission(path, action){
+    const role = (localStorage.getItem("role") || "").toLowerCase();
+    if(role !== "admin" && role !== "manager" && role !== "user"){
         return false;
     }
+    const selectedDb = String(localStorage.getItem("selectedDatabaseName") || "").trim().toLowerCase();
+    if(role === "user" && selectedDb === "demo"){
+        return true;
+    }
+
+    const actionKey = `${String(path || "").trim().toLowerCase()}::${String(action || "").trim().toLowerCase()}`;
+    return USER_ALLOWED_ACTIONS_RUNTIME.includes(actionKey);
 }
+window.hasUserActionPermission = hasUserActionPermission;
