@@ -44,6 +44,8 @@ let USER_ALLOWED_PATHS_RUNTIME = [...USER_DEFAULT_ALLOWED_PATHS];
 const USER_ALLOWED_CACHE_KEY = "userAllowedPathsRuntime";
 let USER_ALLOWED_ACTIONS_RUNTIME = [];
 const USER_ALLOWED_ACTIONS_CACHE_KEY = "userAllowedActionsRuntime";
+let USER_ACCESS_CONFIG_APPLIES_RUNTIME = false;
+const USER_ACCESS_CONFIG_ENABLED_CACHE_KEY = "userAccessConfigEnabledRuntime";
 
 const MANAGER_BLOCKED_PATHS = [
     "/users/add-user.html",
@@ -136,11 +138,20 @@ function startIdleTimeoutWatcher(){
     }, IDLE_CHECK_INTERVAL_MS);
 }
 
+function hasAccessConfigRestrictions(){
+    if(USER_ACCESS_CONFIG_APPLIES_RUNTIME){
+        return true;
+    }
+    return String(localStorage.getItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY) || "") === "1";
+}
+window.hasAccessConfigRestrictions = hasAccessConfigRestrictions;
+
 function enforceUserAccess(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
-    if(role !== "user") return;
+    const enforceByConfiguredRole = (role === "admin" || role === "manager") && hasAccessConfigRestrictions();
+    if(role !== "user" && !enforceByConfiguredRole) return;
     const selectedDb = String(localStorage.getItem("selectedDatabaseName") || "").trim().toLowerCase();
-    if(selectedDb === "demo") return;
+    if(role === "user" && selectedDb === "demo") return;
     const path = window.location.pathname.replace(/\\/g,"/");
     const allowed = USER_ALLOWED_PATHS_RUNTIME.some(suffix => path.endsWith(suffix));
     if(allowed) return;
@@ -168,7 +179,8 @@ function enforceManagerAccess(){
 
 function applyUserNavRestrictions(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
-    if(role !== "user") return;
+    const enforceByConfiguredRole = (role === "admin" || role === "manager") && hasAccessConfigRestrictions();
+    if(role !== "user" && !enforceByConfiguredRole) return;
     const allowed = USER_ALLOWED_PATHS_RUNTIME;
     document.querySelectorAll(".sidebar a").forEach(a=>{
         const href = (a.getAttribute("href") || "").trim();
@@ -254,8 +266,12 @@ function getStockLink(fileName){
 
 function applyFinanceNav(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
-    const isUserAllowed = role === "user" && hasUserGrantedPath("/finance/finance.html");
-    if(role !== "admin" && role !== "manager" && !isUserAllowed) return;
+    const hasConfig = hasAccessConfigRestrictions();
+    const isAdminOrManager = role === "admin" || role === "manager";
+    const isAllowed = isAdminOrManager
+        ? (!hasConfig || hasUserGrantedPath("/finance/finance.html"))
+        : (role === "user" && hasUserGrantedPath("/finance/finance.html"));
+    if(!isAllowed) return;
 
     document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach(nav => {
         const hasFinance = Array.from(nav.querySelectorAll("a")).some(a => {
@@ -273,8 +289,12 @@ function applyFinanceNav(){
 
 function applySupportNav(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
-    const isUserAllowed = role === "user" && hasUserGrantedPath("/support/support.html");
-    if(role !== "admin" && role !== "manager" && !isUserAllowed) return;
+    const hasConfig = hasAccessConfigRestrictions();
+    const isAdminOrManager = role === "admin" || role === "manager";
+    const isAllowed = isAdminOrManager
+        ? (!hasConfig || hasUserGrantedPath("/support/support.html"))
+        : (role === "user" && hasUserGrantedPath("/support/support.html"));
+    if(!isAllowed) return;
 
     document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach(nav => {
         const hasSupport = Array.from(nav.querySelectorAll("a")).some(a => {
@@ -303,6 +323,7 @@ function applySupportNav(){
 function applyAdminUsersNav(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
     if(role !== "admin") return;
+    if(hasAccessConfigRestrictions() && !hasUserGrantedPath("/users/user-list.html")) return;
 
     document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach(nav => {
         const hasUsers = Array.from(nav.querySelectorAll("a")).some(a => {
@@ -320,8 +341,12 @@ function applyAdminUsersNav(){
 
 function applyStockNav(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
-    const isUserAllowed = role === "user" && hasUserGrantedPath("/stock/stock.html");
-    if(role !== "admin" && role !== "manager" && !isUserAllowed) return;
+    const hasConfig = hasAccessConfigRestrictions();
+    const isAdminOrManager = role === "admin" || role === "manager";
+    const isAllowed = isAdminOrManager
+        ? (!hasConfig || hasUserGrantedPath("/stock/stock.html"))
+        : (role === "user" && hasUserGrantedPath("/stock/stock.html"));
+    if(!isAllowed) return;
 
     document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach(nav => {
         const hasStock = Array.from(nav.querySelectorAll("a")).some(a => {
@@ -525,11 +550,13 @@ async function loadPublicUiSettings(){
 
 async function loadUserAccessPermissions(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
-    if(role !== "user"){
+    if(role !== "user" && role !== "admin" && role !== "manager"){
         USER_ALLOWED_PATHS_RUNTIME = [...USER_DEFAULT_ALLOWED_PATHS];
         USER_ALLOWED_ACTIONS_RUNTIME = [];
+        USER_ACCESS_CONFIG_APPLIES_RUNTIME = false;
         localStorage.removeItem(USER_ALLOWED_CACHE_KEY);
         localStorage.removeItem(USER_ALLOWED_ACTIONS_CACHE_KEY);
+        localStorage.removeItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY);
         return;
     }
     const cachedRaw = localStorage.getItem(USER_ALLOWED_CACHE_KEY);
@@ -550,6 +577,7 @@ async function loadUserAccessPermissions(){
             }
         }catch(_e){}
     }
+    USER_ACCESS_CONFIG_APPLIES_RUNTIME = String(localStorage.getItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY) || "") === "1";
     const token = localStorage.getItem("token");
     if(!token){
         return;
@@ -562,6 +590,11 @@ async function loadUserAccessPermissions(){
             return;
         }
         const data = await res.json();
+        USER_ACCESS_CONFIG_APPLIES_RUNTIME = Boolean(data && data.has_access_config);
+        localStorage.setItem(
+            USER_ACCESS_CONFIG_ENABLED_CACHE_KEY,
+            USER_ACCESS_CONFIG_APPLIES_RUNTIME ? "1" : "0"
+        );
         const dynamicPages = Array.isArray(data.allowed_pages)
             ? data.allowed_pages.map((x) => String(x || "").trim()).filter(Boolean)
             : [];
@@ -780,7 +813,8 @@ window.hasUserGrantedPath = hasUserGrantedPath;
 
 function hasUserActionPermission(path, action){
     const role = (localStorage.getItem("role") || "").toLowerCase();
-    if(role === "admin" || role === "manager"){
+    const hasConfig = hasAccessConfigRestrictions();
+    if((role === "admin" || role === "manager") && !hasConfig){
         return true;
     }
     const selectedDb = String(localStorage.getItem("selectedDatabaseName") || "").trim().toLowerCase();

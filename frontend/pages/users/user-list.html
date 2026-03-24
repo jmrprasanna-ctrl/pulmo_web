@@ -117,8 +117,15 @@
     <script>
         function canShowAdminTool(path){
             const role = (localStorage.getItem("role") || "").toLowerCase();
-            if(role === "admin") return true;
-            if(role === "manager") return false;
+            const hasConfiguredAccess = typeof hasAccessConfigRestrictions === "function" && hasAccessConfigRestrictions();
+            if(role === "admin"){
+                if(!hasConfiguredAccess) return true;
+                return typeof hasUserGrantedPath === "function" && hasUserGrantedPath(path);
+            }
+            if(role === "manager"){
+                if(!hasConfiguredAccess) return false;
+                return typeof hasUserGrantedPath === "function" && hasUserGrantedPath(path);
+            }
             return typeof hasUserGrantedPath === "function" && hasUserGrantedPath(path);
         }
 
@@ -147,7 +154,21 @@
                 const users = await request("/users","GET");
                 const tbody = document.getElementById('user-table-body');
                 tbody.innerHTML = '';
+                const canEditUser = typeof hasUserActionPermission === "function"
+                    && hasUserActionPermission("/users/user-list.html", "edit");
+                const canDeleteUser = typeof hasUserActionPermission === "function"
+                    && hasUserActionPermission("/users/user-list.html", "delete");
                 users.forEach(u => {
+                    const rowActions = [];
+                    if(canEditUser){
+                        rowActions.push(`<a class="btn btn-inline action-btn" href="edit-user.html?id=${u.id}">Edit</a>`);
+                    }
+                    if(canDeleteUser){
+                        rowActions.push(`<button class="btn btn-danger btn-inline action-btn" type="button" onclick="deleteUser(${u.id})">Delete</button>`);
+                    }
+                    const actionHtml = rowActions.length
+                        ? rowActions.join("")
+                        : `<span class="muted">No actions</span>`;
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${u.id}</td>
@@ -159,8 +180,7 @@
                         <td>${u.role}</td>
                         <td>
                             <div class="user-action-row">
-                                <a class="btn btn-inline action-btn" href="edit-user.html?id=${u.id}">Edit</a>
-                                <button class="btn btn-danger btn-inline action-btn" type="button" onclick="deleteUser(${u.id})">Delete</button>
+                                ${actionHtml}
                             </div>
                         </td>
                     `;

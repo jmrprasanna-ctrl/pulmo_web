@@ -575,5 +575,6 @@ exports.getMyAccess = async (req, res) => {
     allowed_actions: parseAllowedActions(row),
     database_name: normalizeDatabaseName(row?.database_name),
     user_database: userDatabase,
+    has_access_config: Boolean(row),
   });
 };
