@@ -65,14 +65,14 @@
     <div class="main-content">
         <header><h2>User List</h2></header>
         <div class="form-actions">
-            <button id="btnAddUser" class="btn btn-primary" onclick="window.location.href='add-user.html'">Add User</button>
-            <button id="btnPreference" class="btn btn-primary" onclick="window.location.href='preference.html'">Preference</button>
-            <button id="btnAccess" class="btn btn-primary" onclick="window.location.href='user-access.html'">Access</button>
-            <button id="btnLogged" class="btn btn-primary" onclick="window.location.href='user-logged.html'">Logged</button>
-            <button id="btnEmailSetup" class="btn btn-primary" onclick="window.location.href='../support/email-setup.html'">email</button>
-            <button id="btnCheckTools" class="btn btn-primary" type="button" onclick="checkBackupTools()">Check Tools</button>
-            <button id="btnBackup" class="btn btn-primary" type="button" onclick="downloadSystemBackup()">Backup</button>
-            <button id="btnUploadDb" class="btn btn-primary" type="button" onclick="openRestorePicker()">Upload DB</button>
+            <button id="btnAddUser" class="btn btn-primary" style="display:none" onclick="window.location.href='add-user.html'">Add User</button>
+            <button id="btnPreference" class="btn btn-primary" style="display:none" onclick="window.location.href='preference.html'">Preference</button>
+            <button id="btnAccess" class="btn btn-primary" style="display:none" onclick="window.location.href='user-access.html'">Access</button>
+            <button id="btnLogged" class="btn btn-primary" style="display:none" onclick="window.location.href='user-logged.html'">Logged</button>
+            <button id="btnEmailSetup" class="btn btn-primary" style="display:none" onclick="window.location.href='../support/email-setup.html'">email</button>
+            <button id="btnCheckTools" class="btn btn-primary" style="display:none" type="button" onclick="checkBackupTools()">Check Tools</button>
+            <button id="btnBackup" class="btn btn-primary" style="display:none" type="button" onclick="downloadSystemBackup()">Backup</button>
+            <button id="btnUploadDb" class="btn btn-primary" style="display:none" type="button" onclick="openRestorePicker()">Upload DB</button>
             <input id="restore-db-file" type="file" accept=".sql" style="display:none" onchange="restoreSystemBackup(event)">
             <a class="btn btn-secondary" href="../dashboard.html">Back</a>
         </div>
@@ -113,7 +113,7 @@
         </div>
     </div>
 
-    <script src="../../assets/js/api.js"></script>
+    <script src="../../assets/js/api.js?v=20260324p1"></script>
     <script>
         function canShowAdminTool(path){
             const role = (localStorage.getItem("role") || "").toLowerCase();
@@ -147,9 +147,7 @@
             map.forEach((item) => {
                 const el = document.getElementById(item.id);
                 if(!el) return;
-                if(!canShowAdminTool(item.path)){
-                    el.style.display = "none";
-                }
+                el.style.display = canShowAdminTool(item.path) ? "" : "none";
             });
         }
 
