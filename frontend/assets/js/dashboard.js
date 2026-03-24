@@ -125,6 +125,13 @@ function logout(){
 let salesChartInstance = null;
 let profitChartInstance = null;
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+let summaryInFlight = false;
+let summaryQueued = false;
+let healthInFlight = false;
+let badgesInFlight = false;
+let todosInFlight = false;
+let todosQueued = false;
+let assigneesLoaded = false;
 
 function formatDateWithWeekday(dateText){
     const fallbackDate = new Date();
@@ -141,6 +148,11 @@ function formatDateWithWeekday(dateText){
 
 // Fetch summary data
 async function fetchSummary(){
+    if(summaryInFlight){
+        summaryQueued = true;
+        return;
+    }
+    summaryInFlight = true;
     try{
         const periodEl = document.getElementById("summaryPeriod");
         const dateEl = document.getElementById("summaryDate");
@@ -258,6 +270,12 @@ async function fetchSummary(){
         alert(err.message || "Failed to load dashboard data");
         if ((err.message || "").toLowerCase().includes("login") || (err.message || "").toLowerCase().includes("token")) {
             window.location.href = "login.html";
+        }
+    }finally{
+        summaryInFlight = false;
+        if(summaryQueued){
+            summaryQueued = false;
+            fetchSummary();
         }
     }
 }
@@ -404,6 +422,10 @@ function setTopbarHealthIndicator(ok){
 }
 
 async function loadHealthStatus(){
+    if(healthInFlight){
+        return;
+    }
+    healthInFlight = true;
     const hasHealthPanel = !!document.getElementById("healthPanel");
     try{
         const health = await request("/health","GET");
@@ -434,6 +456,8 @@ async function loadHealthStatus(){
             setHealthBadge("healthTplQuotation", null);
             setHealthBadge("healthTplQuotation2", null);
         }
+    }finally{
+        healthInFlight = false;
     }
 }
 
@@ -445,6 +469,10 @@ loadHealthStatus();
 setInterval(loadHealthStatus, 60000);
 
 async function updateBadges(){
+    if(badgesInFlight){
+        return;
+    }
+    badgesInFlight = true;
     const userId = localStorage.getItem("userId");
     const messageBadge = document.getElementById("messagesBadgeCount");
     const noticeBadge = document.getElementById("noticeBadgeCount");
@@ -462,27 +490,36 @@ async function updateBadges(){
     };
 
     try{
-        if(userId && messageBadge){
-            const messages = await request(`/messages?to_user_id=${userId}`,"GET");
-            const lastSeen = new Date(localStorage.getItem(`messagesLastSeen:${userId}`) || 0);
-            const newCount = (Array.isArray(messages) ? messages : [])
-                .filter((m) => new Date(m.createdAt) > lastSeen).length;
-            setBadge(messageBadge, newCount);
-        }
-    }catch(_err){
-        setBadge(messageBadge, 0);
-    }
-
-    try{
-        if(noticeBadge){
-            const notices = await request("/notifications","GET");
-            const lastSeen = new Date(localStorage.getItem(`notificationsLastSeen:${userId}`) || 0);
-            const newCount = (Array.isArray(notices) ? notices : [])
-                .filter((n) => new Date(n.createdAt) > lastSeen).length;
-            setBadge(noticeBadge, newCount);
-        }
-    }catch(_err){
-        setBadge(noticeBadge, 0);
+        await Promise.all([
+            (async () => {
+                try{
+                    if(userId && messageBadge){
+                        const messages = await request(`/messages?to_user_id=${userId}`,"GET");
+                        const lastSeen = new Date(localStorage.getItem(`messagesLastSeen:${userId}`) || 0);
+                        const newCount = (Array.isArray(messages) ? messages : [])
+                            .filter((m) => new Date(m.createdAt) > lastSeen).length;
+                        setBadge(messageBadge, newCount);
+                    }
+                }catch(_err){
+                    setBadge(messageBadge, 0);
+                }
+            })(),
+            (async () => {
+                try{
+                    if(noticeBadge){
+                        const notices = await request("/notifications","GET");
+                        const lastSeen = new Date(localStorage.getItem(`notificationsLastSeen:${userId}`) || 0);
+                        const newCount = (Array.isArray(notices) ? notices : [])
+                            .filter((n) => new Date(n.createdAt) > lastSeen).length;
+                        setBadge(noticeBadge, newCount);
+                    }
+                }catch(_err){
+                    setBadge(noticeBadge, 0);
+                }
+            })()
+        ]);
+    }finally{
+        badgesInFlight = false;
     }
 }
 
@@ -503,8 +540,16 @@ function updateTodoBadgeCount(todos){
 }
 
 async function loadTodos(){
+    if(todosInFlight){
+        todosQueued = true;
+        return;
+    }
+    todosInFlight = true;
     const listEl = document.getElementById("todoList");
-    if(!listEl) return;
+    if(!listEl){
+        todosInFlight = false;
+        return;
+    }
     try{
         const todos = await request("/todos","GET");
         renderTodos(todos || []);
@@ -513,10 +558,19 @@ async function loadTodos(){
         console.error(err);
         listEl.innerHTML = "<li class=\"todo-item\"><span class=\"todo-title\">Failed to load to-do list.</span></li>";
         updateTodoBadgeCount([]);
+    }finally{
+        todosInFlight = false;
+        if(todosQueued){
+            todosQueued = false;
+            loadTodos();
+        }
     }
 }
 
 async function loadTodoAssignees(){
+    if(assigneesLoaded){
+        return;
+    }
     const select = document.getElementById("todoAssign");
     if(!select) return;
     const role = (localStorage.getItem("role") || "").toLowerCase();
@@ -529,6 +583,7 @@ async function loadTodoAssignees(){
             opt.textContent = u.username || u.email || `User ${u.id}`;
             select.appendChild(opt);
         });
+        assigneesLoaded = true;
     }catch(err){
         console.error(err);
     }
