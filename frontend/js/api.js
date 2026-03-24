@@ -326,6 +326,11 @@ function renderSidebarMenuByAccess(){
     ];
     const granted = menuEntries.filter((entry) => hasUserGrantedPath(entry.path));
     const finalMenu = granted.length ? granted : [{ path: "/dashboard.html", label: "Dashboard" }];
+    const signature = finalMenu.map((entry) => String(entry.path || "").trim().toLowerCase()).join("|");
+    if(window.__lastAccessMenuSignature === signature){
+        return;
+    }
+    window.__lastAccessMenuSignature = signature;
 
     window.__accessMenuRenderLock = true;
     document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach((nav) => {
@@ -337,13 +342,9 @@ function renderSidebarMenuByAccess(){
 }
 
 function setSidebarReadyState(isReady){
-    const sidebar = document.querySelector(".sidebar");
-    if(!sidebar) return;
-    if(isReady){
-        sidebar.style.visibility = "";
-    }else{
-        sidebar.style.visibility = "hidden";
-    }
+    document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach((nav) => {
+        nav.style.visibility = isReady ? "visible" : "hidden";
+    });
 }
 
 function setupSidebarAccessObserver(){
