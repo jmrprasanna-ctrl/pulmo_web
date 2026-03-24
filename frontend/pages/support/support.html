@@ -118,10 +118,7 @@ function canAddTechnician(){
         return false;
     };
     if(role === "admin" || role === "manager"){
-        if(typeof hasAccessConfigRestrictions === "function" && hasAccessConfigRestrictions()){
-            return hasAnyTechnicianPermission();
-        }
-        return true;
+        return hasAnyTechnicianPermission();
     }
     return hasAnyTechnicianPermission();
 }

@@ -611,12 +611,17 @@ async function loadUserAccessPermissions(){
         }
         const data = await res.json();
         const dynamicActions = Array.isArray(data.allowed_actions) ? data.allowed_actions : [];
-        const pagesFromActions = dynamicActions
+        const normalizedActionKeys = dynamicActions
             .map((x) => String(x || "").trim().toLowerCase())
-            .filter((x) => x.endsWith("::view"))
+            .filter((x) => x.includes("::"));
+        const pagesFromActions = normalizedActionKeys
             .map((x) => x.slice(0, x.lastIndexOf("::")))
             .filter(Boolean);
-        const dynamicPages = pagesFromActions;
+        const dynamicPages = Array.from(new Set([
+            ...pagesFromActions,
+            ...(normalizedActionKeys.includes("/users/technician-list.html::add") ? ["/users/add-technician.html"] : []),
+            ...(normalizedActionKeys.includes("/users/technician-list.html::edit") ? ["/users/edit-technician.html"] : [])
+        ]));
         if(typeof data?.has_access_config === "boolean"){
             let nextConfigState = data.has_access_config;
             // For admin/manager, once a restricted config is known, keep it sticky across refreshes.
@@ -638,7 +643,7 @@ async function loadUserAccessPermissions(){
             ...dynamicPages
         ]);
         USER_ALLOWED_PATHS_RUNTIME = Array.from(merged);
-        USER_ALLOWED_ACTIONS_RUNTIME = Array.from(new Set(dynamicActions.map((x)=>String(x || "").trim().toLowerCase()).filter(Boolean)));
+        USER_ALLOWED_ACTIONS_RUNTIME = Array.from(new Set(normalizedActionKeys));
         localStorage.setItem(USER_ALLOWED_CACHE_KEY, JSON.stringify(USER_ALLOWED_PATHS_RUNTIME));
         localStorage.setItem(USER_ALLOWED_ACTIONS_CACHE_KEY, JSON.stringify(USER_ALLOWED_ACTIONS_RUNTIME));
         if(data.database_name){
