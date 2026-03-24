@@ -182,6 +182,13 @@ function expandImplicitActionDependencies(actionKeys) {
     add("/users/add-technician.html", "view");
     add("/users/add-technician.html", "add");
   }
+  if (
+    set.has(toActionKey("/users/technician-list.html", "add")) ||
+    set.has(toActionKey("/users/technician-list.html", "edit")) ||
+    set.has(toActionKey("/users/technician-list.html", "delete"))
+  ) {
+    add("/users/technician-list.html", "view");
+  }
 
   return normalizeActions(Array.from(set));
 }

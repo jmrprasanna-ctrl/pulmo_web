@@ -46,13 +46,25 @@
 
         function canViewTechnicianList(){
             const role = getRole();
+            const hasAnyTechnicianPermission = () => {
+                if(typeof hasUserGrantedPath === "function" && hasUserGrantedPath(TECHNICIAN_ACCESS_PATH)){
+                    return true;
+                }
+                if(typeof hasUserActionPermission === "function"){
+                    return hasUserActionPermission(TECHNICIAN_ACCESS_PATH, "view")
+                        || hasUserActionPermission(TECHNICIAN_ACCESS_PATH, "add")
+                        || hasUserActionPermission(TECHNICIAN_ACCESS_PATH, "edit")
+                        || hasUserActionPermission(TECHNICIAN_ACCESS_PATH, "delete");
+                }
+                return false;
+            };
             if(role === "admin" || role === "manager"){
                 if(typeof hasAccessConfigRestrictions === "function" && hasAccessConfigRestrictions()){
-                    return typeof hasUserGrantedPath === "function" ? hasUserGrantedPath(TECHNICIAN_ACCESS_PATH) : true;
+                    return hasAnyTechnicianPermission();
                 }
                 return true;
             }
-            return typeof hasUserGrantedPath === "function" ? hasUserGrantedPath(TECHNICIAN_ACCESS_PATH) : false;
+            return hasAnyTechnicianPermission();
         }
 
         function canAddTechnician(){

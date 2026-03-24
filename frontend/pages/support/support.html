@@ -105,13 +105,25 @@ function canManage(){
 
 function canAddTechnician(){
     const role = getRole();
+    const hasAnyTechnicianPermission = () => {
+        if(typeof hasUserGrantedPath === "function" && hasUserGrantedPath("/users/technician-list.html")){
+            return true;
+        }
+        if(typeof hasUserActionPermission === "function"){
+            return hasUserActionPermission("/users/technician-list.html", "view")
+                || hasUserActionPermission("/users/technician-list.html", "add")
+                || hasUserActionPermission("/users/technician-list.html", "edit")
+                || hasUserActionPermission("/users/technician-list.html", "delete");
+        }
+        return false;
+    };
     if(role === "admin" || role === "manager"){
         if(typeof hasAccessConfigRestrictions === "function" && hasAccessConfigRestrictions()){
-            return typeof hasUserGrantedPath === "function" ? hasUserGrantedPath("/users/technician-list.html") : true;
+            return hasAnyTechnicianPermission();
         }
         return true;
     }
-    return typeof hasUserGrantedPath === "function" ? hasUserGrantedPath("/users/technician-list.html") : false;
+    return hasAnyTechnicianPermission();
 }
 
 async function loadSupportImportants(){
