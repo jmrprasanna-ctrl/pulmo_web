@@ -265,78 +265,6 @@ async function findAccessFromMainDb(userId, userDatabase = INVENTORY_DB_NAME) {
   }
 }
 
-async function findAnyAccessFromMainDb(userId) {
-  const cfg = getDbConfig();
-  const client = new Client({
-    host: cfg.host,
-    port: cfg.port,
-    user: cfg.user,
-    password: cfg.password,
-    database: cfg.database || INVENTORY_DB_NAME,
-  });
-  try {
-    await client.connect();
-    const rs = await client.query(
-      `SELECT allowed_pages_json, allowed_actions_json, database_name, user_database
-       FROM user_accesses
-       WHERE user_id = $1
-       ORDER BY CASE WHEN LOWER(COALESCE(user_database, 'inventory')) = 'inventory' THEN 0 ELSE 1 END, id ASC
-       LIMIT 1`,
-      [userId]
-    );
-    if (!rs.rowCount) return null;
-    return rs.rows[0];
-  } catch (_err) {
-    return null;
-  } finally {
-    await client.end().catch(() => {});
-  }
-}
-
-async function queryAccessFromDatabase(databaseName, userId) {
-  const cfg = getDbConfig();
-  const client = new Client({
-    host: cfg.host,
-    port: cfg.port,
-    user: cfg.user,
-    password: cfg.password,
-    database: databaseName,
-  });
-  try {
-    await client.connect();
-    const rs = await client.query(
-      `SELECT allowed_pages_json, allowed_actions_json, database_name, user_database
-       FROM user_accesses
-       WHERE user_id = $1
-       ORDER BY CASE WHEN LOWER(COALESCE(user_database, 'inventory')) = 'inventory' THEN 0 ELSE 1 END, id ASC
-       LIMIT 1`,
-      [userId]
-    );
-    if (!rs.rowCount) return null;
-    return rs.rows[0];
-  } catch (_err) {
-    return null;
-  } finally {
-    await client.end().catch(() => {});
-  }
-}
-
-async function findAnyAccessAcrossDatabases(userId) {
-  const cfg = getDbConfig();
-  const candidates = Array.from(
-    new Set(
-      [String(cfg.database || "").trim().toLowerCase(), INVENTORY_DB_NAME, DEMO_DB_NAME]
-        .filter(Boolean)
-    )
-  );
-
-  for (const dbName of candidates) {
-    const row = await queryAccessFromDatabase(dbName, userId);
-    if (row) return row;
-  }
-  return null;
-}
-
 function getDbConfig() {
   return {
     host: process.env.DB_HOST || "localhost",
@@ -633,7 +561,6 @@ exports.getMyAccess = async (req, res) => {
   }
 
   const userDatabase = normalizeUserDatabase(req.databaseName || req.user?.database_name || INVENTORY_DB_NAME);
-  const role = String(req.user?.role || "").trim().toLowerCase();
 
   // Access permissions are treated as global user settings stored in main DB.
   // Data DB (inventory/demo) can switch per user, but access config must remain stable.
@@ -647,16 +574,6 @@ exports.getMyAccess = async (req, res) => {
       row = await UserAccess.findOne({ where: { user_id: userId, user_database: INVENTORY_DB_NAME } });
     }
   }
-  if (!row && (role === "admin" || role === "manager")) {
-    row = await findAnyAccessFromMainDb(userId);
-    if (!row) {
-      row = await UserAccess.findOne({ where: { user_id: userId } });
-    }
-  }
-  if (!row) {
-    row = await findAnyAccessAcrossDatabases(userId);
-  }
-
   const allowedActions = parseAllowedActions(row);
   const allowedPages = derivePagesFromActions(allowedActions, parseAllowedPages(row));
   const hasAccessConfig = Boolean(row) || allowedPages.length > 0 || allowedActions.length > 0;
