@@ -293,20 +293,8 @@ function getStockLink(fileName){
 
 function applyFinanceNav(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
-    const configState = getAccessConfigState();
-    const isAdminOrManager = role === "admin" || role === "manager";
-    let isAllowed = false;
-    if(isAdminOrManager){
-        if(configState === true){
-            isAllowed = hasUserGrantedPath("/finance/finance.html");
-        }else if(configState === false){
-            isAllowed = true;
-        }else{
-            isAllowed = false;
-        }
-    }else{
-        isAllowed = role === "user" && hasUserGrantedPath("/finance/finance.html");
-    }
+    if(role !== "admin" && role !== "manager" && role !== "user") return;
+    const isAllowed = hasUserGrantedPath("/finance/finance.html");
     if(!isAllowed) return;
 
     document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach(nav => {
@@ -325,20 +313,8 @@ function applyFinanceNav(){
 
 function applySupportNav(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
-    const configState = getAccessConfigState();
-    const isAdminOrManager = role === "admin" || role === "manager";
-    let isAllowed = false;
-    if(isAdminOrManager){
-        if(configState === true){
-            isAllowed = hasUserGrantedPath("/support/support.html");
-        }else if(configState === false){
-            isAllowed = true;
-        }else{
-            isAllowed = false;
-        }
-    }else{
-        isAllowed = role === "user" && hasUserGrantedPath("/support/support.html");
-    }
+    if(role !== "admin" && role !== "manager" && role !== "user") return;
+    const isAllowed = hasUserGrantedPath("/support/support.html");
     if(!isAllowed) return;
 
     document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach(nav => {
@@ -368,9 +344,7 @@ function applySupportNav(){
 function applyAdminUsersNav(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
     if(role !== "admin") return;
-    const configState = getAccessConfigState();
-    if(configState === true && !hasUserGrantedPath("/users/user-list.html")) return;
-    if(configState === null) return;
+    if(!hasUserGrantedPath("/users/user-list.html")) return;
 
     document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach(nav => {
         const hasUsers = Array.from(nav.querySelectorAll("a")).some(a => {
@@ -388,20 +362,8 @@ function applyAdminUsersNav(){
 
 function applyStockNav(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
-    const configState = getAccessConfigState();
-    const isAdminOrManager = role === "admin" || role === "manager";
-    let isAllowed = false;
-    if(isAdminOrManager){
-        if(configState === true){
-            isAllowed = hasUserGrantedPath("/stock/stock.html");
-        }else if(configState === false){
-            isAllowed = true;
-        }else{
-            isAllowed = false;
-        }
-    }else{
-        isAllowed = role === "user" && hasUserGrantedPath("/stock/stock.html");
-    }
+    if(role !== "admin" && role !== "manager" && role !== "user") return;
+    const isAllowed = hasUserGrantedPath("/stock/stock.html");
     if(!isAllowed) return;
 
     document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach(nav => {
@@ -626,23 +588,28 @@ async function loadUserAccessPermissions(){
         localStorage.removeItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY);
         return;
     }
-    const cachedRaw = localStorage.getItem(USER_ALLOWED_CACHE_KEY);
-    if(cachedRaw){
-        try{
-            const cached = JSON.parse(cachedRaw);
-            if(Array.isArray(cached) && cached.length){
-                USER_ALLOWED_PATHS_RUNTIME = Array.from(new Set(cached.map((x)=>String(x || "").trim()).filter(Boolean)));
-            }
-        }catch(_e){}
-    }
-    const cachedActionsRaw = localStorage.getItem(USER_ALLOWED_ACTIONS_CACHE_KEY);
-    if(cachedActionsRaw){
-        try{
-            const cached = JSON.parse(cachedActionsRaw);
-            if(Array.isArray(cached) && cached.length){
-                USER_ALLOWED_ACTIONS_RUNTIME = Array.from(new Set(cached.map((x)=>String(x || "").trim().toLowerCase()).filter(Boolean)));
-            }
-        }catch(_e){}
+    if(role === "user"){
+        const cachedRaw = localStorage.getItem(USER_ALLOWED_CACHE_KEY);
+        if(cachedRaw){
+            try{
+                const cached = JSON.parse(cachedRaw);
+                if(Array.isArray(cached) && cached.length){
+                    USER_ALLOWED_PATHS_RUNTIME = Array.from(new Set(cached.map((x)=>String(x || "").trim()).filter(Boolean)));
+                }
+            }catch(_e){}
+        }
+        const cachedActionsRaw = localStorage.getItem(USER_ALLOWED_ACTIONS_CACHE_KEY);
+        if(cachedActionsRaw){
+            try{
+                const cached = JSON.parse(cachedActionsRaw);
+                if(Array.isArray(cached) && cached.length){
+                    USER_ALLOWED_ACTIONS_RUNTIME = Array.from(new Set(cached.map((x)=>String(x || "").trim().toLowerCase()).filter(Boolean)));
+                }
+            }catch(_e){}
+        }
+    }else{
+        USER_ALLOWED_PATHS_RUNTIME = [...USER_DEFAULT_ALLOWED_PATHS];
+        USER_ALLOWED_ACTIONS_RUNTIME = [];
     }
     const cachedConfigState = String(localStorage.getItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY) || "");
     const previousConfigState = cachedConfigState === "1"
