@@ -336,6 +336,16 @@ function renderSidebarMenuByAccess(){
     window.__accessMenuRenderLock = false;
 }
 
+function setSidebarReadyState(isReady){
+    const sidebar = document.querySelector(".sidebar");
+    if(!sidebar) return;
+    if(isReady){
+        sidebar.style.visibility = "";
+    }else{
+        sidebar.style.visibility = "hidden";
+    }
+}
+
 function setupSidebarAccessObserver(){
     // Disabled: Mutation observer can cause render loops on some browsers.
     // We enforce menu restrictions through explicit guard passes instead.
@@ -645,13 +655,12 @@ window.addEventListener("DOMContentLoaded", async () => {
     startIdleTimeoutWatcher();
     if(!enforceIdleTimeout()) return;
     if(!enforceAuthentication()) return;
+    setSidebarReadyState(false);
     await loadUserAccessPermissions();
     window.__userAccessPermissionsLoaded = true;
     document.dispatchEvent(new CustomEvent("app:user-access-ready"));
     applyAccessGuards();
-    // Some pages inject sidebar/nav slightly later; re-apply once after render settles.
-    window.setTimeout(applyAccessGuards, 250);
-    window.setTimeout(applyAccessGuards, 1000);
+    setSidebarReadyState(true);
     ensureMobileSidebar();
     ensureGlobalFooter();
     loadPublicUiSettings();

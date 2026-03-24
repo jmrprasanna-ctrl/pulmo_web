@@ -108,10 +108,11 @@ function startDashboardSidebarGuard(){
     if(window.__dashboardSidebarGuardStarted) return;
     window.__dashboardSidebarGuardStarted = true;
     const sync = () => enforceDashboardSidebarAccess();
-    sync();
-    window.setTimeout(sync, 200);
-    window.setTimeout(sync, 800);
-    document.addEventListener("app:user-access-ready", sync, { once: true });
+    if(window.__userAccessPermissionsLoaded){
+        sync();
+    }else{
+        document.addEventListener("app:user-access-ready", sync, { once: true });
+    }
 }
 
 // Logout
