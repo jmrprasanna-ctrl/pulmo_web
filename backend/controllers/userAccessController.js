@@ -605,11 +605,15 @@ exports.getMyAccess = async (req, res) => {
     }
   }
 
+  const allowedPages = parseAllowedPages(row);
+  const allowedActions = parseAllowedActions(row);
+  const hasAccessConfig = Boolean(row) || allowedPages.length > 0 || allowedActions.length > 0;
+
   res.json({
-    allowed_pages: parseAllowedPages(row),
-    allowed_actions: parseAllowedActions(row),
+    allowed_pages: allowedPages,
+    allowed_actions: allowedActions,
     database_name: normalizeDatabaseName(row?.database_name),
     user_database: userDatabase,
-    has_access_config: Boolean(row),
+    has_access_config: hasAccessConfig,
   });
 };

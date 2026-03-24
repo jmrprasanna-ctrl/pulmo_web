@@ -631,6 +631,9 @@ async function loadUserAccessPermissions(){
         }catch(_e){}
     }
     const cachedConfigState = String(localStorage.getItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY) || "");
+    const previousConfigState = cachedConfigState === "1"
+        ? true
+        : (cachedConfigState === "0" ? false : null);
     if(cachedConfigState === "1"){
         USER_ACCESS_CONFIG_APPLIES_RUNTIME = true;
     }else if(cachedConfigState === "0"){
@@ -655,8 +658,14 @@ async function loadUserAccessPermissions(){
             : [];
         const dynamicActions = Array.isArray(data.allowed_actions) ? data.allowed_actions : [];
         if(typeof data?.has_access_config === "boolean"){
-            USER_ACCESS_CONFIG_APPLIES_RUNTIME = data.has_access_config;
-            localStorage.setItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY, data.has_access_config ? "1" : "0");
+            let nextConfigState = data.has_access_config;
+            // For admin/manager, once a restricted config is known, keep it sticky across refreshes.
+            // This prevents accidental broad access when backend lookup is temporarily inconsistent.
+            if((role === "admin" || role === "manager") && previousConfigState === true && nextConfigState === false){
+                nextConfigState = true;
+            }
+            USER_ACCESS_CONFIG_APPLIES_RUNTIME = nextConfigState;
+            localStorage.setItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY, nextConfigState ? "1" : "0");
         }else if(role === "admin" || role === "manager"){
             if(dynamicPages.length > 0 || dynamicActions.length > 0){
                 USER_ACCESS_CONFIG_APPLIES_RUNTIME = true;
