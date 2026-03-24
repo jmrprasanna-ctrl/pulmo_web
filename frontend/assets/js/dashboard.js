@@ -57,9 +57,40 @@ function toDashboardMenuHref(canonicalPath){
     return clean;
 }
 
-async function enforceDashboardSidebarAccess(){
+const DASHBOARD_MENU_ENTRIES = [
+    { path: "/dashboard.html", label: "Dashboard" },
+    { path: "/products/product-list.html", label: "Products" },
+    { path: "/products/general-machine.html", label: "Machines" },
+    { path: "/customers/customer-list.html", label: "Customers" },
+    { path: "/invoices/invoice-list.html", label: "Invoices" },
+    { path: "/vendors/list-vendor.html", label: "Vendors" },
+    { path: "/expenses/expense-list.html", label: "Expenses" },
+    { path: "/reports/sales-report.html", label: "Reports" },
+    { path: "/analytics/sales-chart.html", label: "Analytics" },
+    { path: "/finance/finance.html", label: "Finance" },
+    { path: "/support/support.html", label: "Support" },
+    { path: "/stock/stock.html", label: "Stock" },
+    { path: "/users/user-list.html", label: "Users" }
+];
+let dashboardAllowedMenuEntries = null;
+let lastDashboardMenuSignature = "";
+
+function renderDashboardSidebarMenu(entries){
     const nav = document.querySelector(".sidebar .nav-links, .sidebar ul");
-    if(!nav || typeof request !== "function") return;
+    if(!nav) return;
+    const safeEntries = Array.isArray(entries) && entries.length
+        ? entries
+        : [{ path: "/dashboard.html", label: "Dashboard" }];
+    const signature = safeEntries.map((e) => normalizeAccessPath(e.path)).join("|");
+    if(signature === lastDashboardMenuSignature) return;
+    lastDashboardMenuSignature = signature;
+    nav.innerHTML = safeEntries
+        .map((e) => `<li><a href="${toDashboardMenuHref(e.path)}">${e.label}</a></li>`)
+        .join("");
+}
+
+async function enforceDashboardSidebarAccess(){
+    if(typeof request !== "function") return;
     const role = (localStorage.getItem("role") || "").toLowerCase();
     if(role !== "admin" && role !== "manager" && role !== "user") return;
 
@@ -75,29 +106,23 @@ async function enforceDashboardSidebarAccess(){
             ["/dashboard.html", ...allowedPages, ...fromActions].map((p) => normalizeAccessPath(p))
         );
 
-        const entries = [
-            { path: "/dashboard.html", label: "Dashboard" },
-            { path: "/products/product-list.html", label: "Products" },
-            { path: "/products/general-machine.html", label: "Machines" },
-            { path: "/customers/customer-list.html", label: "Customers" },
-            { path: "/invoices/invoice-list.html", label: "Invoices" },
-            { path: "/vendors/list-vendor.html", label: "Vendors" },
-            { path: "/expenses/expense-list.html", label: "Expenses" },
-            { path: "/reports/sales-report.html", label: "Reports" },
-            { path: "/analytics/sales-chart.html", label: "Analytics" },
-            { path: "/finance/finance.html", label: "Finance" },
-            { path: "/support/support.html", label: "Support" },
-            { path: "/stock/stock.html", label: "Stock" },
-            { path: "/users/user-list.html", label: "Users" }
-        ];
-
-        const finalEntries = entries.filter((e) => allowedSet.has(normalizeAccessPath(e.path)));
-        nav.innerHTML = finalEntries
-            .map((e) => `<li><a href="${toDashboardMenuHref(e.path)}">${e.label}</a></li>`)
-            .join("");
+        dashboardAllowedMenuEntries = DASHBOARD_MENU_ENTRIES.filter((e) => allowedSet.has(normalizeAccessPath(e.path)));
+        renderDashboardSidebarMenu(dashboardAllowedMenuEntries);
     }catch(_err){
         // keep existing menu if access endpoint fails
     }
+}
+
+function startDashboardSidebarGuard(){
+    if(window.__dashboardSidebarGuardStarted) return;
+    window.__dashboardSidebarGuardStarted = true;
+    const tick = () => {
+        if(dashboardAllowedMenuEntries){
+            renderDashboardSidebarMenu(dashboardAllowedMenuEntries);
+        }
+    };
+    tick();
+    window.setInterval(tick, 1200);
 }
 
 // Logout
@@ -353,6 +378,7 @@ fetchSummary();
 enforceDashboardSidebarAccess();
 setTimeout(enforceDashboardSidebarAccess, 500);
 setTimeout(enforceDashboardSidebarAccess, 1500);
+startDashboardSidebarGuard();
 
 function setHealthBadge(id, ok){
     const el = document.getElementById(id);
