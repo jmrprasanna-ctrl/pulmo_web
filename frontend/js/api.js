@@ -342,101 +342,19 @@ function setupSidebarAccessObserver(){
 }
 
 function applyFinanceNav(){
-    const role = (localStorage.getItem("role") || "").toLowerCase();
-    if(role !== "admin" && role !== "manager" && role !== "user") return;
-    const isAllowed = hasUserGrantedPath("/finance/finance.html");
-    if(!isAllowed) return;
-
-    document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach(nav => {
-        const hasFinance = Array.from(nav.querySelectorAll("a")).some(a => {
-            const href = (a.getAttribute("href") || "").replace(/\\/g, "/");
-            return href.endsWith("/finance/finance.html") || href.endsWith("finance/finance.html") || href.endsWith("/finance.html") || href.endsWith("finance.html") || a.textContent.trim().toLowerCase() === "finance";
-        });
-
-        if(!hasFinance){
-            const financeLi = document.createElement("li");
-            financeLi.innerHTML = `<a href="${getFinanceLink("finance.html")}">Finance</a>`;
-            nav.appendChild(financeLi);
-        }
-    });
+    // Deprecated: sidebar now rendered strictly by access matrix in renderSidebarMenuByAccess().
 }
 
 function applySupportNav(){
-    const role = (localStorage.getItem("role") || "").toLowerCase();
-    if(role !== "admin" && role !== "manager" && role !== "user") return;
-    const isAllowed = hasUserGrantedPath("/support/support.html");
-    if(!isAllowed) return;
-
-    document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach(nav => {
-        const hasSupport = Array.from(nav.querySelectorAll("a")).some(a => {
-            const href = (a.getAttribute("href") || "").replace(/\\/g, "/");
-            return href.endsWith("/support/support.html") || href.endsWith("support/support.html") || href.endsWith("/support.html") || href.endsWith("support.html") || a.textContent.trim().toLowerCase() === "support";
-        });
-
-        if(hasSupport) return;
-
-        const supportLi = document.createElement("li");
-        supportLi.innerHTML = `<a href="${getSupportLink("support.html")}">Support</a>`;
-
-        const financeLink = Array.from(nav.querySelectorAll("a")).find(a => {
-            const href = (a.getAttribute("href") || "").replace(/\\/g, "/");
-            return href.endsWith("/finance/finance.html") || href.endsWith("finance/finance.html") || href.endsWith("/finance.html") || href.endsWith("finance.html") || a.textContent.trim().toLowerCase() === "finance";
-        });
-
-        if(financeLink && financeLink.closest("li")){
-            financeLink.closest("li").insertAdjacentElement("afterend", supportLi);
-        }else{
-            nav.appendChild(supportLi);
-        }
-    });
+    // Deprecated: sidebar now rendered strictly by access matrix in renderSidebarMenuByAccess().
 }
 
 function applyAdminUsersNav(){
-    const role = (localStorage.getItem("role") || "").toLowerCase();
-    if(role !== "admin") return;
-    if(!hasUserGrantedPath("/users/user-list.html")) return;
-
-    document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach(nav => {
-        const hasUsers = Array.from(nav.querySelectorAll("a")).some(a => {
-            const href = (a.getAttribute("href") || "").replace(/\\/g, "/");
-            return href.endsWith("/users/user-list.html") || href.endsWith("users/user-list.html") || href.endsWith("/user-list.html") || href.endsWith("user-list.html") || a.textContent.trim().toLowerCase() === "users";
-        });
-
-        if(!hasUsers){
-            const usersLi = document.createElement("li");
-            usersLi.innerHTML = `<a href="${getUsersLink("user-list.html")}">Users</a>`;
-            nav.appendChild(usersLi);
-        }
-    });
+    // Deprecated: sidebar now rendered strictly by access matrix in renderSidebarMenuByAccess().
 }
 
 function applyStockNav(){
-    const role = (localStorage.getItem("role") || "").toLowerCase();
-    if(role !== "admin" && role !== "manager" && role !== "user") return;
-    const isAllowed = hasUserGrantedPath("/stock/stock.html");
-    if(!isAllowed) return;
-
-    document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach(nav => {
-        const hasStock = Array.from(nav.querySelectorAll("a")).some(a => {
-            const href = (a.getAttribute("href") || "").replace(/\\/g, "/");
-            return href.endsWith("/stock/stock.html") || href.endsWith("stock/stock.html") || href.endsWith("/stock.html") || href.endsWith("stock.html") || a.textContent.trim().toLowerCase() === "stock";
-        });
-        if(hasStock) return;
-
-        const stockLi = document.createElement("li");
-        stockLi.innerHTML = `<a href="${getStockLink("stock.html")}">Stock</a>`;
-
-        const supportLink = Array.from(nav.querySelectorAll("a")).find(a => {
-            const href = (a.getAttribute("href") || "").replace(/\\/g, "/");
-            return href.endsWith("/support/support.html") || href.endsWith("support/support.html") || href.endsWith("/support.html") || href.endsWith("support.html") || a.textContent.trim().toLowerCase() === "support";
-        });
-
-        if(supportLink && supportLink.closest("li")){
-            supportLink.closest("li").insertAdjacentElement("afterend", stockLi);
-        }else{
-            nav.appendChild(stockLi);
-        }
-    });
+    // Deprecated: sidebar now rendered strictly by access matrix in renderSidebarMenuByAccess().
 }
 
 function applyAccessGuards(){
@@ -681,10 +599,18 @@ async function loadUserAccessPermissions(){
             return;
         }
         const data = await res.json();
-        const dynamicPages = Array.isArray(data.allowed_pages)
+        const dynamicActions = Array.isArray(data.allowed_actions) ? data.allowed_actions : [];
+        const pagesFromActions = dynamicActions
+            .map((x) => String(x || "").trim().toLowerCase())
+            .filter((x) => x.endsWith("::view"))
+            .map((x) => x.slice(0, x.lastIndexOf("::")))
+            .filter(Boolean);
+        const fallbackPages = Array.isArray(data.allowed_pages)
             ? data.allowed_pages.map((x) => String(x || "").trim()).filter(Boolean)
             : [];
-        const dynamicActions = Array.isArray(data.allowed_actions) ? data.allowed_actions : [];
+        const dynamicPages = pagesFromActions.length
+            ? pagesFromActions
+            : fallbackPages;
         if(typeof data?.has_access_config === "boolean"){
             let nextConfigState = data.has_access_config;
             // For admin/manager, once a restricted config is known, keep it sticky across refreshes.
