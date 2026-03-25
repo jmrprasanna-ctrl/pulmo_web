@@ -16,7 +16,7 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
-router.get("/assignable", roleMiddleware(["admin","manager"]), getUsers);
+router.get("/assignable", roleMiddleware(["admin","manager","user"]), getUsers);
 router.get("/access/me", getMyAccess);
 
 router.use(roleMiddleware(["admin"]));

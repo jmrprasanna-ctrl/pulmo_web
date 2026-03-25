@@ -610,6 +610,10 @@ async function loadUserAccessPermissions(){
             return;
         }
         const data = await res.json();
+        const dynamicAllowedPages = Array.isArray(data.allowed_pages) ? data.allowed_pages : [];
+        const normalizedAllowedPages = dynamicAllowedPages
+            .map((x) => String(x || "").trim().toLowerCase())
+            .filter(Boolean);
         const dynamicActions = Array.isArray(data.allowed_actions) ? data.allowed_actions : [];
         const normalizedActionKeys = dynamicActions
             .map((x) => String(x || "").trim().toLowerCase())
@@ -618,6 +622,7 @@ async function loadUserAccessPermissions(){
             .map((x) => x.slice(0, x.lastIndexOf("::")))
             .filter(Boolean);
         const dynamicPages = Array.from(new Set([
+            ...normalizedAllowedPages,
             ...pagesFromActions,
             ...(normalizedActionKeys.includes("/users/technician-list.html::add") ? ["/users/add-technician.html"] : []),
             ...(normalizedActionKeys.includes("/users/technician-list.html::edit") ? ["/users/edit-technician.html"] : [])

@@ -135,19 +135,82 @@
 
 <script src="../../assets/js/api.js"></script>
 <script>
+const MESSAGE_ACCESS_PATH = "/messages/messages.html";
 const messageList = document.getElementById("messageList");
 const toUserSelect = document.getElementById("toUser");
 const createMessageCard = document.getElementById("create-message-card");
 let userMap = {};
 
+function getRole(){
+    return (localStorage.getItem("role") || "").toLowerCase();
+}
+
 function isAdminOrManager(){
-    const role = (localStorage.getItem("role") || "").toLowerCase();
+    const role = getRole();
     return role === "admin" || role === "manager";
+}
+
+function hasAnyMessagePermission(){
+    if(typeof hasUserGrantedPath === "function" && hasUserGrantedPath(MESSAGE_ACCESS_PATH)){
+        return true;
+    }
+    if(typeof hasUserActionPermission === "function"){
+        return hasUserActionPermission(MESSAGE_ACCESS_PATH, "view")
+            || hasUserActionPermission(MESSAGE_ACCESS_PATH, "add")
+            || hasUserActionPermission(MESSAGE_ACCESS_PATH, "delete");
+    }
+    return false;
+}
+
+function canViewMessagesPage(){
+    const role = (localStorage.getItem("role") || "").toLowerCase();
+    if(role === "admin" || role === "manager"){
+        if(typeof hasAccessConfigRestrictions === "function" && hasAccessConfigRestrictions()){
+            return hasAnyMessagePermission();
+        }
+        return true;
+    }
+    if(role === "user"){
+        return hasAnyMessagePermission();
+    }
+    return false;
+}
+
+function canCreateMessage(){
+    const role = getRole();
+    if(role !== "admin" && role !== "manager" && role !== "user") return false;
+    if(typeof hasAccessConfigRestrictions === "function" && hasAccessConfigRestrictions()){
+        return typeof hasUserActionPermission === "function"
+            ? hasUserActionPermission(MESSAGE_ACCESS_PATH, "add")
+            : false;
+    }
+    if(role === "user"){
+        return typeof hasUserActionPermission === "function"
+            ? hasUserActionPermission(MESSAGE_ACCESS_PATH, "add")
+            : false;
+    }
+    return true;
+}
+
+function canDeleteMessages(){
+    const role = getRole();
+    if(role !== "admin" && role !== "manager" && role !== "user") return false;
+    if(typeof hasAccessConfigRestrictions === "function" && hasAccessConfigRestrictions()){
+        return typeof hasUserActionPermission === "function"
+            ? hasUserActionPermission(MESSAGE_ACCESS_PATH, "delete")
+            : false;
+    }
+    if(role === "user"){
+        return typeof hasUserActionPermission === "function"
+            ? hasUserActionPermission(MESSAGE_ACCESS_PATH, "delete")
+            : false;
+    }
+    return true;
 }
 
 async function loadUsers(){
     try{
-        if(!isAdminOrManager()){
+        if(!canCreateMessage()){
             const userId = localStorage.getItem("userId");
             const userEmail = localStorage.getItem("userEmail");
             const userName = localStorage.getItem("userName");
@@ -191,7 +254,8 @@ async function loadMessages(){
             const toName = m.to_name || userMap[m.to_user_id] || (m.to_user_id ? `User ${m.to_user_id}` : "All");
             const fromName = m.from_name || (m.from_user_id ? `User ${m.from_user_id}` : "System");
             div.className = "message-item";
-            const canDelete = isAdminOrManager() || (userId && (String(m.to_user_id) === String(userId) || m.to_user_id === null));
+            const eligibleForDelete = isAdminOrManager() || (userId && (String(m.to_user_id) === String(userId) || m.to_user_id === null));
+            const canDelete = canDeleteMessages() && eligibleForDelete;
             div.innerHTML = `
                 <div class="message-row">
                     <div class="message-title">${m.title || "(No title)"}</div>
@@ -215,8 +279,8 @@ async function loadMessages(){
 
 document.getElementById("messageForm").addEventListener("submit", async (e)=>{
     e.preventDefault();
-    if(!isAdminOrManager()){
-        alert("Only admins and managers can send messages.");
+    if(!canCreateMessage()){
+        alert("You don't have permission to create messages.");
         return;
     }
     const data = {
@@ -235,6 +299,10 @@ document.getElementById("messageForm").addEventListener("submit", async (e)=>{
 });
 
 async function deleteMessage(id){
+    if(!canDeleteMessages()){
+        alert("You don't have permission to delete messages.");
+        return;
+    }
     if(!confirm("Delete this message?")) return;
     try{
         await request(`/messages/${id}`,"DELETE");
@@ -252,7 +320,15 @@ function logout(){
 }
 
 async function init(){
-    if(!isAdminOrManager() && createMessageCard){
+    if(typeof window.__waitForUserAccessPermissions === "function"){
+        await window.__waitForUserAccessPermissions();
+    }
+    if(!canViewMessagesPage()){
+        alert("You don't have access to Messages.");
+        window.location.href = "../dashboard.html";
+        return;
+    }
+    if(!canCreateMessage() && createMessageCard){
         createMessageCard.style.display = "none";
     }
     await loadUsers();

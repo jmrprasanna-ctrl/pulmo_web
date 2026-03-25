@@ -7,7 +7,7 @@ const roleMiddleware = require("../middleware/roleMiddleware");
 router.use(authMiddleware);
 
 router.get("/", roleMiddleware(["admin","manager","user"]), messageController.getMessages);
-router.post("/", roleMiddleware(["admin","manager"]), messageController.createMessage);
+router.post("/", roleMiddleware(["admin","manager","user"]), messageController.createMessage);
 router.delete("/:id", roleMiddleware(["admin","manager","user"]), messageController.deleteMessage);
 
 module.exports = router;
