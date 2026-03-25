@@ -668,6 +668,49 @@ exports.getAccessUsers = async (_req, res) => {
     }
 
     const rows = [];
+    const cfg = getDbConfig();
+    const mainDbClient = new Client({
+      host: cfg.host,
+      port: cfg.port,
+      user: cfg.user,
+      password: cfg.password,
+      database: cfg.database || INVENTORY_DB_NAME,
+    });
+
+    const linkedByUserDbKey = new Map();
+    const mappedByUserId = new Map();
+    try {
+      await mainDbClient.connect();
+      await ensureUserMappingTable(mainDbClient);
+
+      const accessRs = await mainDbClient.query(
+        `SELECT DISTINCT ON (user_id, LOWER(COALESCE(user_database, 'inventory')))
+            user_id, user_database, database_name
+         FROM user_accesses
+         ORDER BY user_id, LOWER(COALESCE(user_database, 'inventory')), "updatedAt" DESC NULLS LAST, "createdAt" DESC NULLS LAST, id DESC`
+      );
+      (accessRs.rows || []).forEach((row) => {
+        const userId = Number(row?.user_id || 0);
+        const userDb = normalizeUserDatabase(row?.user_database);
+        const linkedDb = normalizeDatabaseName(row?.database_name);
+        if (!userId || !linkedDb) return;
+        linkedByUserDbKey.set(`${userDb}:${userId}`, linkedDb);
+      });
+
+      const mappingRs = await mainDbClient.query(
+        `SELECT user_id, database_name
+         FROM user_mappings`
+      );
+      (mappingRs.rows || []).forEach((row) => {
+        const userId = Number(row?.user_id || 0);
+        const linkedDb = normalizeDatabaseName(row?.database_name);
+        if (!userId || !linkedDb) return;
+        mappedByUserId.set(userId, linkedDb);
+      });
+    } catch (_err) {
+    } finally {
+      await mainDbClient.end().catch(() => {});
+    }
 
     const includeDemo = String(_req?.query?.include_demo || "").trim().toLowerCase() === "true";
     const sourceDbs = includeDemo
@@ -690,14 +733,23 @@ exports.getAccessUsers = async (_req, res) => {
       (Array.isArray(users) ? users : []).forEach((user) => {
         const plain = user.toJSON ? user.toJSON() : user;
         const role = String(plain.role || "").toLowerCase() || "user";
+        const sourceDb = normalizeUserDatabase(databaseName);
+        const accessLinkedDb =
+          linkedByUserDbKey.get(`${sourceDb}:${plain.id}`) ||
+          linkedByUserDbKey.get(`${INVENTORY_DB_NAME}:${plain.id}`) ||
+          null;
+        const mappedLinkedDb = mappedByUserId.get(Number(plain.id || 0)) || null;
+        const linkedDb = normalizeDatabaseName(mappedLinkedDb || accessLinkedDb) || sourceDb;
+
         rows.push({
-          selection_key: `${databaseName}:${plain.id}`,
+          selection_key: `${sourceDb}:${plain.id}`,
           id: plain.id,
           username: plain.username || "",
           email: plain.email || "",
           role,
-          database_name: databaseName,
-          label: `${plain.username || plain.email || `User ${plain.id}`} [${role}] (${databaseName})`,
+          user_database: sourceDb,
+          database_name: linkedDb,
+          label: `${plain.username || plain.email || `User ${plain.id}`} [${role}] (${linkedDb})`,
         });
       });
     }
