@@ -11,7 +11,7 @@ const RESERVED_DATABASES = new Set(["postgres", "template0", "template1"]);
 const DATABASE_REGISTRY_TABLE = "company_databases";
 const COMPANY_REGISTRY_TABLE = "company_profiles";
 const COMPANY_STORAGE_ROOT = path.resolve(__dirname, "../storage/companies");
-const COMPANY_LOGO_EXTENSIONS = new Set([".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".tif"]);
+const COMPANY_LOGO_EXTENSIONS = new Set([".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".tif", ".png"]);
 
 const ACCESS_MODULE_OPTIONS = [
   {
@@ -927,7 +927,7 @@ exports.createCompany = async (req, res) => {
     return res.status(400).json({ message: "Company name is required." });
   }
   if (!COMPANY_LOGO_EXTENSIONS.has(ext)) {
-    return res.status(400).json({ message: "Invalid logo format. Allowed: .jpg, .jpeg, .bmp, .gif, .tiff" });
+    return res.status(400).json({ message: "Invalid logo format. Allowed: .jpg, .jpeg, .bmp, .gif, .tiff, .png" });
   }
 
   let logoBuffer;

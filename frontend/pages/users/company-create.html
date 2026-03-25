@@ -49,8 +49,8 @@
                 </div>
                 <div>
                     <label for="logoFile">Company Logo</label>
-                    <input id="logoFile" type="file" accept=".jpg,.jpeg,.bmp,.gif,.tiff,.tif">
-                    <div class="path-hint">Allowed formats: .jpg, .jpeg, .bmp, .gif, .tiff</div>
+                    <input id="logoFile" type="file" accept=".jpg,.jpeg,.bmp,.gif,.tiff,.tif,.png">
+                    <div class="path-hint">Allowed formats: .jpg, .jpeg, .bmp, .gif, .tiff, .png</div>
                 </div>
             </div>
 
@@ -85,7 +85,7 @@
         const saveCompanyBtnEl = document.getElementById("saveCompanyBtn");
         const companyTableBodyEl = document.getElementById("companyTableBody");
         const COMPANY_CREATE_PATH = "/users/company-create.html";
-        const ALLOWED_EXT = new Set([".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".tif"]);
+        const ALLOWED_EXT = new Set([".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".tif", ".png"]);
 
         let canAddCompany = false;
         let canDeleteCompany = false;
@@ -95,6 +95,10 @@
             const dt = new Date(value);
             if(Number.isNaN(dt.getTime())) return "-";
             return dt.toLocaleDateString();
+        }
+
+        function normalizeCompanyUppercase(value){
+            return String(value || "").toUpperCase();
         }
 
         function readFileAsDataURL(file){
@@ -112,7 +116,7 @@
             const dot = name.lastIndexOf(".");
             const ext = dot >= 0 ? name.slice(dot).toLowerCase() : "";
             if(!ALLOWED_EXT.has(ext)){
-                return "Invalid logo format. Allowed: .jpg, .jpeg, .bmp, .gif, .tiff";
+                return "Invalid logo format. Allowed: .jpg, .jpeg, .bmp, .gif, .tiff, .png";
             }
             return "";
         }
@@ -167,7 +171,7 @@
             try{
                 const fileData = await readFileAsDataURL(file);
                 await request("/users/companies/create", "POST", {
-                    company_name: companyName,
+                    company_name: normalizeCompanyUppercase(companyName),
                     logo_file_name: String(file.name || "").trim(),
                     logo_file_data_base64: fileData
                 });
@@ -211,6 +215,17 @@
             const btn = ev.target.closest("button[data-delete-company-id]");
             if(!btn) return;
             await deleteCompany(btn.getAttribute("data-delete-company-id"));
+        });
+        companyNameEl.style.textTransform = "uppercase";
+        companyNameEl.addEventListener("input", () => {
+            const pos = companyNameEl.selectionStart;
+            const upper = normalizeCompanyUppercase(companyNameEl.value);
+            if(companyNameEl.value !== upper){
+                companyNameEl.value = upper;
+                if(typeof pos === "number"){
+                    companyNameEl.setSelectionRange(pos, pos);
+                }
+            }
         });
 
         window.saveCompany = saveCompany;
