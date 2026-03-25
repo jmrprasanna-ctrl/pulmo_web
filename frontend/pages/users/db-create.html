@@ -46,7 +46,7 @@
                 <div>
                     <label for="databaseName">Database Name</label>
                     <input id="databaseName" type="text" placeholder="example: nishani_company_db">
-                    <div class="path-hint">Allowed: letters, numbers, underscore (stored as lowercase in system)</div>
+                    <div class="path-hint">Allowed: lowercase letters, numbers, underscore</div>
                 </div>
                 <div>
                     <label for="companyName">Company Name</label>
@@ -91,9 +91,9 @@
         function sanitizeDbNameForInput(value){
             return String(value || "")
                 .trim()
-                .toUpperCase()
+                .toLowerCase()
                 .replace(/\s+/g, "_")
-                .replace(/[^A-Z0-9_]/g, "")
+                .replace(/[^a-z0-9_]/g, "")
                 .replace(/_+/g, "_")
                 .replace(/^_+|_+$/g, "");
         }
@@ -114,7 +114,7 @@
                 return;
             }
             const databaseName = toDbIdentifier(databaseNameEl.value);
-            const companyName = String(companyNameEl.value || "").trim();
+            const companyName = String(companyNameEl.value || "").trim().toUpperCase();
 
             if(!databaseName){
                 alert("Please enter valid database name.");
@@ -201,7 +201,18 @@
                 databaseNameEl.value = cleaned;
             }
         });
-        databaseNameEl.style.textTransform = "uppercase";
+        databaseNameEl.style.textTransform = "lowercase";
+        companyNameEl.style.textTransform = "uppercase";
+        companyNameEl.addEventListener("input", () => {
+            const pos = companyNameEl.selectionStart;
+            const upper = String(companyNameEl.value || "").toUpperCase();
+            if(companyNameEl.value !== upper){
+                companyNameEl.value = upper;
+                if(typeof pos === "number"){
+                    companyNameEl.setSelectionRange(pos, pos);
+                }
+            }
+        });
         createdDbTableBodyEl.addEventListener("click", async (ev) => {
             const btn = ev.target.closest("button[data-delete-db]");
             if(!btn) return;
