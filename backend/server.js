@@ -111,7 +111,7 @@ async function ensureDefaultUiSettings() {
     if (!first) {
       await UiSetting.create({
         app_name: "PULMO TECHNOLOGIES",
-        footer_text: "© All Right Recieved with CRONIT SOLLUTIONS - JMR Prasanna.",
+        footer_text: "© All Right Recieved with CRONIT SOLLUTIONS - JMRP.",
         primary_color: "#0f6abf",
         accent_color: "#11a36f",
       });

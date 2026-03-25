@@ -157,15 +157,15 @@ exports.downloadBackup = async (req, res) => {
     const host = process.env.DB_HOST || "localhost";
     const port = Number(process.env.DB_PORT || 5432);
     const user = process.env.DB_USER || "postgres";
-    const database = process.env.DB_NAME || "inventory";
+    const database = String(req.databaseName || process.env.DB_NAME || "inventory").trim().toLowerCase();
     const password = process.env.DB_PASSWORD || "";
     const pgDumpPath = await resolvePgTool("pg_dump", "PG_DUMP_PATH");
     const mode = String(req.query?.mode || "data").trim().toLowerCase();
     const isFull = mode === "full";
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const filename = isFull
-      ? `inventory_full_backup_${timestamp}.sql`
-      : `inventory_data_backup_${timestamp}.sql`;
+      ? `${database}_full_backup_${timestamp}.sql`
+      : `${database}_data_backup_${timestamp}.sql`;
     tempFile = path.join(os.tmpdir(), filename);
     const args = [
       ...buildDbArgs({ host, port, user, database }),
@@ -221,7 +221,7 @@ exports.restoreBackup = async (req, res) => {
     const host = process.env.DB_HOST || "localhost";
     const port = Number(process.env.DB_PORT || 5432);
     const user = process.env.DB_USER || "postgres";
-    const database = process.env.DB_NAME || "inventory";
+    const database = String(req.databaseName || process.env.DB_NAME || "inventory").trim().toLowerCase();
     const password = process.env.DB_PASSWORD || "";
     const psqlPath = await resolvePgTool("psql", "PSQL_PATH");
     const tempFileName = `restore_${Date.now()}_${fileName.replace(/[^\w.-]/g, "_")}`;
