@@ -793,6 +793,8 @@ exports.financeOverview = async (req,res)=>{
                 .sort((a, b) => b.total_amount - a.total_amount)
         };
 
+        const rentalCountCustomerId = Number(req.query.rentalCountCustomerId || 0);
+        const rentalCountMonth = String(req.query.rentalCountMonth || "").trim();
         const rentalCountRows = await RentalMachineCount.findAll({
             include: [
                 { model: Customer, attributes: ["id", "name"] },
@@ -801,11 +803,27 @@ exports.financeOverview = async (req,res)=>{
             order: [["createdAt", "DESC"], ["id", "DESC"]]
         });
 
+        const rentalCountCustomerMap = new Map();
+        const rentalCountMonthSet = new Set();
         const rentalCountMonthMap = new Map();
         rentalCountRows.forEach((row) => {
             const dt = new Date(row.createdAt);
             const monthKey = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+            const customerId = Number((row.Customer && row.Customer.id) || row.customer_id || 0);
             const customerName = row.Customer ? row.Customer.name : "Unknown";
+            if(customerId > 0 && !rentalCountCustomerMap.has(customerId)){
+                rentalCountCustomerMap.set(customerId, {
+                    customer_id: customerId,
+                    customer_name: customerName
+                });
+            }
+            rentalCountMonthSet.add(monthKey);
+            if(rentalCountCustomerId > 0 && customerId !== rentalCountCustomerId){
+                return;
+            }
+            if(rentalCountMonth && monthKey !== rentalCountMonth){
+                return;
+            }
             const machineId = row.RentalMachine ? (row.RentalMachine.machine_id || "") : "";
             const serialNo = row.RentalMachine ? (row.RentalMachine.serial_no || "") : "";
             const pagePerPrice = Number((row.RentalMachine && row.RentalMachine.page_per_price) || 0);
@@ -813,15 +831,16 @@ exports.financeOverview = async (req,res)=>{
             const updatedCount = Number(row.updated_count || 0);
             const copiedPages = Math.max(0, updatedCount - inputCount);
             const rowPrice = copiedPages * pagePerPrice;
-            const key = `${monthKey}__${customerName}__${machineId}__${serialNo}`;
+            const key = `${monthKey}__${customerId}__${customerName}__${machineId}__${serialNo}`;
             if(!rentalCountMonthMap.has(key)){
                 rentalCountMonthMap.set(key, {
                     month_name: monthKey,
+                    customer_id: customerId,
                     customer_name: customerName,
                     machine_id: machineId,
                     serial_no: serialNo,
                     transactions: 0,
-                    latest_updated_count: Number(row.updated_count || 0),
+                    machine_count: Number(row.updated_count || 0),
                     latest_entry_at: row.createdAt,
                     total_price: 0
                 });
@@ -830,7 +849,7 @@ exports.financeOverview = async (req,res)=>{
             r.transactions += 1;
             r.total_price += rowPrice;
             if(new Date(row.createdAt).getTime() >= new Date(r.latest_entry_at).getTime()){
-                r.latest_updated_count = Number(row.updated_count || 0);
+                r.machine_count = Number(row.updated_count || 0);
                 r.latest_entry_at = row.createdAt;
             }
         });
@@ -838,11 +857,12 @@ exports.financeOverview = async (req,res)=>{
         const rentalCountMonthWise = Array.from(rentalCountMonthMap.values())
             .map((r) => ({
                 month_name: r.month_name,
+                customer_id: Number(r.customer_id || 0),
                 customer_name: r.customer_name,
                 machine_id: r.machine_id,
                 serial_no: r.serial_no,
                 transactions: Number(r.transactions || 0),
-                latest_updated_count: Number(r.latest_updated_count || 0),
+                machine_count: Number(r.machine_count || 0),
                 total_price: Number((r.total_price || 0).toFixed(2)),
                 latest_entry_at: r.latest_entry_at
             }))
@@ -862,7 +882,10 @@ exports.financeOverview = async (req,res)=>{
             vendor_dealer_price_by_period: vendorDealerPriceByPeriod,
             vendor_dealer_details_by_period: vendorDealerDetailsByPeriod,
             rental_consumables: rentalConsumables,
-            rental_count_month_wise: rentalCountMonthWise
+            rental_count_month_wise: rentalCountMonthWise,
+            rental_count_customer_options: Array.from(rentalCountCustomerMap.values())
+                .sort((a, b) => String(a.customer_name || "").localeCompare(String(b.customer_name || ""))),
+            rental_count_month_options: Array.from(rentalCountMonthSet.values()).sort((a, b) => b.localeCompare(a))
         });
     }catch(err){
         res.status(500).json({ message: err.message || "Failed to load finance overview." });

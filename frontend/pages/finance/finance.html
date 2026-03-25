@@ -218,7 +218,15 @@
 
     <div class="form-container section">
         <div class="section-head">
-            <h3>Rental Count Machines with Customers (Month Wise)</h3>
+            <h3>Rental Count Machines with Customers</h3>
+            <div class="section-actions">
+                <select id="rentalCountCustomerFilter" style="min-width:220px;">
+                    <option value="">All Rental Customers</option>
+                </select>
+                <select id="rentalCountMonthFilter" style="min-width:170px;">
+                    <option value="">All Months</option>
+                </select>
+            </div>
             <div class="section-actions">
                 <button class="btn" type="button" onclick="exportRentalCountPDF()">Save PDF</button>
                 <button class="btn" type="button" onclick="exportRentalCountXlsx()">Save XLSX</button>
@@ -232,7 +240,7 @@
                     <th>Machine ID</th>
                     <th>Serial No</th>
                     <th>Transactions</th>
-                    <th>Latest Updated Count</th>
+                    <th>Machine Count</th>
                     <th>Price (Rs.)</th>
                     <th>Latest Entry</th>
                 </tr>
@@ -279,6 +287,53 @@ function fmt(v){
 }
 
 let lastFinanceData = null;
+const rentalCountCustomerFilterEl = document.getElementById("rentalCountCustomerFilter");
+const rentalCountMonthFilterEl = document.getElementById("rentalCountMonthFilter");
+
+function ensureMonthOption(select, value){
+    if(!select || !value) return;
+    const exists = Array.from(select.options).some((opt) => String(opt.value) === String(value));
+    if(!exists){
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+    }
+}
+
+function fillRentalCountFilters(data){
+    if(rentalCountCustomerFilterEl){
+        const currentCustomer = String(rentalCountCustomerFilterEl.value || "");
+        const options = Array.isArray(data?.rental_count_customer_options) ? data.rental_count_customer_options : [];
+        rentalCountCustomerFilterEl.innerHTML = `<option value="">All Rental Customers</option>`;
+        options.forEach((row) => {
+            const opt = document.createElement("option");
+            opt.value = String(row.customer_id || "");
+            opt.textContent = row.customer_name || `Customer ${row.customer_id || ""}`;
+            rentalCountCustomerFilterEl.appendChild(opt);
+        });
+        if(currentCustomer){
+            ensureMonthOption(rentalCountCustomerFilterEl, currentCustomer);
+            rentalCountCustomerFilterEl.value = currentCustomer;
+        }
+    }
+
+    if(rentalCountMonthFilterEl){
+        const currentMonth = String(rentalCountMonthFilterEl.value || "");
+        const monthOptions = Array.isArray(data?.rental_count_month_options) ? data.rental_count_month_options : [];
+        rentalCountMonthFilterEl.innerHTML = `<option value="">All Months</option>`;
+        monthOptions.forEach((month) => {
+            const opt = document.createElement("option");
+            opt.value = month;
+            opt.textContent = month;
+            rentalCountMonthFilterEl.appendChild(opt);
+        });
+        if(currentMonth){
+            ensureMonthOption(rentalCountMonthFilterEl, currentMonth);
+            rentalCountMonthFilterEl.value = currentMonth;
+        }
+    }
+}
 
 function putRows(tbodyId, rows, emptyCols){
     const tbody = document.getElementById(tbodyId);
@@ -300,9 +355,12 @@ async function loadFinanceOverview(){
     try{
         const baseDate = "";
         const techMonth = "";
-        const query = `?date=${encodeURIComponent(baseDate)}&techMonth=${encodeURIComponent(techMonth)}`;
+        const rentalCountCustomerId = String(rentalCountCustomerFilterEl?.value || "");
+        const rentalCountMonth = String(rentalCountMonthFilterEl?.value || "");
+        const query = `?date=${encodeURIComponent(baseDate)}&techMonth=${encodeURIComponent(techMonth)}&rentalCountCustomerId=${encodeURIComponent(rentalCountCustomerId)}&rentalCountMonth=${encodeURIComponent(rentalCountMonth)}`;
         const data = await request(`/reports/finance-overview${query}`, "GET");
         lastFinanceData = data;
+        fillRentalCountFilters(data);
 
         const monthSummary = data.summary_by_period?.month || { total_sales:0, total_expenses:0, net_profit:0 };
         document.getElementById("totalSales").innerText = fmt(monthSummary.total_sales);
@@ -396,7 +454,7 @@ async function loadFinanceOverview(){
             <td>${r.machine_id || ""}</td>
             <td>${r.serial_no || ""}</td>
             <td>${Number(r.transactions || 0)}</td>
-            <td>${Number(r.latest_updated_count || 0)}</td>
+            <td>${Number(r.machine_count || 0)}</td>
             <td>${fmt(r.total_price)}</td>
             <td>${r.latest_entry_at ? new Date(r.latest_entry_at).toLocaleDateString() : ""}</td>
         `);
@@ -483,10 +541,10 @@ function exportFinanceExcel(){
     });
 
     lines.push("");
-    lines.push("Rental Count Month Wise");
-    lines.push("Month,Customer,Machine ID,Serial No,Transactions,Latest Updated Count,Latest Entry");
+    lines.push("Rental Count Machines with Customers");
+    lines.push("Month,Customer,Machine ID,Serial No,Transactions,Machine Count,Latest Entry");
     (lastFinanceData.rental_count_month_wise || []).forEach((r) => {
-        lines.push([r.month_name, r.customer_name, r.machine_id, r.serial_no, r.transactions, r.latest_updated_count, r.latest_entry_at ? new Date(r.latest_entry_at).toLocaleDateString() : ""].map(csvEscape).join(","));
+        lines.push([r.month_name, r.customer_name, r.machine_id, r.serial_no, r.transactions, r.machine_count, r.latest_entry_at ? new Date(r.latest_entry_at).toLocaleDateString() : ""].map(csvEscape).join(","));
     });
 
     downloadFile("Finance_Overview.csv", lines.join("\n"), "text/csv;charset=utf-8;");
@@ -537,9 +595,9 @@ function exportFinancePDF(){
         line(`${r.month_name || ""}: ${fmt(r.total_amount)}`);
     });
     line("");
-    line("Rental Count Month Wise");
+    line("Rental Count Machines with Customers");
     (lastFinanceData.rental_count_month_wise || []).forEach((r) => {
-        line(`${r.month_name || ""} | ${r.customer_name || ""} | ${r.machine_id || ""} | Txn ${r.transactions || 0} | Updated ${r.latest_updated_count || 0}`);
+        line(`${r.month_name || ""} | ${r.customer_name || ""} | ${r.machine_id || ""} | Txn ${r.transactions || 0} | Machine Count ${r.machine_count || 0}`);
     });
 
     doc.save("Finance_Overview.pdf");
@@ -620,7 +678,7 @@ function exportRentalConsumablesXlsx(){
 }
 
 function exportRentalCountPDF(){
-    exportTablePDF("rentalCountTable", "Rental Count Machines with Customers (Month Wise)", "Finance_Rental_Count.pdf");
+    exportTablePDF("rentalCountTable", "Rental Count Machines with Customers", "Finance_Rental_Count.pdf");
 }
 function exportRentalCountXlsx(){
     exportTableXlsx("rentalCountTable", "Finance_Rental_Count.xlsx");
@@ -734,6 +792,8 @@ function logout(){
 }
 
 loadFinanceOverview();
+rentalCountCustomerFilterEl?.addEventListener("change", loadFinanceOverview);
+rentalCountMonthFilterEl?.addEventListener("change", loadFinanceOverview);
 </script>
 </body>
 </html>

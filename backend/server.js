@@ -234,6 +234,15 @@ async function ensureRentalMachineCountSchema() {
       ALTER TABLE rental_machine_counts
       ADD COLUMN IF NOT EXISTS updated_count INTEGER DEFAULT 0;
     `);
+
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS rental_machine_counts_customer_created_idx
+      ON rental_machine_counts(customer_id, "createdAt");
+    `);
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS rental_machine_counts_machine_created_idx
+      ON rental_machine_counts(rental_machine_id, "createdAt");
+    `);
   });
 }
 
