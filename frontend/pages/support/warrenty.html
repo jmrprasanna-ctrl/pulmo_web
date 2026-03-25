@@ -38,6 +38,7 @@
                 <tr>
                     <th>Warranty</th>
                     <th>Invoice Date</th>
+                    <th>Warranty End</th>
                     <th>Invoice No</th>
                     <th>Customer</th>
                     <th>Total</th>
@@ -105,6 +106,7 @@ async function loadWarrentyInvoices(){
             tr.innerHTML = `
                 <td>${inv.warranty_period || ""}</td>
                 <td>${fmtDate(inv.invoice_date)}</td>
+                <td>${fmtDate(inv.warranty_expiry_date)}</td>
                 <td>${inv.invoice_no || ""}</td>
                 <td>${inv.customer_name || ""}</td>
                 <td>${fmtMoney(inv.total)}</td>
@@ -115,7 +117,7 @@ async function loadWarrentyInvoices(){
 
         if(!list.length){
             const tr = document.createElement("tr");
-            tr.innerHTML = `<td colspan="6" style="text-align:center;">No warranty-linked invoices found.</td>`;
+            tr.innerHTML = `<td colspan="7" style="text-align:center;">No active warranty invoices found.</td>`;
             tbody.appendChild(tr);
         }
     }catch(err){

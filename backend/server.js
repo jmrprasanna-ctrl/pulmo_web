@@ -379,6 +379,10 @@ async function ensureInvoiceImportantWarrantySchema() {
       ALTER TABLE invoice_importants
       ADD COLUMN IF NOT EXISTS warranty_period VARCHAR(20);
     `);
+    await db.query(`
+      ALTER TABLE invoice_importants
+      ADD COLUMN IF NOT EXISTS warranty_expiry_date DATE;
+    `);
 
     await db.query(`
       UPDATE invoice_importants
@@ -390,6 +394,20 @@ async function ensureInvoiceImportantWarrantySchema() {
         ELSE NULL
       END
       WHERE warranty_period IS NULL OR TRIM(warranty_period) = '';
+    `);
+
+    await db.query(`
+      UPDATE invoice_importants ii
+      SET warranty_expiry_date = CASE
+        WHEN ii.warranty_period = '3 month' THEN (COALESCE(i.invoice_date, DATE(ii."createdAt")) + INTERVAL '3 months')::date
+        WHEN ii.warranty_period = '6 month' THEN (COALESCE(i.invoice_date, DATE(ii."createdAt")) + INTERVAL '6 months')::date
+        WHEN ii.warranty_period = '1 year' THEN (COALESCE(i.invoice_date, DATE(ii."createdAt")) + INTERVAL '1 year')::date
+        WHEN ii.warranty_period = '2 year' THEN (COALESCE(i.invoice_date, DATE(ii."createdAt")) + INTERVAL '2 years')::date
+        ELSE NULL
+      END
+      FROM invoices i
+      WHERE i.id = ii.invoice_id
+        AND (ii.warranty_expiry_date IS NULL);
     `);
   });
 }

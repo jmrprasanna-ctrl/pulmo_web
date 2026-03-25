@@ -10,6 +10,7 @@ const InvoiceImportant = db.define(
     line_no: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
     note: { type: DataTypes.STRING, allowNull: false },
     warranty_period: { type: DataTypes.STRING, allowNull: true },
+    warranty_expiry_date: { type: DataTypes.DATEONLY, allowNull: true },
     createdAt: { type: DataTypes.DATE, allowNull: true, defaultValue: DataTypes.NOW },
     updatedAt: { type: DataTypes.DATE, allowNull: true, defaultValue: DataTypes.NOW },
   },

@@ -28,6 +28,24 @@ function extractWarrantyPeriodFromText(noteText){
     return "";
 }
 
+function calculateWarrantyExpiryDate(invoiceDate, warrantyPeriod){
+    const period = normalizeWarrantyPeriod(warrantyPeriod);
+    const value = String(invoiceDate || "").trim();
+    if(!period || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+    const date = new Date(`${value}T00:00:00`);
+    if(Number.isNaN(date.getTime())) return null;
+    if(period === "3 month"){
+        date.setMonth(date.getMonth() + 3);
+    }else if(period === "6 month"){
+        date.setMonth(date.getMonth() + 6);
+    }else if(period === "1 year"){
+        date.setFullYear(date.getFullYear() + 1);
+    }else if(period === "2 year"){
+        date.setFullYear(date.getFullYear() + 2);
+    }
+    return date.toISOString().slice(0, 10);
+}
+
 function safeFilePart(value, fallback = "value"){
     const normalized = String(value || "")
         .trim()
@@ -240,7 +258,7 @@ exports.getInvoice = async (req,res)=>{
             include:[
                 { model: Customer, attributes:["id","name","address","tel","email"] },
                 { model: InvoiceItem, include:[{ model: Product, attributes:["id","product_id","description","model"] }] },
-                { model: InvoiceImportant, attributes:["id","line_no","note","warranty_period"] }
+                { model: InvoiceImportant, attributes:["id","line_no","note","warranty_period","warranty_expiry_date"] }
             ]
         });
         if(!invoice) return res.status(404).json({ message: "Invoice not found" });
@@ -554,11 +572,15 @@ exports.createInvoice = async (req,res)=>{
                     : "";
                 const detectedWarranty = extractWarrantyPeriodFromText(note);
                 const warrantyPeriod = explicitWarranty || detectedWarranty || null;
+                const warrantyExpiryDate = warrantyPeriod
+                    ? calculateWarrantyExpiryDate(invoiceDateValue, warrantyPeriod)
+                    : null;
                 await InvoiceImportant.create({
                     invoice_id: invoice.id,
                     line_no: lineNo,
                     note,
-                    warranty_period: warrantyPeriod
+                    warranty_period: warrantyPeriod,
+                    warranty_expiry_date: warrantyExpiryDate
                 });
                 lineNo += 1;
             }
@@ -578,25 +600,36 @@ exports.listWarrantyInvoices = async (_req, res) => {
         const invoices = await Invoice.findAll({
             include: [
                 { model: Customer, attributes: ["id","name"] },
-                { model: InvoiceImportant, attributes: ["id","note","warranty_period"] }
+                { model: InvoiceImportant, attributes: ["id","note","warranty_period","warranty_expiry_date"] }
             ],
             order:[["invoice_date","DESC"],["createdAt","DESC"]]
         });
 
         const rows = [];
+        const todayIso = new Date().toISOString().slice(0, 10);
         invoices.forEach((inv) => {
             const importants = Array.isArray(inv.InvoiceImportants) ? inv.InvoiceImportants : [];
-            const periods = new Set();
+            const periodToExpiry = new Map();
             importants.forEach((imp) => {
                 const explicit = normalizeWarrantyPeriod(imp.warranty_period);
                 const detected = extractWarrantyPeriodFromText(imp.note);
                 const period = explicit || detected;
                 if(period){
-                    periods.add(period);
+                    const expiry = String(
+                        imp.warranty_expiry_date
+                        || calculateWarrantyExpiryDate(inv.invoice_date || inv.createdAt, period)
+                        || ""
+                    ).slice(0, 10);
+                    if(!expiry || expiry >= todayIso){
+                        const previous = periodToExpiry.get(period);
+                        if(!previous || expiry > previous){
+                            periodToExpiry.set(period, expiry);
+                        }
+                    }
                 }
             });
 
-            periods.forEach((period) => {
+            periodToExpiry.forEach((expiry, period) => {
                 rows.push({
                     invoice_id: inv.id,
                     invoice_no: inv.invoice_no,
@@ -604,7 +637,8 @@ exports.listWarrantyInvoices = async (_req, res) => {
                     customer_name: inv.Customer ? inv.Customer.name : "",
                     total: Number(inv.total_amount || 0),
                     payment_status: inv.payment_status || "Pending",
-                    warranty_period: period
+                    warranty_period: period,
+                    warranty_expiry_date: expiry || null
                 });
             });
         });
@@ -670,6 +704,18 @@ exports.updateInvoicePayment = async (req,res)=>{
             payment_status,
             invoice_date
         });
+
+        if(req.body.invoice_date !== undefined){
+            const importants = await InvoiceImportant.findAll({ where: { invoice_id: invoice.id } });
+            for(const imp of importants){
+                const period = normalizeWarrantyPeriod(imp.warranty_period) || extractWarrantyPeriodFromText(imp.note);
+                const expiry = period ? calculateWarrantyExpiryDate(invoice_date, period) : null;
+                await imp.update({
+                    warranty_period: period || null,
+                    warranty_expiry_date: expiry
+                });
+            }
+        }
 
         res.json({
             message: "Payment updated successfully.",
