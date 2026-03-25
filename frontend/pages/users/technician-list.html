@@ -69,8 +69,13 @@
 
         function canAddTechnician(){
             const role = getRole();
-            if(role !== "admin" && role !== "manager") return false;
+            if(role !== "admin" && role !== "manager" && role !== "user") return false;
             if(typeof hasAccessConfigRestrictions === "function" && hasAccessConfigRestrictions()){
+                return typeof hasUserActionPermission === "function"
+                    ? hasUserActionPermission(TECHNICIAN_ACCESS_PATH, "add")
+                    : false;
+            }
+            if(role === "user"){
                 return typeof hasUserActionPermission === "function"
                     ? hasUserActionPermission(TECHNICIAN_ACCESS_PATH, "add")
                     : false;
@@ -80,8 +85,13 @@
 
         function canEditTechnician(){
             const role = getRole();
-            if(role !== "admin" && role !== "manager") return false;
+            if(role !== "admin" && role !== "manager" && role !== "user") return false;
             if(typeof hasAccessConfigRestrictions === "function" && hasAccessConfigRestrictions()){
+                return typeof hasUserActionPermission === "function"
+                    ? hasUserActionPermission(TECHNICIAN_ACCESS_PATH, "edit")
+                    : false;
+            }
+            if(role === "user"){
                 return typeof hasUserActionPermission === "function"
                     ? hasUserActionPermission(TECHNICIAN_ACCESS_PATH, "edit")
                     : false;
@@ -91,8 +101,13 @@
 
         function canDeleteTechnician(){
             const role = getRole();
-            if(role !== "admin" && role !== "manager") return false;
+            if(role !== "admin" && role !== "manager" && role !== "user") return false;
             if(typeof hasAccessConfigRestrictions === "function" && hasAccessConfigRestrictions()){
+                return typeof hasUserActionPermission === "function"
+                    ? hasUserActionPermission(TECHNICIAN_ACCESS_PATH, "delete")
+                    : false;
+            }
+            if(role === "user"){
                 return typeof hasUserActionPermission === "function"
                     ? hasUserActionPermission(TECHNICIAN_ACCESS_PATH, "delete")
                     : false;

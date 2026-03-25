@@ -45,8 +45,13 @@
 
         function canAddTechnician(){
             const role = (localStorage.getItem("role") || "").toLowerCase();
-            if(role !== "admin" && role !== "manager") return false;
+            if(role !== "admin" && role !== "manager" && role !== "user") return false;
             if(typeof hasAccessConfigRestrictions === "function" && hasAccessConfigRestrictions()){
+                return typeof hasUserActionPermission === "function"
+                    ? hasUserActionPermission(TECHNICIAN_ACCESS_PATH, "add")
+                    : false;
+            }
+            if(role === "user"){
                 return typeof hasUserActionPermission === "function"
                     ? hasUserActionPermission(TECHNICIAN_ACCESS_PATH, "add")
                     : false;
