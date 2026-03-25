@@ -223,6 +223,9 @@
                 <select id="rentalCountCustomerFilter" style="min-width:220px;">
                     <option value="">All Rental Customers</option>
                 </select>
+                <select id="rentalCountYearFilter" style="min-width:130px;">
+                    <option value="">All Years</option>
+                </select>
                 <select id="rentalCountMonthFilter" style="min-width:170px;">
                     <option value="">All Months</option>
                 </select>
@@ -288,7 +291,22 @@ function fmt(v){
 
 let lastFinanceData = null;
 const rentalCountCustomerFilterEl = document.getElementById("rentalCountCustomerFilter");
+const rentalCountYearFilterEl = document.getElementById("rentalCountYearFilter");
 const rentalCountMonthFilterEl = document.getElementById("rentalCountMonthFilter");
+const MONTH_OPTION_ROWS = [
+    { value: "1", label: "January" },
+    { value: "2", label: "February" },
+    { value: "3", label: "March" },
+    { value: "4", label: "April" },
+    { value: "5", label: "May" },
+    { value: "6", label: "June" },
+    { value: "7", label: "July" },
+    { value: "8", label: "August" },
+    { value: "9", label: "September" },
+    { value: "10", label: "October" },
+    { value: "11", label: "November" },
+    { value: "12", label: "December" }
+];
 
 function ensureMonthOption(select, value){
     if(!select || !value) return;
@@ -318,14 +336,29 @@ function fillRentalCountFilters(data){
         }
     }
 
+    if(rentalCountYearFilterEl){
+        const currentYear = String(rentalCountYearFilterEl.value || "");
+        const yearOptions = Array.isArray(data?.rental_count_year_options) ? data.rental_count_year_options : [];
+        rentalCountYearFilterEl.innerHTML = `<option value="">All Years</option>`;
+        yearOptions.forEach((yearVal) => {
+            const opt = document.createElement("option");
+            opt.value = String(yearVal);
+            opt.textContent = String(yearVal);
+            rentalCountYearFilterEl.appendChild(opt);
+        });
+        if(currentYear){
+            ensureMonthOption(rentalCountYearFilterEl, currentYear);
+            rentalCountYearFilterEl.value = currentYear;
+        }
+    }
+
     if(rentalCountMonthFilterEl){
         const currentMonth = String(rentalCountMonthFilterEl.value || "");
-        const monthOptions = Array.isArray(data?.rental_count_month_options) ? data.rental_count_month_options : [];
         rentalCountMonthFilterEl.innerHTML = `<option value="">All Months</option>`;
-        monthOptions.forEach((month) => {
+        MONTH_OPTION_ROWS.forEach((month) => {
             const opt = document.createElement("option");
-            opt.value = month;
-            opt.textContent = month;
+            opt.value = month.value;
+            opt.textContent = month.label;
             rentalCountMonthFilterEl.appendChild(opt);
         });
         if(currentMonth){
@@ -356,8 +389,9 @@ async function loadFinanceOverview(){
         const baseDate = "";
         const techMonth = "";
         const rentalCountCustomerId = String(rentalCountCustomerFilterEl?.value || "");
-        const rentalCountMonth = String(rentalCountMonthFilterEl?.value || "");
-        const query = `?date=${encodeURIComponent(baseDate)}&techMonth=${encodeURIComponent(techMonth)}&rentalCountCustomerId=${encodeURIComponent(rentalCountCustomerId)}&rentalCountMonth=${encodeURIComponent(rentalCountMonth)}`;
+        const rentalCountYear = String(rentalCountYearFilterEl?.value || "");
+        const rentalCountMonthNum = String(rentalCountMonthFilterEl?.value || "");
+        const query = `?date=${encodeURIComponent(baseDate)}&techMonth=${encodeURIComponent(techMonth)}&rentalCountCustomerId=${encodeURIComponent(rentalCountCustomerId)}&rentalCountYear=${encodeURIComponent(rentalCountYear)}&rentalCountMonthNum=${encodeURIComponent(rentalCountMonthNum)}`;
         const data = await request(`/reports/finance-overview${query}`, "GET");
         lastFinanceData = data;
         fillRentalCountFilters(data);
@@ -793,6 +827,7 @@ function logout(){
 
 loadFinanceOverview();
 rentalCountCustomerFilterEl?.addEventListener("change", loadFinanceOverview);
+rentalCountYearFilterEl?.addEventListener("change", loadFinanceOverview);
 rentalCountMonthFilterEl?.addEventListener("change", loadFinanceOverview);
 </script>
 </body>

@@ -794,7 +794,8 @@ exports.financeOverview = async (req,res)=>{
         };
 
         const rentalCountCustomerId = Number(req.query.rentalCountCustomerId || 0);
-        const rentalCountMonth = String(req.query.rentalCountMonth || "").trim();
+        const rentalCountYear = Number(req.query.rentalCountYear || 0);
+        const rentalCountMonthNum = Number(req.query.rentalCountMonthNum || 0);
         const rentalMachines = await RentalMachine.findAll({
             include: [
                 { model: Customer, attributes: ["id", "name"] }
@@ -821,18 +822,23 @@ exports.financeOverview = async (req,res)=>{
                 });
             }
         });
-        const rentalCountMonthSet = new Set();
+        const rentalCountYearSet = new Set();
         const rentalCountMonthMap = new Map();
         rentalCountRows.forEach((row) => {
             const dt = new Date(row.createdAt);
-            const monthKey = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+            const rowYear = dt.getFullYear();
+            const rowMonthNum = dt.getMonth() + 1;
+            const monthKey = `${rowYear}-${String(rowMonthNum).padStart(2, "0")}`;
             const customerId = Number((row.Customer && row.Customer.id) || row.customer_id || 0);
             const customerName = row.Customer ? row.Customer.name : "Unknown";
-            rentalCountMonthSet.add(monthKey);
+            rentalCountYearSet.add(rowYear);
             if(rentalCountCustomerId > 0 && customerId !== rentalCountCustomerId){
                 return;
             }
-            if(rentalCountMonth && monthKey !== rentalCountMonth){
+            if(rentalCountYear > 0 && rowYear !== rentalCountYear){
+                return;
+            }
+            if(rentalCountMonthNum > 0 && rowMonthNum !== rentalCountMonthNum){
                 return;
             }
             const machineId = row.RentalMachine ? (row.RentalMachine.machine_id || "") : "";
@@ -885,26 +891,26 @@ exports.financeOverview = async (req,res)=>{
                 return a.machine_id.localeCompare(b.machine_id);
             });
 
-        if(!rentalCountMonthSet.size){
-            const todayMonth = new Date().toISOString().slice(0, 7);
-            rentalCountMonthSet.add(todayMonth);
+        if(!rentalCountYearSet.size){
+            rentalCountYearSet.add(new Date().getFullYear());
         }
 
-        if(rentalCountCustomerId > 0 && rentalCountMonth){
+        if(rentalCountCustomerId > 0 && rentalCountYear > 0 && rentalCountMonthNum > 0){
             const customerMachines = rentalMachines.filter((m) => Number(m.customer_id || 0) === rentalCountCustomerId);
+            const selectedMonthKey = `${rentalCountYear}-${String(rentalCountMonthNum).padStart(2, "0")}`;
             customerMachines.forEach((m) => {
                 const customerName = (m.Customer && m.Customer.name) || `Customer ${rentalCountCustomerId}`;
                 const machineId = String(m.machine_id || "");
                 const serialNo = String(m.serial_no || "");
                 const exists = rentalCountMonthWise.some((r) =>
-                    r.month_name === rentalCountMonth
+                    r.month_name === selectedMonthKey
                     && Number(r.customer_id || 0) === rentalCountCustomerId
                     && String(r.machine_id || "") === machineId
                     && String(r.serial_no || "") === serialNo
                 );
                 if(exists) return;
                 rentalCountMonthWise.push({
-                    month_name: rentalCountMonth,
+                    month_name: selectedMonthKey,
                     customer_id: rentalCountCustomerId,
                     customer_name: customerName,
                     machine_id: machineId,
@@ -936,7 +942,10 @@ exports.financeOverview = async (req,res)=>{
             rental_count_month_wise: rentalCountMonthWise,
             rental_count_customer_options: Array.from(rentalCountCustomerMap.values())
                 .sort((a, b) => String(a.customer_name || "").localeCompare(String(b.customer_name || ""))),
-            rental_count_month_options: Array.from(rentalCountMonthSet.values()).sort((a, b) => b.localeCompare(a))
+            rental_count_year_options: Array.from(rentalCountYearSet.values())
+                .map((y) => Number(y))
+                .filter((y) => Number.isFinite(y) && y > 0)
+                .sort((a, b) => b - a)
         });
     }catch(err){
         res.status(500).json({ message: err.message || "Failed to load finance overview." });
