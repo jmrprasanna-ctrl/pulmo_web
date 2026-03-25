@@ -55,7 +55,7 @@
             </div>
 
             <div class="access-actions" style="margin-top: 16px; display:flex; gap:10px; flex-wrap:wrap;">
-                <button class="btn btn-primary" type="button" onclick="saveDatabase()">Save</button>
+                <button id="saveDbBtn" class="btn btn-primary" type="button" onclick="saveDatabase()">Save</button>
                 <a class="btn btn-secondary" href="user-access.html">Back</a>
             </div>
 
@@ -83,6 +83,10 @@
         const databaseNameEl = document.getElementById("databaseName");
         const companyNameEl = document.getElementById("companyName");
         const createdDbTableBodyEl = document.getElementById("createdDbTableBody");
+        const saveDbBtnEl = document.getElementById("saveDbBtn");
+        const DB_CREATE_PATH = "/users/db-create.html";
+        let canAddDb = false;
+        let canDeleteDb = false;
 
         function sanitizeDbName(value){
             return String(value || "")
@@ -95,6 +99,10 @@
         }
 
         async function saveDatabase(){
+            if(!canAddDb){
+                alert("You do not have add permission for DB Create page.");
+                return;
+            }
             const databaseName = sanitizeDbName(databaseNameEl.value);
             const companyName = String(companyNameEl.value || "").trim();
 
@@ -141,12 +149,15 @@
                 createdDbTableBodyEl.innerHTML = "";
                 rows.forEach((row) => {
                     const tr = document.createElement("tr");
+                    const deleteAction = canDeleteDb
+                        ? `<button class="btn btn-secondary" type="button" data-delete-db="${String(row.name || "")}" style="min-width:90px;">Delete</button>`
+                        : `<span>-</span>`;
                     tr.innerHTML = `
                         <td>${String(row.name || "")}</td>
                         <td>${String(row.company_name || "")}</td>
                         <td>${formatDate(row.created_at)}</td>
                         <td class="actions">
-                            <button class="btn btn-secondary" type="button" data-delete-db="${String(row.name || "")}" style="min-width:90px;">Delete</button>
+                            ${deleteAction}
                         </td>
                     `;
                     createdDbTableBodyEl.appendChild(tr);
@@ -157,6 +168,10 @@
         }
 
         async function deleteDatabase(databaseName){
+            if(!canDeleteDb){
+                alert("You do not have delete permission for DB Create page.");
+                return;
+            }
             const name = String(databaseName || "").trim().toLowerCase();
             if(!name) return;
             const ok = window.confirm(`Delete database '${name}'?`);
@@ -184,6 +199,17 @@
 
         window.saveDatabase = saveDatabase;
 
+        async function applyPermissionState(){
+            if(typeof window.__waitForUserAccessPermissions === "function"){
+                await window.__waitForUserAccessPermissions();
+            }
+            canAddDb = !!window.hasUserActionPermission && window.hasUserActionPermission(DB_CREATE_PATH, "add");
+            canDeleteDb = !!window.hasUserActionPermission && window.hasUserActionPermission(DB_CREATE_PATH, "delete");
+            if(saveDbBtnEl){
+                saveDbBtnEl.style.display = canAddDb ? "" : "none";
+            }
+        }
+
         (async function init(){
             const role = (localStorage.getItem("role") || "").toLowerCase();
             if(role !== "admin"){
@@ -191,6 +217,7 @@
                 window.location.href = "../dashboard.html";
                 return;
             }
+            await applyPermissionState();
             await loadCreatedDatabases();
         })();
     </script>

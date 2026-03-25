@@ -87,7 +87,7 @@ const ACCESS_MODULE_OPTIONS = [
       { path: "/users/add-user.html", label: "Add User", actions: ["view", "add"] },
       { path: "/users/edit-user.html", label: "Edit User", actions: ["view", "edit"] },
       { path: "/users/user-access.html", label: "User Access", actions: ["view", "edit"] },
-      { path: "/users/db-create.html", label: "DB Create", actions: ["view", "add"] },
+      { path: "/users/db-create.html", label: "DB Create", actions: ["view", "add", "delete"] },
       { path: "/users/preference.html", label: "Preference", actions: ["view", "edit"] },
       { path: "/users/user-logged.html", label: "User Logged Times", actions: ["view"] },
       { path: "/support/email-setup.html", label: "Email Setup", actions: ["view", "edit"] },
@@ -487,6 +487,26 @@ async function getUserFromDatabase(databaseName, userId) {
   });
 }
 
+async function hasDbCreateActionPermission(req, action) {
+  const role = String(req.user?.role || "").toLowerCase();
+  if (role !== "admin") return false;
+  const userId = Number(req.user?.id || req.user?.userId || 0);
+  if (!Number.isFinite(userId) || userId <= 0) return false;
+
+  const userDatabase = normalizeUserDatabase(req.databaseName || req.user?.database_name || INVENTORY_DB_NAME);
+  const actionKey = toActionKey("/users/db-create.html", action);
+
+  let row = await findAccessFromMainDb(userId, userDatabase);
+  if (!row && userDatabase !== INVENTORY_DB_NAME) {
+    row = await findAccessFromMainDb(userId, INVENTORY_DB_NAME);
+  }
+
+  // If admin has no explicit access row, keep legacy behavior: allow.
+  if (!row) return true;
+  const allowedActions = parseAllowedActions(row);
+  return allowedActions.includes(actionKey);
+}
+
 exports.getAccessUsers = async (_req, res) => {
   try {
     try{
@@ -622,6 +642,11 @@ exports.getDatabases = async (_req, res) => {
 };
 
 exports.createDatabase = async (req, res) => {
+  const canAdd = await hasDbCreateActionPermission(req, "add");
+  if (!canAdd) {
+    return res.status(403).json({ message: "Forbidden: Missing DB Create add permission." });
+  }
+
   const databaseName = normalizeDatabaseName(req.body?.database_name);
   const companyName = normalizeCompanyName(req.body?.company_name);
   if (!databaseName) {
@@ -711,6 +736,11 @@ exports.getCreatedDatabases = async (_req, res) => {
 };
 
 exports.deleteDatabase = async (req, res) => {
+  const canDelete = await hasDbCreateActionPermission(req, "delete");
+  if (!canDelete) {
+    return res.status(403).json({ message: "Forbidden: Missing DB Create delete permission." });
+  }
+
   const databaseName = normalizeDatabaseName(req.params.databaseName);
   if (!databaseName || databaseName === INVENTORY_DB_NAME) {
     return res.status(400).json({ message: "Invalid database name." });
