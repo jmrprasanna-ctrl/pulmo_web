@@ -46,7 +46,7 @@
                 <div>
                     <label for="databaseName">Database Name</label>
                     <input id="databaseName" type="text" placeholder="example: nishani_company_db">
-                    <div class="path-hint">Allowed: lowercase letters, numbers, underscore</div>
+                    <div class="path-hint">Allowed: letters, numbers, underscore (stored as lowercase in system)</div>
                 </div>
                 <div>
                     <label for="companyName">Company Name</label>
@@ -88,7 +88,17 @@
         let canAddDb = false;
         let canDeleteDb = false;
 
-        function sanitizeDbName(value){
+        function sanitizeDbNameForInput(value){
+            return String(value || "")
+                .trim()
+                .toUpperCase()
+                .replace(/\s+/g, "_")
+                .replace(/[^A-Z0-9_]/g, "")
+                .replace(/_+/g, "_")
+                .replace(/^_+|_+$/g, "");
+        }
+
+        function toDbIdentifier(value){
             return String(value || "")
                 .trim()
                 .toLowerCase()
@@ -103,7 +113,7 @@
                 alert("You do not have add permission for DB Create page.");
                 return;
             }
-            const databaseName = sanitizeDbName(databaseNameEl.value);
+            const databaseName = toDbIdentifier(databaseNameEl.value);
             const companyName = String(companyNameEl.value || "").trim();
 
             if(!databaseName){
@@ -186,11 +196,12 @@
         }
 
         databaseNameEl.addEventListener("input", () => {
-            const cleaned = sanitizeDbName(databaseNameEl.value);
+            const cleaned = sanitizeDbNameForInput(databaseNameEl.value);
             if(databaseNameEl.value !== cleaned){
                 databaseNameEl.value = cleaned;
             }
         });
+        databaseNameEl.style.textTransform = "uppercase";
         createdDbTableBodyEl.addEventListener("click", async (ev) => {
             const btn = ev.target.closest("button[data-delete-db]");
             if(!btn) return;

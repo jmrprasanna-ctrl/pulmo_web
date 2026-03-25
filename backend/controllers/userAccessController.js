@@ -9,6 +9,7 @@ const DEMO_DB_NAME = "demo";
 const INVENTORY_DB_NAME = "inventory";
 const RESERVED_DATABASES = new Set(["postgres", "template0", "template1"]);
 const DATABASE_REGISTRY_TABLE = "company_databases";
+const DATABASE_STORAGE_ROOT = path.resolve(__dirname, "../storage/databases");
 const COMPANY_REGISTRY_TABLE = "company_profiles";
 const COMPANY_STORAGE_ROOT = path.resolve(__dirname, "../storage/companies");
 const COMPANY_LOGO_EXTENSIONS = new Set([".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".tif", ".png"]);
@@ -297,10 +298,15 @@ async function ensureDatabaseRegistryTable(client) {
       id SERIAL PRIMARY KEY,
       database_name VARCHAR(120) UNIQUE NOT NULL,
       company_name VARCHAR(200) NOT NULL,
+      folder_name VARCHAR(120),
       created_by INTEGER,
       "createdAt" TIMESTAMP DEFAULT NOW(),
       "updatedAt" TIMESTAMP DEFAULT NOW()
     );
+  `);
+  await client.query(`
+    ALTER TABLE ${DATABASE_REGISTRY_TABLE}
+    ADD COLUMN IF NOT EXISTS folder_name VARCHAR(120);
   `);
 }
 
@@ -767,12 +773,20 @@ exports.createDatabase = async (req, res) => {
 
     await mainDbClient.connect();
     await ensureDatabaseRegistryTable(mainDbClient);
+    ensureDir(DATABASE_STORAGE_ROOT);
+    let dbFolderPath = path.join(DATABASE_STORAGE_ROOT, safeNamePart(companyName) || `db_${Date.now()}`);
+    let suffix = 1;
+    while (fs.existsSync(dbFolderPath)) {
+      dbFolderPath = path.join(DATABASE_STORAGE_ROOT, `${safeNamePart(companyName) || "db"}_${suffix++}`);
+    }
+    ensureDir(dbFolderPath);
+    const folderName = path.basename(dbFolderPath);
     await mainDbClient.query(
-      `INSERT INTO ${DATABASE_REGISTRY_TABLE} (database_name, company_name, created_by, "createdAt", "updatedAt")
-       VALUES ($1, $2, $3, NOW(), NOW())
+      `INSERT INTO ${DATABASE_REGISTRY_TABLE} (database_name, company_name, folder_name, created_by, "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, NOW(), NOW())
        ON CONFLICT (database_name)
-       DO UPDATE SET company_name = EXCLUDED.company_name, "updatedAt" = NOW()`,
-      [databaseName, companyName, Number(req.user?.id || 0) || null]
+       DO UPDATE SET company_name = EXCLUDED.company_name, folder_name = EXCLUDED.folder_name, "updatedAt" = NOW()`,
+      [databaseName, companyName, folderName, Number(req.user?.id || 0) || null]
     );
 
     res.status(201).json({
@@ -842,12 +856,13 @@ exports.deleteDatabase = async (req, res) => {
     await mainDbClient.connect();
     await ensureDatabaseRegistryTable(mainDbClient);
     const exists = await mainDbClient.query(
-      `SELECT 1 FROM ${DATABASE_REGISTRY_TABLE} WHERE LOWER(database_name) = $1 LIMIT 1`,
+      `SELECT folder_name FROM ${DATABASE_REGISTRY_TABLE} WHERE LOWER(database_name) = $1 LIMIT 1`,
       [databaseName]
     );
     if (!exists.rowCount) {
       return res.status(404).json({ message: "Database not found in created list." });
     }
+    const folderName = String(exists.rows[0]?.folder_name || "").trim();
 
     await adminClient.connect();
     await adminClient.query(
@@ -870,6 +885,14 @@ exports.deleteDatabase = async (req, res) => {
        WHERE LOWER(COALESCE(database_name, '')) = $1`,
       [databaseName]
     );
+
+    if (folderName) {
+      const dbFolderPath = path.resolve(DATABASE_STORAGE_ROOT, folderName);
+      const withinRoot = dbFolderPath.startsWith(DATABASE_STORAGE_ROOT);
+      if (withinRoot && fs.existsSync(dbFolderPath)) {
+        fs.rmSync(dbFolderPath, { recursive: true, force: true });
+      }
+    }
 
     res.json({ message: "Database deleted successfully." });
   } catch (err) {
