@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company Create - PULMO TECHNOLOGIES</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="../../assets/css/dashboard.css">
+    <style>
+        .company-wrap{max-width:900px}
+        .company-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+        .company-table-wrap{margin-top:20px;overflow:auto}
+        .company-table{width:100%;border-collapse:collapse;background:#fff}
+        .company-table th,.company-table td{border-bottom:1px solid #e5edf5;padding:10px 8px;text-align:left;font-size:.9rem}
+        .company-table th{background:#f5f9ff;color:#234b71}
+        .company-table td.actions{text-align:right}
+        @media (max-width: 900px){
+            .company-grid{grid-template-columns:1fr}
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <img src="../../assets/images/logo.png" alt="Company Logo">
+            <span>PULMO TECHNOLOGIES</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="../dashboard.html">Dashboard</a></li>
+            <li><a href="../products/product-list.html">Products</a></li>
+            <li><a href="../products/general-machine.html">Machines</a></li>
+            <li><a href="../customers/customer-list.html">Customers</a></li>
+            <li><a href="../invoices/invoice-list.html">Invoices</a></li>
+            <li><a href="../vendors/list-vendor.html">Vendors</a></li>
+            <li><a href="../expenses/expense-list.html">Expenses</a></li>
+            <li><a href="../reports/sales-report.html">Reports</a></li>
+            <li><a href="../analytics/sales-chart.html">Analytics</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <header><h2>Company Create</h2></header>
+
+        <div class="form-container company-wrap">
+            <div class="company-grid">
+                <div>
+                    <label for="companyName">Company Name</label>
+                    <input id="companyName" type="text" placeholder="Company name">
+                </div>
+                <div>
+                    <label for="logoFile">Company Logo</label>
+                    <input id="logoFile" type="file" accept=".jpg,.jpeg,.bmp,.gif,.tiff,.tif">
+                    <div class="path-hint">Allowed formats: .jpg, .jpeg, .bmp, .gif, .tiff</div>
+                </div>
+            </div>
+
+            <div class="access-actions" style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button id="saveCompanyBtn" class="btn btn-primary" type="button" onclick="saveCompany()">Save</button>
+                <a class="btn btn-secondary" href="user-access.html">Back</a>
+            </div>
+
+            <div class="company-table-wrap">
+                <label>Created Companies</label>
+                <table class="company-table">
+                    <thead>
+                        <tr>
+                            <th>Company Name</th>
+                            <th>Logo File</th>
+                            <th>Created Date</th>
+                            <th style="width: 120px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="companyTableBody">
+                        <tr><td colspan="4">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../assets/js/api.js"></script>
+    <script>
+        const companyNameEl = document.getElementById("companyName");
+        const logoFileEl = document.getElementById("logoFile");
+        const saveCompanyBtnEl = document.getElementById("saveCompanyBtn");
+        const companyTableBodyEl = document.getElementById("companyTableBody");
+        const COMPANY_CREATE_PATH = "/users/company-create.html";
+        const ALLOWED_EXT = new Set([".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".tif"]);
+
+        let canAddCompany = false;
+        let canDeleteCompany = false;
+
+        function formatDate(value){
+            if(!value) return "-";
+            const dt = new Date(value);
+            if(Number.isNaN(dt.getTime())) return "-";
+            return dt.toLocaleDateString();
+        }
+
+        function readFileAsDataURL(file){
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(String(reader.result || ""));
+                reader.onerror = () => reject(new Error("Failed to read file."));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function validateLogoFile(file){
+            if(!file) return "Please select company logo.";
+            const name = String(file.name || "").trim();
+            const dot = name.lastIndexOf(".");
+            const ext = dot >= 0 ? name.slice(dot).toLowerCase() : "";
+            if(!ALLOWED_EXT.has(ext)){
+                return "Invalid logo format. Allowed: .jpg, .jpeg, .bmp, .gif, .tiff";
+            }
+            return "";
+        }
+
+        async function loadCompanies(){
+            companyTableBodyEl.innerHTML = `<tr><td colspan="4">Loading...</td></tr>`;
+            try{
+                const res = await request("/users/companies", "GET");
+                const rows = Array.isArray(res.companies) ? res.companies : [];
+                if(!rows.length){
+                    companyTableBodyEl.innerHTML = `<tr><td colspan="4">No companies found.</td></tr>`;
+                    return;
+                }
+                companyTableBodyEl.innerHTML = "";
+                rows.forEach((row) => {
+                    const tr = document.createElement("tr");
+                    const deleteAction = canDeleteCompany
+                        ? `<button class="btn btn-secondary" type="button" data-delete-company-id="${Number(row.id || 0)}" style="min-width:90px;">Delete</button>`
+                        : `<span>-</span>`;
+                    tr.innerHTML = `
+                        <td>${String(row.company_name || "")}</td>
+                        <td>${String(row.logo_file_name || "")}</td>
+                        <td>${formatDate(row.created_at)}</td>
+                        <td class="actions">${deleteAction}</td>
+                    `;
+                    companyTableBodyEl.appendChild(tr);
+                });
+            }catch(err){
+                companyTableBodyEl.innerHTML = `<tr><td colspan="4">${String(err.message || "Failed to load companies")}</td></tr>`;
+            }
+        }
+
+        async function saveCompany(){
+            if(!canAddCompany){
+                alert("You do not have add permission for Company Create page.");
+                return;
+            }
+            const companyName = String(companyNameEl.value || "").trim();
+            const file = logoFileEl.files && logoFileEl.files[0];
+
+            if(!companyName){
+                alert("Please enter company name.");
+                return;
+            }
+
+            const validationMessage = validateLogoFile(file);
+            if(validationMessage){
+                alert(validationMessage);
+                return;
+            }
+
+            try{
+                const fileData = await readFileAsDataURL(file);
+                await request("/users/companies/create", "POST", {
+                    company_name: companyName,
+                    logo_file_name: String(file.name || "").trim(),
+                    logo_file_data_base64: fileData
+                });
+                showMessageBox("Company created");
+                companyNameEl.value = "";
+                logoFileEl.value = "";
+                await loadCompanies();
+            }catch(err){
+                alert(err.message || "Failed to create company");
+            }
+        }
+
+        async function deleteCompany(companyId){
+            if(!canDeleteCompany){
+                alert("You do not have delete permission for Company Create page.");
+                return;
+            }
+            const id = Number(companyId || 0);
+            if(!Number.isFinite(id) || id <= 0) return;
+            const ok = window.confirm("Delete this company and logo folder?");
+            if(!ok) return;
+            try{
+                await request(`/users/companies/${id}`, "DELETE");
+                showMessageBox("Company deleted");
+                await loadCompanies();
+            }catch(err){
+                alert(err.message || "Failed to delete company");
+            }
+        }
+
+        async function applyPermissionState(){
+            if(typeof window.__waitForUserAccessPermissions === "function"){
+                await window.__waitForUserAccessPermissions();
+            }
+            canAddCompany = !!window.hasUserActionPermission && window.hasUserActionPermission(COMPANY_CREATE_PATH, "add");
+            canDeleteCompany = !!window.hasUserActionPermission && window.hasUserActionPermission(COMPANY_CREATE_PATH, "delete");
+            saveCompanyBtnEl.style.display = canAddCompany ? "" : "none";
+        }
+
+        companyTableBodyEl.addEventListener("click", async (ev) => {
+            const btn = ev.target.closest("button[data-delete-company-id]");
+            if(!btn) return;
+            await deleteCompany(btn.getAttribute("data-delete-company-id"));
+        });
+
+        window.saveCompany = saveCompany;
+
+        (async function init(){
+            const role = (localStorage.getItem("role") || "").toLowerCase();
+            if(role !== "admin"){
+                alert("Only admin can access this page.");
+                window.location.href = "../dashboard.html";
+                return;
+            }
+            await applyPermissionState();
+            await loadCompanies();
+        })();
+    </script>
+</body>
+</html>

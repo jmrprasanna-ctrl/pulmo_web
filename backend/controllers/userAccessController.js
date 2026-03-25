@@ -1,3 +1,5 @@
+const fs = require("fs");
+const path = require("path");
 const { Client } = require("pg");
 const { spawn } = require("child_process");
 const db = require("../config/database");
@@ -7,6 +9,9 @@ const DEMO_DB_NAME = "demo";
 const INVENTORY_DB_NAME = "inventory";
 const RESERVED_DATABASES = new Set(["postgres", "template0", "template1"]);
 const DATABASE_REGISTRY_TABLE = "company_databases";
+const COMPANY_REGISTRY_TABLE = "company_profiles";
+const COMPANY_STORAGE_ROOT = path.resolve(__dirname, "../storage/companies");
+const COMPANY_LOGO_EXTENSIONS = new Set([".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".tif"]);
 
 const ACCESS_MODULE_OPTIONS = [
   {
@@ -88,6 +93,7 @@ const ACCESS_MODULE_OPTIONS = [
       { path: "/users/edit-user.html", label: "Edit User", actions: ["view", "edit"] },
       { path: "/users/user-access.html", label: "User Access", actions: ["view", "edit"] },
       { path: "/users/db-create.html", label: "DB Create", actions: ["view", "add", "delete"] },
+      { path: "/users/company-create.html", label: "Company Create", actions: ["view", "add", "delete"] },
       { path: "/users/preference.html", label: "Preference", actions: ["view", "edit"] },
       { path: "/users/user-logged.html", label: "User Logged Times", actions: ["view"] },
       { path: "/support/email-setup.html", label: "Email Setup", actions: ["view", "edit"] },
@@ -250,12 +256,62 @@ function normalizeCompanyName(value) {
   return normalized ? normalized.slice(0, 200) : "";
 }
 
+function parseBase64Payload(fileDataBase64) {
+  const raw = String(fileDataBase64 || "").trim();
+  if (!raw) {
+    throw new Error("Missing file data.");
+  }
+  const parts = raw.split(",");
+  const payload = parts.length > 1 ? parts.slice(1).join(",") : raw;
+  return Buffer.from(payload, "base64");
+}
+
+function safeNamePart(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80);
+}
+
+function ensureDir(targetDir) {
+  if (!fs.existsSync(targetDir)) {
+    fs.mkdirSync(targetDir, { recursive: true });
+  }
+}
+
+function toRelativeStoragePath(absPath) {
+  const rel = path.relative(path.resolve(__dirname, ".."), absPath).replace(/\\/g, "/");
+  return rel.startsWith("storage/") ? rel : `storage/${path.basename(absPath)}`;
+}
+
+function resolveCompanyFolder(companyName) {
+  const base = safeNamePart(companyName) || `company_${Date.now()}`;
+  return path.join(COMPANY_STORAGE_ROOT, base);
+}
+
 async function ensureDatabaseRegistryTable(client) {
   await client.query(`
     CREATE TABLE IF NOT EXISTS ${DATABASE_REGISTRY_TABLE} (
       id SERIAL PRIMARY KEY,
       database_name VARCHAR(120) UNIQUE NOT NULL,
       company_name VARCHAR(200) NOT NULL,
+      created_by INTEGER,
+      "createdAt" TIMESTAMP DEFAULT NOW(),
+      "updatedAt" TIMESTAMP DEFAULT NOW()
+    );
+  `);
+}
+
+async function ensureCompanyRegistryTable(client) {
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS ${COMPANY_REGISTRY_TABLE} (
+      id SERIAL PRIMARY KEY,
+      company_name VARCHAR(200) UNIQUE NOT NULL,
+      folder_name VARCHAR(120) NOT NULL,
+      logo_path VARCHAR(500) NOT NULL,
+      logo_file_name VARCHAR(255) NOT NULL,
       created_by INTEGER,
       "createdAt" TIMESTAMP DEFAULT NOW(),
       "updatedAt" TIMESTAMP DEFAULT NOW()
@@ -495,6 +551,26 @@ async function hasDbCreateActionPermission(req, action) {
 
   const userDatabase = normalizeUserDatabase(req.databaseName || req.user?.database_name || INVENTORY_DB_NAME);
   const actionKey = toActionKey("/users/db-create.html", action);
+
+  let row = await findAccessFromMainDb(userId, userDatabase);
+  if (!row && userDatabase !== INVENTORY_DB_NAME) {
+    row = await findAccessFromMainDb(userId, INVENTORY_DB_NAME);
+  }
+
+  // If admin has no explicit access row, keep legacy behavior: allow.
+  if (!row) return true;
+  const allowedActions = parseAllowedActions(row);
+  return allowedActions.includes(actionKey);
+}
+
+async function hasCompanyCreateActionPermission(req, action) {
+  const role = String(req.user?.role || "").toLowerCase();
+  if (role !== "admin") return false;
+  const userId = Number(req.user?.id || req.user?.userId || 0);
+  if (!Number.isFinite(userId) || userId <= 0) return false;
+
+  const userDatabase = normalizeUserDatabase(req.databaseName || req.user?.database_name || INVENTORY_DB_NAME);
+  const actionKey = toActionKey("/users/company-create.html", action);
 
   let row = await findAccessFromMainDb(userId, userDatabase);
   if (!row && userDatabase !== INVENTORY_DB_NAME) {
@@ -800,6 +876,178 @@ exports.deleteDatabase = async (req, res) => {
     res.status(500).json({ message: err.message || "Failed to delete database." });
   } finally {
     await adminClient.end().catch(() => {});
+    await mainDbClient.end().catch(() => {});
+  }
+};
+
+exports.getCompanies = async (_req, res) => {
+  const cfg = getDbConfig();
+  const mainDbClient = new Client({
+    host: cfg.host,
+    port: cfg.port,
+    user: cfg.user,
+    password: cfg.password,
+    database: cfg.database || INVENTORY_DB_NAME,
+  });
+  try {
+    await mainDbClient.connect();
+    await ensureCompanyRegistryTable(mainDbClient);
+    const rs = await mainDbClient.query(
+      `SELECT id, company_name, folder_name, logo_path, logo_file_name, "createdAt", "updatedAt"
+       FROM ${COMPANY_REGISTRY_TABLE}
+       ORDER BY LOWER(company_name) ASC, id ASC`
+    );
+    const rows = (rs.rows || []).map((row) => ({
+      id: Number(row.id || 0),
+      company_name: normalizeCompanyName(row.company_name),
+      folder_name: String(row.folder_name || "").trim(),
+      logo_file_name: String(row.logo_file_name || "").trim(),
+      logo_path: String(row.logo_path || "").trim(),
+      created_at: row.createdAt || null,
+      updated_at: row.updatedAt || null,
+    }));
+    res.json({ companies: rows });
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Failed to load companies." });
+  } finally {
+    await mainDbClient.end().catch(() => {});
+  }
+};
+
+exports.createCompany = async (req, res) => {
+  const canAdd = await hasCompanyCreateActionPermission(req, "add");
+  if (!canAdd) {
+    return res.status(403).json({ message: "Forbidden: Missing Company Create add permission." });
+  }
+
+  const companyName = normalizeCompanyName(req.body?.company_name);
+  const fileName = String(req.body?.logo_file_name || "").trim();
+  const ext = path.extname(fileName).toLowerCase();
+  if (!companyName) {
+    return res.status(400).json({ message: "Company name is required." });
+  }
+  if (!COMPANY_LOGO_EXTENSIONS.has(ext)) {
+    return res.status(400).json({ message: "Invalid logo format. Allowed: .jpg, .jpeg, .bmp, .gif, .tiff" });
+  }
+
+  let logoBuffer;
+  try {
+    logoBuffer = parseBase64Payload(req.body?.logo_file_data_base64);
+  } catch (_err) {
+    return res.status(400).json({ message: "Invalid logo data." });
+  }
+  if (!logoBuffer || !logoBuffer.length) {
+    return res.status(400).json({ message: "Uploaded logo is empty." });
+  }
+
+  const cfg = getDbConfig();
+  const mainDbClient = new Client({
+    host: cfg.host,
+    port: cfg.port,
+    user: cfg.user,
+    password: cfg.password,
+    database: cfg.database || INVENTORY_DB_NAME,
+  });
+
+  try {
+    await mainDbClient.connect();
+    await ensureCompanyRegistryTable(mainDbClient);
+
+    const existsRs = await mainDbClient.query(
+      `SELECT id FROM ${COMPANY_REGISTRY_TABLE} WHERE LOWER(company_name) = LOWER($1) LIMIT 1`,
+      [companyName]
+    );
+    if (existsRs.rowCount) {
+      return res.status(409).json({ message: "Company already exists." });
+    }
+
+    ensureDir(COMPANY_STORAGE_ROOT);
+    let folderPath = resolveCompanyFolder(companyName);
+    let suffix = 1;
+    while (fs.existsSync(folderPath)) {
+      folderPath = path.join(COMPANY_STORAGE_ROOT, `${safeNamePart(companyName)}_${suffix++}`);
+    }
+    ensureDir(folderPath);
+
+    const logoPath = path.join(folderPath, `logo${ext}`);
+    fs.writeFileSync(logoPath, logoBuffer);
+    const folderName = path.basename(folderPath);
+    const relativeLogoPath = toRelativeStoragePath(logoPath);
+
+    const rs = await mainDbClient.query(
+      `INSERT INTO ${COMPANY_REGISTRY_TABLE}
+       (company_name, folder_name, logo_path, logo_file_name, created_by, "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+       RETURNING id, company_name, folder_name, logo_path, logo_file_name, "createdAt", "updatedAt"`,
+      [companyName, folderName, relativeLogoPath, path.basename(logoPath), Number(req.user?.id || 0) || null]
+    );
+
+    const row = rs.rows[0];
+    res.status(201).json({
+      message: "Company created successfully.",
+      company: {
+        id: Number(row.id || 0),
+        company_name: normalizeCompanyName(row.company_name),
+        folder_name: String(row.folder_name || "").trim(),
+        logo_file_name: String(row.logo_file_name || "").trim(),
+        logo_path: String(row.logo_path || "").trim(),
+        created_at: row.createdAt || null,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Failed to create company." });
+  } finally {
+    await mainDbClient.end().catch(() => {});
+  }
+};
+
+exports.deleteCompany = async (req, res) => {
+  const canDelete = await hasCompanyCreateActionPermission(req, "delete");
+  if (!canDelete) {
+    return res.status(403).json({ message: "Forbidden: Missing Company Create delete permission." });
+  }
+
+  const companyId = Number(req.params.companyId || 0);
+  if (!Number.isFinite(companyId) || companyId <= 0) {
+    return res.status(400).json({ message: "Invalid company id." });
+  }
+
+  const cfg = getDbConfig();
+  const mainDbClient = new Client({
+    host: cfg.host,
+    port: cfg.port,
+    user: cfg.user,
+    password: cfg.password,
+    database: cfg.database || INVENTORY_DB_NAME,
+  });
+  try {
+    await mainDbClient.connect();
+    await ensureCompanyRegistryTable(mainDbClient);
+    const rs = await mainDbClient.query(
+      `SELECT id, folder_name
+       FROM ${COMPANY_REGISTRY_TABLE}
+       WHERE id = $1
+       LIMIT 1`,
+      [companyId]
+    );
+    if (!rs.rowCount) {
+      return res.status(404).json({ message: "Company not found." });
+    }
+    const folderName = String(rs.rows[0].folder_name || "").trim();
+    await mainDbClient.query(`DELETE FROM ${COMPANY_REGISTRY_TABLE} WHERE id = $1`, [companyId]);
+
+    if (folderName) {
+      const companyFolderPath = path.resolve(COMPANY_STORAGE_ROOT, folderName);
+      const withinRoot = companyFolderPath.startsWith(COMPANY_STORAGE_ROOT);
+      if (withinRoot && fs.existsSync(companyFolderPath)) {
+        fs.rmSync(companyFolderPath, { recursive: true, force: true });
+      }
+    }
+
+    res.json({ message: "Company deleted successfully." });
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Failed to delete company." });
+  } finally {
     await mainDbClient.end().catch(() => {});
   }
 };

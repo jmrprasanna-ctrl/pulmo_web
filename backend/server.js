@@ -540,6 +540,23 @@ async function ensureUserAccessSchema() {
   });
 }
 
+async function ensureCompanyProfilesSchema() {
+  await db.withDatabase("inventory", async () => {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS company_profiles (
+        id SERIAL PRIMARY KEY,
+        company_name VARCHAR(200) UNIQUE NOT NULL,
+        folder_name VARCHAR(120) NOT NULL,
+        logo_path VARCHAR(500) NOT NULL,
+        logo_file_name VARCHAR(255) NOT NULL,
+        created_by INTEGER,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW()
+      );
+    `);
+  });
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
@@ -606,6 +623,7 @@ async function startServer() {
     await ensureCustomerCodeSchema();
     await ensureVendorCategorySchema();
     await ensureUserAccessSchema();
+    await ensureCompanyProfilesSchema();
     await ensureInvoiceDateSchema();
     await ensureInvoicePaymentSchema();
     await ensureSupportImportantSchema();
