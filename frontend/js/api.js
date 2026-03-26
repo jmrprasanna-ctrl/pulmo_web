@@ -530,6 +530,7 @@ function applyUiSettingsToPage(settings){
         }
     }
 }
+window.applyUiSettingsToPage = applyUiSettingsToPage;
 
 function applyMappedBranding(){
     const mappedCompanyName = String(localStorage.getItem(MAPPED_COMPANY_NAME_KEY) || "").trim();
@@ -559,35 +560,44 @@ function normalizeAppName(appName){
 }
 
 async function loadPublicUiSettings(){
-    if(!ENABLE_PUBLIC_UI_SETTINGS_RUNTIME){
-        return;
-    }
-
     const disableUiSettingsRefresh = typeof window !== "undefined" && window.__DISABLE_PUBLIC_UI_REFRESH__ === true;
     if(disableUiSettingsRefresh){
         return;
     }
 
-    try{
-        const cached = localStorage.getItem(UI_SETTINGS_CACHE_KEY);
-        if(cached){
-            const parsed = JSON.parse(cached);
-            if(parsed && typeof parsed === "object"){
-                applyUiSettingsToPage(parsed);
+    if(ENABLE_PUBLIC_UI_SETTINGS_RUNTIME){
+        try{
+            const cached = localStorage.getItem(UI_SETTINGS_CACHE_KEY);
+            if(cached){
+                const parsed = JSON.parse(cached);
+                if(parsed && typeof parsed === "object"){
+                    applyUiSettingsToPage(parsed);
+                }
             }
+        }catch(_cacheErr){
         }
-    }catch(_cacheErr){
+
+        try{
+            const res = await fetch(`${BASE_URL}/ui-settings/public`);
+            if(res.ok){
+                const data = await res.json();
+                try{
+                    localStorage.setItem(UI_SETTINGS_CACHE_KEY, JSON.stringify(data || {}));
+                }catch(_cacheWriteErr){
+                }
+                applyUiSettingsToPage(data);
+            }
+        }catch(_err){
+        }
     }
 
+    const token = localStorage.getItem("token");
+    if(!token) return;
     try{
-        const res = await fetch(`${BASE_URL}/ui-settings/public`);
-        if(!res.ok) return;
-        const data = await res.json();
-        try{
-            localStorage.setItem(UI_SETTINGS_CACHE_KEY, JSON.stringify(data || {}));
-        }catch(_cacheWriteErr){
+        const personal = await request("/preferences/my-ui-settings", "GET");
+        if(personal && typeof personal === "object"){
+            applyUiSettingsToPage(personal);
         }
-        applyUiSettingsToPage(data);
     }catch(_err){
     }
 }

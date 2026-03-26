@@ -328,6 +328,9 @@
             const ui = await request("/preferences/my-ui-settings", "GET");
             if(ui){
                 applyThemeForm(ui);
+                if(typeof window.applyUiSettingsToPage === "function"){
+                    window.applyUiSettingsToPage(ui);
+                }
             }
         }
 
@@ -426,6 +429,14 @@
                 mode_theme: modeTheme
             });
 
+            if(typeof window.applyUiSettingsToPage === "function"){
+                window.applyUiSettingsToPage({
+                    primary_color: dashboardColor,
+                    background_color: backgroundColor,
+                    button_color: buttonColor,
+                    mode_theme: modeTheme
+                });
+            }
             showMessageBox("Theme settings updated");
             await loadPreferences();
         }
