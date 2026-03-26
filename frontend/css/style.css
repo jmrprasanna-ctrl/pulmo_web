@@ -523,3 +523,22 @@ body.theme-dark .app-global-footer {
   color: #c5d6e8;
   border-top-color: #33495e;
 }
+
+body.theme-dark .report-block {
+  background: #1f2d3a;
+  border-color: #3a4f64;
+}
+
+body.theme-dark .summary-box {
+  background: #22313f;
+  border-color: #3a4f64;
+}
+
+body.theme-dark .summary-box .label,
+body.theme-dark .mini-note {
+  color: #b7c9dc;
+}
+
+body.theme-dark .summary-box .value {
+  color: #8ec8ff;
+}
