@@ -800,7 +800,7 @@ async function getPreferenceAvailability(databaseName, userId) {
     });
     ensuredUiSettingsDbSet.add(targetDb);
   }
-  const row = await db.withDatabase(targetDb, async () => {
+  const prefData = await db.withDatabase(targetDb, async () => {
     await db.query(`
       CREATE TABLE IF NOT EXISTS user_preference_settings (
         id SERIAL PRIMARY KEY,
@@ -831,26 +831,39 @@ async function getPreferenceAvailability(databaseName, userId) {
        LIMIT 1`,
       { bind: [normalizedUserId] }
     );
-    const rows = Array.isArray(rs?.[0]) ? rs[0] : [];
-    return rows[0] || null;
+    const userRows = Array.isArray(rs?.[0]) ? rs[0] : [];
+    let globalRow = await UiSetting.findOne({ order: [["id", "ASC"]] });
+    if (!globalRow) {
+      globalRow = await UiSetting.create({});
+    }
+    return {
+      userRow: userRows[0] || null,
+      globalRow: globalRow ? (globalRow.toJSON ? globalRow.toJSON() : globalRow) : null,
+    };
   });
+  const row = prefData?.userRow || null;
+  const globalRow = prefData?.globalRow || null;
 
-  const resolveFile = (rawPath) => {
-    const value = String(rawPath || "").trim();
-    if (!value) return "";
-    const resolved = path.resolve(value);
-    return fs.existsSync(resolved) ? resolved : "";
+  const resolveFile = (...candidatesRaw) => {
+    const candidates = candidatesRaw.map((v) => String(v || "").trim()).filter(Boolean);
+    for (const rawPath of candidates) {
+      const resolved = path.resolve(rawPath);
+      if (fs.existsSync(resolved)) return resolved;
+    }
+    return "";
   };
 
-  const logoPath = resolveFile(row?.logo_path);
-  const invoicePath = resolveFile(row?.invoice_template_pdf_path);
-  const quotationPath = resolveFile(row?.quotation_template_pdf_path);
-  const quotation2Path = resolveFile(row?.quotation2_template_pdf_path);
-  const quotation3Path = resolveFile(row?.quotation3_template_pdf_path);
-  const signCPath = resolveFile(row?.sign_c_path);
-  const signVPath = resolveFile(row?.sign_v_path);
-  const sealCPath = resolveFile(row?.seal_c_path);
-  const sealVPath = resolveFile(row?.seal_v_path);
+  const defaultLogoPath = path.resolve(__dirname, "../../frontend/assets/images/logo.png");
+  const logoPath = resolveFile(row?.logo_path, globalRow?.logo_path, defaultLogoPath);
+  const invoicePath = resolveFile(row?.invoice_template_pdf_path, globalRow?.invoice_template_pdf_path);
+  const quotationPath = resolveFile(row?.quotation_template_pdf_path, globalRow?.quotation_template_pdf_path);
+  const quotation2Path = resolveFile(row?.quotation2_template_pdf_path, globalRow?.quotation2_template_pdf_path);
+  const quotation3Path = resolveFile(row?.quotation3_template_pdf_path, globalRow?.quotation3_template_pdf_path);
+  const signCPath = resolveFile(row?.sign_c_path, globalRow?.sign_c_path);
+  const signVPath = resolveFile(row?.sign_v_path, globalRow?.sign_v_path);
+  const sealCPath = resolveFile(row?.seal_c_path, globalRow?.seal_c_path);
+  const sealVPath = resolveFile(row?.seal_v_path, globalRow?.seal_v_path);
+  const themeMode = String(row?.mode_theme || globalRow?.mode_theme || "").trim();
 
   return {
     logo: Boolean(logoPath),
@@ -862,7 +875,7 @@ async function getPreferenceAvailability(databaseName, userId) {
     sign_v: Boolean(signVPath),
     seal_c: Boolean(sealCPath),
     seal_v: Boolean(sealVPath),
-    theme: Boolean(row && String(row.mode_theme || "").trim()),
+    theme: Boolean(themeMode),
   };
 }
 
