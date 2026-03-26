@@ -120,6 +120,13 @@ function getDbStorageDir(req) {
   return path.join(STORAGE_ROOT, dbName);
 }
 
+function getUserStorageDir(req) {
+  const dbDir = getDbStorageDir(req);
+  const userId = getCurrentUserId(req);
+  const safeUser = userId > 0 ? `user_${userId}` : "user_0";
+  return path.join(dbDir, safeUser);
+}
+
 function getCurrentUserId(req) {
   const id = Number(req?.user?.id || req?.user?.userId || 0);
   return Number.isFinite(id) && id > 0 ? id : 0;
@@ -260,7 +267,7 @@ exports.uploadLogo = async (req, res) => {
     }
 
     ensureStorage();
-    const targetDir = getDbStorageDir(req);
+    const targetDir = getUserStorageDir(req);
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });
     }
@@ -309,7 +316,7 @@ exports.uploadBrandImage = async (req, res) => {
     }
 
     ensureStorage();
-    const targetDir = getDbStorageDir(req);
+    const targetDir = getUserStorageDir(req);
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });
     }
@@ -356,7 +363,7 @@ exports.uploadTemplate = async (req, res) => {
     }
 
     ensureStorage();
-    const targetDir = getDbStorageDir(req);
+    const targetDir = getUserStorageDir(req);
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });
     }
