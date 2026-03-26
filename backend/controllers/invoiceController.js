@@ -14,6 +14,7 @@ const Op = Sequelize.Op;
 const ALLOWED_WARRANTY_PERIODS = new Set(["3 month", "6 month", "1 year", "2 year"]);
 const USER_PREF_TABLE = "user_preference_settings";
 const ensuredUserPrefTableByDb = new Set();
+const INVENTORY_DB_NAME = "inventory";
 
 function normalizeWarrantyPeriod(value){
     const raw = String(value || "").trim().toLowerCase();
@@ -275,6 +276,49 @@ function getImageMimeType(filePath){
     if(ext === ".bmp") return "image/bmp";
     if(ext === ".png") return "image/png";
     return "image/jpeg";
+}
+
+function isSmtpAuthFailure(err){
+    const msg = String(err?.message || "").toLowerCase();
+    return msg.includes("authentication failed") || msg.includes("gmail smtp authentication failed") || msg.includes("badcredentials") || msg.includes("(535)");
+}
+
+function buildSmtpPayload(setup){
+    const smtpHost = String(setup?.smtp_host || process.env.SMTP_HOST || "").trim();
+    const smtpPort = Number(setup?.smtp_port || process.env.SMTP_PORT || 587);
+    const smtpSecure = !!(setup?.smtp_secure || String(process.env.SMTP_SECURE || "").toLowerCase() === "true");
+    const smtpUser = String(setup?.smtp_user || process.env.SMTP_USER || "").trim();
+    const smtpPass = String(setup?.smtp_pass || process.env.SMTP_PASS || "").trim();
+    const fromName = String(setup?.from_name || "PULMO TECHNOLOGIES").trim();
+    const fromEmail = String(setup?.from_email || process.env.SMTP_FROM || smtpUser).trim();
+    const from = fromEmail.includes("<") ? fromEmail : `"${fromName}" <${fromEmail}>`;
+
+    return {
+        smtpConfig: {
+            host: smtpHost,
+            port: smtpPort,
+            secure: smtpSecure,
+            user: smtpUser,
+            pass: smtpPass
+        },
+        from
+    };
+}
+
+function hasSmtpConfig(payload){
+    const cfg = payload?.smtpConfig || {};
+    return !!String(cfg.host || "").trim() && !!String(cfg.user || "").trim() && !!String(cfg.pass || "").trim();
+}
+
+function smtpSignature(payload){
+    const cfg = payload?.smtpConfig || {};
+    return [
+        String(cfg.host || "").trim().toLowerCase(),
+        String(cfg.port || ""),
+        String(cfg.secure || ""),
+        String(cfg.user || "").trim().toLowerCase(),
+        String(cfg.pass || "").trim()
+    ].join("|");
 }
 
 exports.listInvoices = async (req,res)=>{
@@ -879,14 +923,28 @@ exports.sendInvoiceEmail = async (req, res) => {
             return res.status(400).json({ message: "Customer saved email address is not available." });
         }
 
-        const setup = await EmailSetup.findOne({ order: [["id", "ASC"]] });
-        const smtpHost = String(setup?.smtp_host || process.env.SMTP_HOST || "").trim();
-        const smtpPort = Number(setup?.smtp_port || process.env.SMTP_PORT || 587);
-        const smtpSecure = !!(setup?.smtp_secure || String(process.env.SMTP_SECURE || "").toLowerCase() === "true");
-        const smtpUser = String(setup?.smtp_user || process.env.SMTP_USER || "").trim();
-        const smtpPass = String(setup?.smtp_pass || process.env.SMTP_PASS || "").trim();
+        const currentDbName = String(db.getCurrentDatabase ? db.getCurrentDatabase() : "").trim().toLowerCase() || INVENTORY_DB_NAME;
+        const currentSetup = await EmailSetup.findOne({ order: [["id", "ASC"]] });
+        const inventorySetup = currentDbName === INVENTORY_DB_NAME
+            ? currentSetup
+            : await db.withDatabase(INVENTORY_DB_NAME, async () => EmailSetup.findOne({ order: [["id", "ASC"]] }));
 
-        if(!smtpHost || !smtpUser || !smtpPass){
+        const smtpCandidates = [];
+        const seen = new Set();
+        [currentSetup, inventorySetup, null].forEach((setupRow) => {
+            const payload = buildSmtpPayload(setupRow);
+            if(!hasSmtpConfig(payload)) return;
+            const key = smtpSignature(payload);
+            if(seen.has(key)) return;
+            seen.add(key);
+            smtpCandidates.push({
+                setup: setupRow,
+                smtpConfig: payload.smtpConfig,
+                from: payload.from
+            });
+        });
+
+        if(!smtpCandidates.length){
             return res.status(400).json({
                 message: "Email setup is incomplete. Please configure Support > Email Setup first."
             });
@@ -904,9 +962,10 @@ exports.sendInvoiceEmail = async (req, res) => {
             invoice_date: new Date(invoice.invoice_date || invoice.createdAt || Date.now()).toLocaleDateString("en-GB")
         };
 
-        const subjectTemplate = setup?.subject_template || "Invoice {{invoice_no}} - PULMO TECHNOLOGIES";
+        const templateSetup = currentSetup || inventorySetup || null;
+        const subjectTemplate = templateSetup?.subject_template || "Invoice {{invoice_no}} - PULMO TECHNOLOGIES";
         const bodyTemplate =
-            setup?.body_template ||
+            templateSetup?.body_template ||
             "Dear {{customer_name}},\n\nPlease find attached your invoice {{invoice_no}}.\n\nThank you.\nPULMO TECHNOLOGIES";
 
         const subject = applyTemplate(subjectTemplate, templateData);
@@ -916,31 +975,38 @@ exports.sendInvoiceEmail = async (req, res) => {
             .map((line) => line.trim())
             .join("<br>");
 
-        const fromName = String(setup?.from_name || "PULMO TECHNOLOGIES").trim();
-        const fromEmail = String(setup?.from_email || process.env.SMTP_FROM || smtpUser).trim();
-        const from = fromEmail.includes("<") ? fromEmail : `"${fromName}" <${fromEmail}>`;
-
-        await sendEmail({
-            to: recipient,
-            subject,
-            text: textBody,
-            html: htmlBody,
-            attachments: [
-                {
-                    filename: pdfFileName,
-                    content: pdfBuffer,
-                    contentType: "application/pdf"
+        let lastAuthError = null;
+        let sent = false;
+        for(const candidate of smtpCandidates){
+            try{
+                await sendEmail({
+                    to: recipient,
+                    subject,
+                    text: textBody,
+                    html: htmlBody,
+                    attachments: [
+                        {
+                            filename: pdfFileName,
+                            content: pdfBuffer,
+                            contentType: "application/pdf"
+                        }
+                    ],
+                    smtpConfig: candidate.smtpConfig,
+                    from: candidate.from
+                });
+                sent = true;
+                break;
+            }catch(sendErr){
+                if(isSmtpAuthFailure(sendErr)){
+                    lastAuthError = sendErr;
+                    continue;
                 }
-            ],
-            smtpConfig: {
-                host: smtpHost,
-                port: smtpPort,
-                secure: smtpSecure,
-                user: smtpUser,
-                pass: smtpPass
-            },
-            from
-        });
+                throw sendErr;
+            }
+        }
+        if(!sent){
+            throw lastAuthError || new Error("Failed to send invoice email.");
+        }
 
         res.json({
             message: `Invoice email sent to ${recipient}`,
