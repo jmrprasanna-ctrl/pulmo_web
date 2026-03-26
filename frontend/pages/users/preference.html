@@ -91,6 +91,14 @@
             </div>
 
             <div class="preference-card">
+                <h3>Quotation 3 PDF</h3>
+                <p>Upload Quotation 3 template (.pdf)</p>
+                <input id="quotation3TemplateFile" type="file" accept=".pdf">
+                <button class="btn btn-primary" type="button" onclick="uploadTemplate('quotation3')">Save Quotation 3</button>
+                <div class="pref-status" id="quotation3Status">Current: -</div>
+            </div>
+
+            <div class="preference-card">
                 <h3>SIGN C</h3>
                 <p>Upload SIGN C image to linked system path.</p>
                 <input id="signCFile" type="file" accept=".jpg,.jpeg,.bmp,.gif,.png">
@@ -176,6 +184,7 @@
             document.getElementById("invoiceStatus").textContent = `Current: ${pref.invoice_template_pdf_file_name || "-"}`;
             document.getElementById("quotationStatus").textContent = `Current: ${pref.quotation_template_pdf_file_name || "-"}`;
             document.getElementById("quotation2Status").textContent = `Current: ${pref.quotation2_template_pdf_file_name || "-"}`;
+            document.getElementById("quotation3Status").textContent = `Current: ${pref.quotation3_template_pdf_file_name || "-"}`;
             document.getElementById("signCStatus").textContent = `Current: ${pref.sign_c_file_name || "-"} | Path: ${pref.sign_c_path || "-"}`;
             document.getElementById("signVStatus").textContent = `Current: ${pref.sign_v_file_name || "-"} | Path: ${pref.sign_v_path || "-"}`;
             document.getElementById("sealCStatus").textContent = `Current: ${pref.seal_c_file_name || "-"} | Path: ${pref.seal_c_path || "-"}`;
@@ -236,7 +245,8 @@
         function getTemplateInput(templateType){
             if(templateType === "invoice") return document.getElementById("invoiceTemplateFile");
             if(templateType === "quotation") return document.getElementById("quotationTemplateFile");
-            return document.getElementById("quotation2TemplateFile");
+            if(templateType === "quotation2") return document.getElementById("quotation2TemplateFile");
+            return document.getElementById("quotation3TemplateFile");
         }
 
         async function uploadTemplate(templateType){

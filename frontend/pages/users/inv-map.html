@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inv Map - PULMO TECHNOLOGIES</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="../../assets/css/dashboard.css">
+    <style>
+        .inv-map-wrap{max-width:980px}
+        .inv-map-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+        .inv-map-card{margin-top:14px;background:#f7fbff;border:1px solid #d8e8f8;border-radius:10px;padding:12px}
+        .inv-map-table{width:100%;border-collapse:collapse}
+        .inv-map-table th,.inv-map-table td{padding:8px 6px;border-bottom:1px solid #e4eef8;text-align:left}
+        .inv-map-table th:last-child,.inv-map-table td:last-child{text-align:center;width:120px}
+        .inv-map-table tr:last-child td{border-bottom:0}
+        .inv-map-row{display:grid;grid-template-columns:220px 1fr;gap:10px;padding:4px 0}
+        @media (max-width: 900px){
+            .inv-map-grid{grid-template-columns:1fr}
+            .inv-map-row{grid-template-columns:1fr}
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <img src="../../assets/images/logo.png" alt="Company Logo">
+            <span>PULMO TECHNOLOGIES</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="../dashboard.html">Dashboard</a></li>
+            <li><a href="../products/product-list.html">Products</a></li>
+            <li><a href="../products/general-machine.html">Machines</a></li>
+            <li><a href="../customers/customer-list.html">Customers</a></li>
+            <li><a href="../invoices/invoice-list.html">Invoices</a></li>
+            <li><a href="../vendors/list-vendor.html">Vendors</a></li>
+            <li><a href="../expenses/expense-list.html">Expenses</a></li>
+            <li><a href="../reports/sales-report.html">Reports</a></li>
+            <li><a href="../analytics/sales-chart.html">Analytics</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <header><h2>Inv Map</h2></header>
+
+        <div class="form-container inv-map-wrap">
+            <div class="inv-map-grid">
+                <div>
+                    <label for="userSelect">User</label>
+                    <select id="userSelect"><option value="">Select user</option></select>
+                </div>
+                <div>
+                    <label for="databaseSelect">Database</label>
+                    <select id="databaseSelect"><option value="">Select database</option></select>
+                </div>
+            </div>
+
+            <div class="inv-map-card">
+                <label style="margin-bottom:8px;display:block;">Invoice Mapped Functions</label>
+                <table class="inv-map-table">
+                    <thead>
+                        <tr>
+                            <th>Function</th>
+                            <th>Preference Source</th>
+                            <th>Enable</th>
+                        </tr>
+                    </thead>
+                    <tbody id="featureBody"></tbody>
+                </table>
+            </div>
+
+            <div class="inv-map-card">
+                <div class="inv-map-row"><strong>Verify Status</strong><span id="verifyStatus">Not verified</span></div>
+                <div class="inv-map-row"><strong>Missing Preferences</strong><span id="missingStatus">-</span></div>
+            </div>
+
+            <div class="access-actions" style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button id="verifyBtn" class="btn btn-secondary" type="button" onclick="verifyInvMap()">Verify</button>
+                <button id="mappedBtn" class="btn btn-primary" type="button" onclick="saveInvMap()">Mapped</button>
+                <a class="btn btn-secondary" href="user-access.html">Back</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../assets/js/api.js"></script>
+    <script>
+        const userSelectEl = document.getElementById("userSelect");
+        const databaseSelectEl = document.getElementById("databaseSelect");
+        const featureBodyEl = document.getElementById("featureBody");
+        const verifyStatusEl = document.getElementById("verifyStatus");
+        const missingStatusEl = document.getElementById("missingStatus");
+        const verifyBtnEl = document.getElementById("verifyBtn");
+        const mappedBtnEl = document.getElementById("mappedBtn");
+
+        const INV_MAP_PATH = "/users/inv-map.html";
+        let canAddInvMap = false;
+        let isVerified = false;
+
+        const FEATURE_OPTIONS = [
+            { key: "logo", label: "Logo", source: "Preference > System Logo" },
+            { key: "invoice", label: "Invoice", source: "Preference > Invoice PDF" },
+            { key: "quotation", label: "Quotation", source: "Preference > Quotation PDF" },
+            { key: "quotation2", label: "Quotation 2", source: "Preference > Quotation 2 PDF" },
+            { key: "quotation3", label: "Quotation 3", source: "Preference > Quotation 3 PDF" },
+            { key: "sign_c", label: "Sign C", source: "Preference > SIGN C" },
+            { key: "sign_v", label: "Sign V", source: "Preference > SIGN V" },
+            { key: "seal_c", label: "Seal C", source: "Preference > SEAL C" },
+            { key: "seal_v", label: "Seal V", source: "Preference > SEAL V" },
+            { key: "theme", label: "Theme", source: "Preference > Theme Settings" }
+        ];
+
+        function renderFeatureRows(){
+            featureBodyEl.innerHTML = "";
+            FEATURE_OPTIONS.forEach((feature) => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${feature.label}</td>
+                    <td>${feature.source}</td>
+                    <td><input type="checkbox" data-feature-key="${feature.key}" style="width:18px;height:18px;"></td>
+                `;
+                featureBodyEl.appendChild(row);
+            });
+        }
+
+        function getFeatureFlags(){
+            const flags = {};
+            FEATURE_OPTIONS.forEach((feature) => {
+                const cb = featureBodyEl.querySelector(`input[type='checkbox'][data-feature-key='${feature.key}']`);
+                flags[feature.key] = !!(cb && cb.checked);
+            });
+            return flags;
+        }
+
+        function setFeatureFlags(flags){
+            const normalized = flags && typeof flags === "object" ? flags : {};
+            FEATURE_OPTIONS.forEach((feature) => {
+                const cb = featureBodyEl.querySelector(`input[type='checkbox'][data-feature-key='${feature.key}']`);
+                if(cb){
+                    cb.checked = !!normalized[feature.key];
+                }
+            });
+        }
+
+        function resetVerifyState(){
+            isVerified = false;
+            verifyStatusEl.textContent = "Not verified";
+            missingStatusEl.textContent = "-";
+        }
+
+        async function loadUsers(){
+            const res = await request("/users/access-users?include_demo=true", "GET");
+            const users = Array.isArray(res.users) ? res.users : [];
+            userSelectEl.innerHTML = `<option value="">Select user</option>`;
+            users.forEach((u) => {
+                const opt = document.createElement("option");
+                opt.value = String(u.selection_key || "");
+                opt.textContent = u.label || `${u.username || "User"} (${u.email || ""})`;
+                userSelectEl.appendChild(opt);
+            });
+        }
+
+        async function loadDatabases(){
+            const res = await request("/users/databases", "GET");
+            const dbs = Array.isArray(res.databases) ? res.databases : [];
+            databaseSelectEl.innerHTML = `<option value="">Select database</option>`;
+            dbs.forEach((d) => {
+                const opt = document.createElement("option");
+                opt.value = String(d.name || "").toLowerCase();
+                opt.textContent = d.label || d.name || "";
+                databaseSelectEl.appendChild(opt);
+            });
+            const selectedDb = String(localStorage.getItem("selectedDatabaseName") || "").trim().toLowerCase();
+            if(selectedDb){
+                databaseSelectEl.value = selectedDb;
+            }
+        }
+
+        async function loadExistingMapping(){
+            const userRef = String(userSelectEl.value || "").trim();
+            const databaseName = String(databaseSelectEl.value || "").trim().toLowerCase();
+            if(!userRef || !databaseName){
+                setFeatureFlags({});
+                return;
+            }
+            try{
+                const res = await request(`/users/inv-map/${encodeURIComponent(userRef)}?database_name=${encodeURIComponent(databaseName)}`, "GET");
+                const mapping = res && res.mapping ? res.mapping : null;
+                if(mapping && mapping.feature_flags){
+                    setFeatureFlags(mapping.feature_flags);
+                    verifyStatusEl.textContent = mapping.is_verified ? "Verified" : "Not verified";
+                    isVerified = !!mapping.is_verified;
+                }else{
+                    setFeatureFlags({});
+                    resetVerifyState();
+                }
+            }catch(_err){
+                setFeatureFlags({});
+                resetVerifyState();
+            }
+        }
+
+        async function verifyInvMap(){
+            if(!canAddInvMap){
+                alert("You do not have add permission for Inv Map page.");
+                return;
+            }
+            const userRef = String(userSelectEl.value || "").trim();
+            const databaseName = String(databaseSelectEl.value || "").trim().toLowerCase();
+            if(!userRef || !databaseName){
+                alert("Please select user and database.");
+                return;
+            }
+            try{
+                const res = await request("/users/inv-map/verify", "POST", {
+                    user_ref: userRef,
+                    database_name: databaseName,
+                    feature_flags: getFeatureFlags()
+                });
+                isVerified = !!res.verified;
+                verifyStatusEl.textContent = isVerified ? "Verified" : "Not verified";
+                missingStatusEl.textContent = Array.isArray(res.missing) && res.missing.length ? res.missing.join(", ") : "-";
+                showMessageBox(res.message || (isVerified ? "Verified" : "Not verified"), isVerified ? "success" : "error");
+            }catch(err){
+                isVerified = false;
+                verifyStatusEl.textContent = "Not verified";
+                missingStatusEl.textContent = "-";
+                alert(err.message || "Failed to verify Inv Map");
+            }
+        }
+
+        async function saveInvMap(){
+            if(!canAddInvMap){
+                alert("You do not have add permission for Inv Map page.");
+                return;
+            }
+            if(!isVerified){
+                alert("Please verify before mapped.");
+                return;
+            }
+            const userRef = String(userSelectEl.value || "").trim();
+            const databaseName = String(databaseSelectEl.value || "").trim().toLowerCase();
+            if(!userRef || !databaseName){
+                alert("Please select user and database.");
+                return;
+            }
+            try{
+                const res = await request("/users/inv-map/save", "POST", {
+                    user_ref: userRef,
+                    database_name: databaseName,
+                    feature_flags: getFeatureFlags()
+                });
+                showMessageBox(res.message || "Inv Map saved successfully");
+            }catch(err){
+                alert(err.message || "Failed to save Inv Map");
+            }
+        }
+
+        async function applyPermissionState(){
+            if(typeof window.__waitForUserAccessPermissions === "function"){
+                await window.__waitForUserAccessPermissions();
+            }
+            canAddInvMap = !!window.hasUserActionPermission && window.hasUserActionPermission(INV_MAP_PATH, "add");
+            const canViewInvMap = !!window.hasUserActionPermission && window.hasUserActionPermission(INV_MAP_PATH, "view");
+            if(!canViewInvMap){
+                alert("You do not have permission to view Inv Map.");
+                window.location.href = "user-access.html";
+                return false;
+            }
+            verifyBtnEl.style.display = canAddInvMap ? "" : "none";
+            mappedBtnEl.style.display = canAddInvMap ? "" : "none";
+            return true;
+        }
+
+        userSelectEl.addEventListener("change", async () => {
+            resetVerifyState();
+            await loadExistingMapping();
+        });
+        databaseSelectEl.addEventListener("change", async () => {
+            resetVerifyState();
+            await loadExistingMapping();
+        });
+        featureBodyEl.addEventListener("change", () => {
+            resetVerifyState();
+        });
+
+        window.verifyInvMap = verifyInvMap;
+        window.saveInvMap = saveInvMap;
+
+        (async function init(){
+            const role = (localStorage.getItem("role") || "").toLowerCase();
+            if(role !== "admin"){
+                alert("Only admin can access this page.");
+                window.location.href = "../dashboard.html";
+                return;
+            }
+            renderFeatureRows();
+            const allowed = await applyPermissionState();
+            if(!allowed) return;
+            await Promise.all([loadUsers(), loadDatabases()]);
+            await loadExistingMapping();
+        })();
+    </script>
+</body>
+</html>

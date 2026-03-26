@@ -5,6 +5,7 @@ const { spawn } = require("child_process");
 const db = require("../config/database");
 const User = require("../models/User");
 const UserAccess = require("../models/UserAccess");
+const UiSetting = require("../models/UiSetting");
 const DEMO_DB_NAME = "demo";
 const INVENTORY_DB_NAME = "inventory";
 const RESERVED_DATABASES = new Set(["postgres", "template0", "template1"]);
@@ -13,6 +14,8 @@ const DATABASE_STORAGE_ROOT = path.resolve(__dirname, "../storage/databases");
 const COMPANY_REGISTRY_TABLE = "company_profiles";
 const COMPANY_STORAGE_ROOT = path.resolve(__dirname, "../storage/companies");
 const COMPANY_LOGO_EXTENSIONS = new Set([".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".tif", ".png"]);
+const USER_INVOICE_MAPPING_TABLE = "user_invoice_mappings";
+const INV_MAP_PATH = "/users/inv-map.html";
 
 const ACCESS_MODULE_OPTIONS = [
   {
@@ -96,6 +99,7 @@ const ACCESS_MODULE_OPTIONS = [
       { path: "/users/db-create.html", label: "DB Create", actions: ["view", "add", "delete"] },
       { path: "/users/company-create.html", label: "Company Create", actions: ["view", "add", "delete"] },
       { path: "/users/mapped.html", label: "Mapped", actions: ["view", "add"] },
+      { path: "/users/inv-map.html", label: "Inv Map", actions: ["view", "add"] },
       { path: "/users/preference.html", label: "Preference", actions: ["view", "edit"] },
       { path: "/users/user-logged.html", label: "User Logged Times", actions: ["view"] },
       { path: "/support/email-setup.html", label: "Email Setup", actions: ["view", "edit"] },
@@ -337,6 +341,31 @@ async function ensureUserMappingTable(client) {
       created_by INTEGER,
       "createdAt" TIMESTAMP DEFAULT NOW(),
       "updatedAt" TIMESTAMP DEFAULT NOW()
+    );
+  `);
+}
+
+async function ensureUserInvoiceMappingTable(client) {
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS ${USER_INVOICE_MAPPING_TABLE} (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      database_name VARCHAR(120) NOT NULL,
+      logo_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+      invoice_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+      quotation_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+      quotation2_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+      quotation3_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+      sign_c_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+      sign_v_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+      seal_c_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+      seal_v_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+      theme_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+      is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+      created_by INTEGER,
+      "createdAt" TIMESTAMP DEFAULT NOW(),
+      "updatedAt" TIMESTAMP DEFAULT NOW(),
+      UNIQUE(user_id, database_name)
     );
   `);
 }
@@ -717,6 +746,94 @@ async function hasMappedActionPermission(req, action) {
   if (!row) return true;
   const allowedActions = parseAllowedActions(row);
   return allowedActions.includes(actionKey);
+}
+
+async function hasInvMapActionPermission(req, action) {
+  const role = String(req.user?.role || "").toLowerCase();
+  if (role !== "admin") return false;
+  const userId = Number(req.user?.id || req.user?.userId || 0);
+  if (!Number.isFinite(userId) || userId <= 0) return false;
+
+  const userDatabase = normalizeUserDatabase(req.databaseName || req.user?.database_name || INVENTORY_DB_NAME);
+  const actionKey = toActionKey(INV_MAP_PATH, action);
+
+  let row = await findAccessFromMainDb(userId, userDatabase);
+  if (!row && userDatabase !== INVENTORY_DB_NAME) {
+    row = await findAccessFromMainDb(userId, INVENTORY_DB_NAME);
+  }
+
+  if (!row) return true;
+  const allowedActions = parseAllowedActions(row);
+  return allowedActions.includes(actionKey);
+}
+
+function normalizeInvMapFlags(raw) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  return {
+    logo: Boolean(source.logo),
+    invoice: Boolean(source.invoice),
+    quotation: Boolean(source.quotation),
+    quotation2: Boolean(source.quotation2),
+    quotation3: Boolean(source.quotation3),
+    sign_c: Boolean(source.sign_c),
+    sign_v: Boolean(source.sign_v),
+    seal_c: Boolean(source.seal_c),
+    seal_v: Boolean(source.seal_v),
+    theme: Boolean(source.theme),
+  };
+}
+
+function hasAnyInvMapFlag(flags) {
+  return Object.values(flags || {}).some((v) => Boolean(v));
+}
+
+async function getPreferenceAvailability(databaseName) {
+  const targetDb = normalizeDatabaseName(databaseName) || INVENTORY_DB_NAME;
+  await db.registerDatabase(targetDb).catch(() => {});
+  const row = await db.withDatabase(targetDb, async () => {
+    let first = await UiSetting.findOne({ order: [["id", "ASC"]] });
+    if (!first) {
+      first = await UiSetting.create({});
+    }
+    return first;
+  });
+
+  const defaultLogoPath = path.resolve(__dirname, "../../frontend/assets/images/logo.png");
+  const resolveFile = (rawPath) => {
+    const value = String(rawPath || "").trim();
+    if (!value) return "";
+    const resolved = path.resolve(value);
+    return fs.existsSync(resolved) ? resolved : "";
+  };
+
+  const logoPath = resolveFile(row?.logo_path) || (fs.existsSync(defaultLogoPath) ? defaultLogoPath : "");
+  const invoicePath = resolveFile(row?.invoice_template_pdf_path);
+  const quotationPath = resolveFile(row?.quotation_template_pdf_path);
+  const quotation2Path = resolveFile(row?.quotation2_template_pdf_path);
+  const quotation3Path = resolveFile(row?.quotation3_template_pdf_path);
+  const signCPath = resolveFile(row?.sign_c_path);
+  const signVPath = resolveFile(row?.sign_v_path);
+  const sealCPath = resolveFile(row?.seal_c_path);
+  const sealVPath = resolveFile(row?.seal_v_path);
+
+  return {
+    logo: Boolean(logoPath),
+    invoice: Boolean(invoicePath),
+    quotation: Boolean(quotationPath),
+    quotation2: Boolean(quotation2Path),
+    quotation3: Boolean(quotation3Path),
+    sign_c: Boolean(signCPath),
+    sign_v: Boolean(signVPath),
+    seal_c: Boolean(sealCPath),
+    seal_v: Boolean(sealVPath),
+    theme: true,
+  };
+}
+
+function getInvMapMissing(flags, availability) {
+  const selected = normalizeInvMapFlags(flags);
+  const available = availability && typeof availability === "object" ? availability : {};
+  return Object.keys(selected).filter((key) => Boolean(selected[key]) && !Boolean(available[key]));
 }
 
 exports.getAccessUsers = async (_req, res) => {
@@ -1515,6 +1632,277 @@ exports.saveMapping = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: err.message || "Failed to save mapping." });
+  } finally {
+    await mainDbClient.end().catch(() => {});
+  }
+};
+
+exports.getInvMapByUser = async (req, res) => {
+  const canView = await hasInvMapActionPermission(req, "view");
+  if (!canView) {
+    return res.status(403).json({ message: "Forbidden: Missing Inv Map view permission." });
+  }
+
+  const userRef = parseUserReference(req.params.userId);
+  if (!userRef) {
+    return res.status(400).json({ message: "Invalid user reference." });
+  }
+
+  const databaseName = normalizeDatabaseName(req.query?.database_name);
+  if (!databaseName) {
+    return res.status(400).json({ message: "Database is required." });
+  }
+
+  const cfg = getDbConfig();
+  const mainDbClient = new Client({
+    host: cfg.host,
+    port: cfg.port,
+    user: cfg.user,
+    password: cfg.password,
+    database: cfg.database || INVENTORY_DB_NAME,
+  });
+
+  try {
+    const user = await getUserFromDatabase(userRef.user_database, userRef.user_id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    await mainDbClient.connect();
+    await ensureUserInvoiceMappingTable(mainDbClient);
+    const rs = await mainDbClient.query(
+      `SELECT *
+       FROM ${USER_INVOICE_MAPPING_TABLE}
+       WHERE user_id = $1 AND LOWER(database_name) = LOWER($2)
+       LIMIT 1`,
+      [userRef.user_id, databaseName]
+    );
+
+    if (!rs.rowCount) {
+      return res.json({ mapping: null });
+    }
+
+    const row = rs.rows[0];
+    res.json({
+      mapping: {
+        user_id: Number(row.user_id || 0),
+        database_name: normalizeDatabaseName(row.database_name),
+        feature_flags: {
+          logo: Boolean(row.logo_enabled),
+          invoice: Boolean(row.invoice_enabled),
+          quotation: Boolean(row.quotation_enabled),
+          quotation2: Boolean(row.quotation2_enabled),
+          quotation3: Boolean(row.quotation3_enabled),
+          sign_c: Boolean(row.sign_c_enabled),
+          sign_v: Boolean(row.sign_v_enabled),
+          seal_c: Boolean(row.seal_c_enabled),
+          seal_v: Boolean(row.seal_v_enabled),
+          theme: Boolean(row.theme_enabled),
+        },
+        is_verified: Boolean(row.is_verified),
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Failed to load Inv Map data." });
+  } finally {
+    await mainDbClient.end().catch(() => {});
+  }
+};
+
+exports.verifyInvMap = async (req, res) => {
+  const canAdd = await hasInvMapActionPermission(req, "add");
+  if (!canAdd) {
+    return res.status(403).json({ message: "Forbidden: Missing Inv Map add permission." });
+  }
+
+  const userRef = parseUserReference(req.body?.user_ref);
+  const databaseName = normalizeDatabaseName(req.body?.database_name);
+  const featureFlags = normalizeInvMapFlags(req.body?.feature_flags);
+
+  if (!userRef) {
+    return res.status(400).json({ message: "User is required." });
+  }
+  if (!databaseName) {
+    return res.status(400).json({ message: "Database is required." });
+  }
+  if (!hasAnyInvMapFlag(featureFlags)) {
+    return res.status(400).json({ message: "Select at least one function checkbox." });
+  }
+
+  try {
+    const user = await getUserFromDatabase(userRef.user_database, userRef.user_id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const availability = await getPreferenceAvailability(databaseName);
+    const missing = getInvMapMissing(featureFlags, availability);
+    const verified = missing.length === 0;
+
+    res.json({
+      verified,
+      missing,
+      availability,
+      message: verified
+        ? "Verified successfully."
+        : `Selected function(s) missing in Preference uploads: ${missing.join(", ")}`,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Failed to verify Inv Map." });
+  }
+};
+
+exports.saveInvMap = async (req, res) => {
+  const canAdd = await hasInvMapActionPermission(req, "add");
+  if (!canAdd) {
+    return res.status(403).json({ message: "Forbidden: Missing Inv Map add permission." });
+  }
+
+  const userRef = parseUserReference(req.body?.user_ref);
+  const databaseName = normalizeDatabaseName(req.body?.database_name);
+  const featureFlags = normalizeInvMapFlags(req.body?.feature_flags);
+
+  if (!userRef) {
+    return res.status(400).json({ message: "User is required." });
+  }
+  if (!databaseName) {
+    return res.status(400).json({ message: "Database is required." });
+  }
+  if (!hasAnyInvMapFlag(featureFlags)) {
+    return res.status(400).json({ message: "Select at least one function checkbox." });
+  }
+
+  const cfg = getDbConfig();
+  const mainDbClient = new Client({
+    host: cfg.host,
+    port: cfg.port,
+    user: cfg.user,
+    password: cfg.password,
+    database: cfg.database || INVENTORY_DB_NAME,
+  });
+
+  try {
+    const user = await getUserFromDatabase(userRef.user_database, userRef.user_id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const availability = await getPreferenceAvailability(databaseName);
+    const missing = getInvMapMissing(featureFlags, availability);
+    if (missing.length) {
+      return res.status(400).json({
+        message: `Verify failed. Missing Preference upload(s): ${missing.join(", ")}`,
+        missing,
+      });
+    }
+
+    await mainDbClient.connect();
+    await ensureUserInvoiceMappingTable(mainDbClient);
+    await mainDbClient.query(
+      `INSERT INTO ${USER_INVOICE_MAPPING_TABLE}
+       (user_id, database_name, logo_enabled, invoice_enabled, quotation_enabled, quotation2_enabled, quotation3_enabled,
+        sign_c_enabled, sign_v_enabled, seal_c_enabled, seal_v_enabled, theme_enabled, is_verified, created_by, "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, TRUE, $13, NOW(), NOW())
+       ON CONFLICT (user_id, database_name)
+       DO UPDATE SET logo_enabled = EXCLUDED.logo_enabled,
+                     invoice_enabled = EXCLUDED.invoice_enabled,
+                     quotation_enabled = EXCLUDED.quotation_enabled,
+                     quotation2_enabled = EXCLUDED.quotation2_enabled,
+                     quotation3_enabled = EXCLUDED.quotation3_enabled,
+                     sign_c_enabled = EXCLUDED.sign_c_enabled,
+                     sign_v_enabled = EXCLUDED.sign_v_enabled,
+                     seal_c_enabled = EXCLUDED.seal_c_enabled,
+                     seal_v_enabled = EXCLUDED.seal_v_enabled,
+                     theme_enabled = EXCLUDED.theme_enabled,
+                     is_verified = TRUE,
+                     "updatedAt" = NOW()`,
+      [
+        userRef.user_id,
+        databaseName,
+        featureFlags.logo,
+        featureFlags.invoice,
+        featureFlags.quotation,
+        featureFlags.quotation2,
+        featureFlags.quotation3,
+        featureFlags.sign_c,
+        featureFlags.sign_v,
+        featureFlags.seal_c,
+        featureFlags.seal_v,
+        featureFlags.theme,
+        Number(req.user?.id || 0) || null,
+      ]
+    );
+
+    res.json({
+      message: "Inv Map saved successfully.",
+      mapping: {
+        user_ref: `${userRef.user_database}:${userRef.user_id}`,
+        user_id: userRef.user_id,
+        database_name: databaseName,
+        feature_flags: featureFlags,
+        is_verified: true,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Failed to save Inv Map." });
+  } finally {
+    await mainDbClient.end().catch(() => {});
+  }
+};
+
+exports.getMyInvMap = async (req, res) => {
+  const userId = Number(req.user?.id || req.user?.userId || 0);
+  if (!Number.isFinite(userId) || userId <= 0) {
+    return res.status(401).json({ message: "Invalid token user." });
+  }
+
+  const databaseName = normalizeDatabaseName(req.databaseName || req.user?.database_name || req.headers["x-database-name"]) || INVENTORY_DB_NAME;
+  const cfg = getDbConfig();
+  const mainDbClient = new Client({
+    host: cfg.host,
+    port: cfg.port,
+    user: cfg.user,
+    password: cfg.password,
+    database: cfg.database || INVENTORY_DB_NAME,
+  });
+  try {
+    await mainDbClient.connect();
+    await ensureUserInvoiceMappingTable(mainDbClient);
+    const rs = await mainDbClient.query(
+      `SELECT *
+       FROM ${USER_INVOICE_MAPPING_TABLE}
+       WHERE user_id = $1 AND LOWER(database_name) = LOWER($2)
+       LIMIT 1`,
+      [userId, databaseName]
+    );
+    if (!rs.rowCount) {
+      return res.json({
+        mapping: null,
+        feature_flags: null,
+      });
+    }
+    const row = rs.rows[0];
+    res.json({
+      mapping: {
+        user_id: Number(row.user_id || 0),
+        database_name: normalizeDatabaseName(row.database_name),
+        is_verified: Boolean(row.is_verified),
+      },
+      feature_flags: {
+        logo: Boolean(row.logo_enabled),
+        invoice: Boolean(row.invoice_enabled),
+        quotation: Boolean(row.quotation_enabled),
+        quotation2: Boolean(row.quotation2_enabled),
+        quotation3: Boolean(row.quotation3_enabled),
+        sign_c: Boolean(row.sign_c_enabled),
+        sign_v: Boolean(row.sign_v_enabled),
+        seal_c: Boolean(row.seal_c_enabled),
+        seal_v: Boolean(row.seal_v_enabled),
+        theme: Boolean(row.theme_enabled),
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Failed to load your Inv Map." });
   } finally {
     await mainDbClient.end().catch(() => {});
   }

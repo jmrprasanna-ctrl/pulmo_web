@@ -8,6 +8,7 @@ router.get("/generate-no", authMiddleware, roleMiddleware(["admin","manager","us
 router.get("/template-pdf", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.getInvoiceTemplatePdf);
 router.get("/quotation-template-pdf", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.getQuotationTemplatePdf);
 router.get("/quotation-2-template-pdf", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.getQuotation2TemplatePdf);
+router.get("/quotation-3-template-pdf", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.getQuotation3TemplatePdf);
 router.get("/sign1-image", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.getSign1Image);
 router.get("/signv-image", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.getSignVImage);
 router.get("/seal1-image", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.getSeal1Image);

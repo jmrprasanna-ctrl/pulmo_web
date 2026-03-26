@@ -154,6 +154,22 @@ const BASE_W = 1240;
 const BASE_H = 1754;
 const currentRole = String(localStorage.getItem("role") || "").trim().toLowerCase();
 const canConfigurePreview = currentRole === "admin" || currentRole === "manager";
+let invMapFlags = null;
+
+function hasMappedFeature(featureKey){
+    if(!invMapFlags) return true;
+    return !!invMapFlags[featureKey];
+}
+
+async function loadInvMapFlags(){
+    try{
+        const res = await request("/users/inv-map/me", "GET");
+        const flags = res && res.feature_flags && typeof res.feature_flags === "object" ? res.feature_flags : null;
+        invMapFlags = flags;
+    }catch(_err){
+        invMapFlags = null;
+    }
+}
 const OVERLAY = {
     // Keep neutral mapping to preserve original-template alignment
     shiftX: 0,
@@ -536,6 +552,9 @@ async function fetchInvoiceData(){
 }
 
 async function fetchTemplatePdfBuffer(){
+    if(!hasMappedFeature("invoice")){
+        throw new Error("Invoice function is not mapped for this user and database.");
+    }
     const token = localStorage.getItem("token");
     const res = await fetch(`${BASE_URL}/invoices/template-pdf`, {
         headers: {
@@ -1070,8 +1089,11 @@ function initAddressControls(){
 function initSignControl(){
     const signChk = document.getElementById("sign1Chk");
     if(!signChk) return;
+    const allowed = hasMappedFeature("sign_c");
     signChk.checked = false;
     sign1Enabled = false;
+    signChk.disabled = !allowed;
+    if(!allowed) return;
     signChk.addEventListener("change", async () => {
         sign1Enabled = !!signChk.checked;
         if(sign1Enabled){
@@ -1084,8 +1106,11 @@ function initSignControl(){
 function initSignVControl(){
     const signVChk = document.getElementById("signVChk");
     if(!signVChk) return;
+    const allowed = hasMappedFeature("sign_v");
     signVChk.checked = false;
     signVEnabled = false;
+    signVChk.disabled = !allowed;
+    if(!allowed) return;
     signVChk.addEventListener("change", async () => {
         signVEnabled = !!signVChk.checked;
         if(signVEnabled){
@@ -1098,8 +1123,11 @@ function initSignVControl(){
 function initSealControl(){
     const sealChk = document.getElementById("seal1Chk");
     if(!sealChk) return;
+    const allowed = hasMappedFeature("seal_c");
     sealChk.checked = false;
     seal1Enabled = false;
+    sealChk.disabled = !allowed;
+    if(!allowed) return;
     sealChk.addEventListener("change", async () => {
         seal1Enabled = !!sealChk.checked;
         if(seal1Enabled){
@@ -1112,8 +1140,11 @@ function initSealControl(){
 function initSealVControl(){
     const sealVChk = document.getElementById("sealVChk");
     if(!sealVChk) return;
+    const allowed = hasMappedFeature("seal_v");
     sealVChk.checked = false;
     sealVEnabled = false;
+    sealVChk.disabled = !allowed;
+    if(!allowed) return;
     sealVChk.addEventListener("change", async () => {
         sealVEnabled = !!sealVChk.checked;
         if(sealVEnabled){
@@ -1128,11 +1159,19 @@ function initLogoWithNameControl(){
     const fileInput = document.getElementById("logoFileInput");
     const browseBtn = document.getElementById("logoBrowseBtn");
     if(!logoChk || !fileInput || !browseBtn) return;
+    const allowed = hasMappedFeature("logo");
 
     logoWithNameDataUrl = String(localStorage.getItem(LOGO_STORAGE_KEY) || "");
     logoWithNameEnabled = !!logoWithNameDataUrl;
     logoChk.checked = logoWithNameEnabled;
     logoWithNameImage = null;
+    logoChk.disabled = !allowed;
+    browseBtn.disabled = !allowed;
+    if(!allowed){
+        logoWithNameEnabled = false;
+        logoChk.checked = false;
+        return;
+    }
 
     browseBtn.addEventListener("click", () => fileInput.click());
     fileInput.addEventListener("change", async () => {
@@ -1305,7 +1344,8 @@ async function emailInvoice(){
     }
 }
 
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
+    await loadInvMapFlags();
     const saveInvDateBtn = document.getElementById("saveInvDateBtn");
     if(saveInvDateBtn){
         saveInvDateBtn.addEventListener("click", updateInvoiceDateFromTile);

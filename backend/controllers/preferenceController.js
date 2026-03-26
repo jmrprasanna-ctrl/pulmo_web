@@ -19,6 +19,10 @@ const TEMPLATE_MAP = {
     column: "quotation2_template_pdf_path",
     baseName: "quotation-2-template",
   },
+  quotation3: {
+    column: "quotation3_template_pdf_path",
+    baseName: "quotation-3-template",
+  },
 };
 
 const BRAND_IMAGE_MAP = {
@@ -125,6 +129,8 @@ exports.getPreferences = async (_req, res) => {
       quotation_template_pdf_file_name: currentFileNameFromPath(row.quotation_template_pdf_path),
       quotation2_template_pdf_path: row.quotation2_template_pdf_path || "",
       quotation2_template_pdf_file_name: currentFileNameFromPath(row.quotation2_template_pdf_path),
+      quotation3_template_pdf_path: row.quotation3_template_pdf_path || "",
+      quotation3_template_pdf_file_name: currentFileNameFromPath(row.quotation3_template_pdf_path),
       sign_c_path: resolveBrandImagePath(row, "sign_c"),
       sign_c_file_name: currentFileNameFromPath(resolveBrandImagePath(row, "sign_c")),
       sign_v_path: resolveBrandImagePath(row, "sign_v"),

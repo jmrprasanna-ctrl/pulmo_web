@@ -107,6 +107,11 @@ async function ensureDefaultCategories() {
 
 async function ensureDefaultUiSettings() {
   await runOnBusinessDatabases(async () => {
+    await db.query(`
+      ALTER TABLE ui_settings
+      ADD COLUMN IF NOT EXISTS quotation3_template_pdf_path VARCHAR(500);
+    `);
+
     const first = await UiSetting.findOne({ order: [["id", "ASC"]] });
     if (!first) {
       await UiSetting.create({
@@ -575,6 +580,33 @@ async function ensureUserMappingSchema() {
   });
 }
 
+async function ensureUserInvoiceMappingSchema() {
+  await db.withDatabase("inventory", async () => {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS user_invoice_mappings (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        database_name VARCHAR(120) NOT NULL,
+        logo_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        invoice_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        quotation_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        quotation2_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        quotation3_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        sign_c_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        sign_v_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        seal_c_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        seal_v_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        theme_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+        created_by INTEGER,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, database_name)
+      );
+    `);
+  });
+}
+
 async function ensureUserSuperSchema() {
   await runOnBusinessDatabases(async () => {
     await db.query(`
@@ -662,6 +694,7 @@ async function startServer() {
     await ensureUserAccessSchema();
     await ensureCompanyProfilesSchema();
     await ensureUserMappingSchema();
+    await ensureUserInvoiceMappingSchema();
     await ensureUserSuperSchema();
     await ensureInvoiceDateSchema();
     await ensureInvoicePaymentSchema();

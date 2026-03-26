@@ -658,6 +658,26 @@ exports.listWarrantyInvoices = async (_req, res) => {
     }
 };
 
+exports.getQuotation3TemplatePdf = async (req,res)=>{
+    try{
+        const resolved = await resolveTemplatePath(
+            "quotation3_template_pdf_path",
+            "QUOTATION3_TEMPLATE_PDF",
+            "D:\\26XX001 PUL1V QUATATION 3.pdf"
+        );
+        if(!fs.existsSync(resolved)){
+            return res.status(404).json({
+                message: `Quotation 3 template PDF not found at ${resolved}`
+            });
+        }
+        res.setHeader("Content-Type", "application/pdf");
+        res.sendFile(resolved);
+    }catch(err){
+        console.error(err);
+        res.status(500).json({ message: err.message || "Failed to load quotation 3 template PDF." });
+    }
+};
+
 exports.updateInvoicePayment = async (req,res)=>{
     const { id } = req.params;
     try{

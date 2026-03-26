@@ -14,6 +14,10 @@ const {
   getMappedByUser,
   verifyMapping,
   saveMapping,
+  getInvMapByUser,
+  verifyInvMap,
+  saveInvMap,
+  getMyInvMap,
   getUserAccess,
   saveUserAccess,
   getMyAccess
@@ -28,6 +32,7 @@ router.use(authMiddleware);
 
 router.get("/assignable", roleMiddleware(["admin","manager","user"]), getUsers);
 router.get("/access/me", getMyAccess);
+router.get("/inv-map/me", roleMiddleware(["admin","manager","user"]), getMyInvMap);
 
 router.use(roleMiddleware(["admin"]));
 
@@ -44,6 +49,9 @@ router.get("/mapped/meta", getMappedMeta);
 router.get("/mapped/:userId", getMappedByUser);
 router.post("/mapped/verify", verifyMapping);
 router.post("/mapped/save", saveMapping);
+router.get("/inv-map/:userId", getInvMapByUser);
+router.post("/inv-map/verify", verifyInvMap);
+router.post("/inv-map/save", saveInvMap);
 router.get("/logs", getLoginLogs);
 router.delete("/logs", clearLoginLogs);
 router.get("/access/:userId", getUserAccess);

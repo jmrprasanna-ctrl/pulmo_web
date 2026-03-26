@@ -617,12 +617,34 @@ ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS logo_path VARCHAR(500);
 ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS invoice_template_pdf_path VARCHAR(500);
 ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS quotation_template_pdf_path VARCHAR(500);
 ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS quotation2_template_pdf_path VARCHAR(500);
+ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS quotation3_template_pdf_path VARCHAR(500);
 ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS sign_c_path VARCHAR(500);
 ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS sign_v_path VARCHAR(500);
 ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS seal_c_path VARCHAR(500);
 ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS seal_v_path VARCHAR(500);
 ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP DEFAULT NOW();
 ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP DEFAULT NOW();
+
+CREATE TABLE IF NOT EXISTS user_invoice_mappings (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    database_name VARCHAR(120) NOT NULL,
+    logo_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    invoice_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    quotation_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    quotation2_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    quotation3_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    sign_c_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    sign_v_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    seal_c_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    seal_v_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    theme_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    created_by INTEGER,
+    "createdAt" TIMESTAMP DEFAULT NOW(),
+    "updatedAt" TIMESTAMP DEFAULT NOW(),
+    UNIQUE (user_id, database_name)
+);
 
 -- --------------------------
 -- SAFE DEFAULT SEED (NO DATA LOSS)

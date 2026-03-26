@@ -20,6 +20,7 @@ const UiSetting = db.define(
     invoice_template_pdf_path: { type: DataTypes.STRING(500), allowNull: true, defaultValue: null },
     quotation_template_pdf_path: { type: DataTypes.STRING(500), allowNull: true, defaultValue: null },
     quotation2_template_pdf_path: { type: DataTypes.STRING(500), allowNull: true, defaultValue: null },
+    quotation3_template_pdf_path: { type: DataTypes.STRING(500), allowNull: true, defaultValue: null },
     sign_c_path: { type: DataTypes.STRING(500), allowNull: true, defaultValue: null },
     sign_v_path: { type: DataTypes.STRING(500), allowNull: true, defaultValue: null },
     seal_c_path: { type: DataTypes.STRING(500), allowNull: true, defaultValue: null },
