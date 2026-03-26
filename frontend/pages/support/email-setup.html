@@ -47,6 +47,7 @@
                 <div>
                     <label for="smtp_pass">SMTP Password</label>
                     <input type="password" id="smtp_pass" placeholder="Leave blank to keep existing">
+                    <div class="path-hint" id="smtpPassState">Saved Password: Unknown</div>
                 </div>
                 <div>
                     <label for="from_name">From Name</label>
@@ -99,6 +100,8 @@ function setForm(setup){
     document.getElementById("smtp_port").value = setup.smtp_port || 587;
     document.getElementById("smtp_user").value = setup.smtp_user || "";
     document.getElementById("smtp_pass").value = "";
+    const hasPass = !!setup.has_smtp_pass;
+    document.getElementById("smtpPassState").textContent = `Saved Password: ${hasPass ? "Yes" : "No"}`;
     document.getElementById("smtp_secure").checked = !!setup.smtp_secure;
     document.getElementById("from_name").value = setup.from_name || "PULMO TECHNOLOGIES";
     document.getElementById("from_email").value = setup.from_email || "";
@@ -141,11 +144,23 @@ window.addEventListener("DOMContentLoaded", () => {
             alert("SMTP Host and SMTP User are required.");
             return;
         }
+        const hasSavedPassword = /yes$/i.test(String(document.getElementById("smtpPassState").textContent || "").trim());
+        if(!payload.smtp_pass && !hasSavedPassword){
+            alert("Please enter SMTP Password (no saved password found).");
+            return;
+        }
+        if(!payload.smtp_pass && hasSavedPassword){
+            const proceed = confirm("SMTP Password is empty. App will keep the existing saved password. Continue?");
+            if(!proceed) return;
+        }
 
         try{
-            await request("/email-setup", "POST", payload);
+            const res = await request("/email-setup", "POST", payload);
             showMessageBox("Email setup saved");
             document.getElementById("smtp_pass").value = "";
+            if(res && res.setup){
+                setForm(res.setup);
+            }
         }catch(err){
             alert(err.message || "Failed to save email setup");
         }

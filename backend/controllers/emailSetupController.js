@@ -23,6 +23,7 @@ exports.getEmailSetup = async (_req, res) => {
       row = await EmailSetup.create({});
     }
     const json = row.toJSON();
+    json.has_smtp_pass = !!String(json.smtp_pass || "").trim();
     json.smtp_pass = "";
     res.json(json);
   }catch(err){
@@ -46,6 +47,7 @@ exports.saveEmailSetup = async (req, res) => {
       row = await EmailSetup.findByPk(row.id);
     }
     const json = row.toJSON();
+    json.has_smtp_pass = !!String(json.smtp_pass || "").trim();
     json.smtp_pass = "";
     res.json({ message: "Email setup saved.", setup: json });
   }catch(err){
