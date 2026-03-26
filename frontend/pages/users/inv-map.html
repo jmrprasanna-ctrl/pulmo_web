@@ -213,6 +213,7 @@
                 const opt = document.createElement("option");
                 opt.value = String(u.selection_key || "");
                 opt.textContent = u.label || `${u.username || "User"} (${u.email || ""})`;
+                opt.dataset.databaseName = String(u.database_name || "").trim().toLowerCase();
                 userSelectEl.appendChild(opt);
             });
         }
@@ -352,6 +353,14 @@
 
         userSelectEl.addEventListener("change", async () => {
             resetVerifyState();
+            const selectedOption = userSelectEl.options[userSelectEl.selectedIndex];
+            const mappedDb = String(selectedOption?.dataset?.databaseName || "").trim().toLowerCase();
+            if(mappedDb){
+                const exists = Array.from(databaseSelectEl.options).some((opt) => String(opt.value || "").trim().toLowerCase() === mappedDb);
+                if(exists){
+                    databaseSelectEl.value = mappedDb;
+                }
+            }
             await loadExistingMapping();
         });
         databaseSelectEl.addEventListener("change", async () => {
