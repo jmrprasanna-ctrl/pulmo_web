@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "migrate": "node migrations/runMigrations.js",
+    "start": "npm run migrate && node server.js",
+    "dev": "npm run migrate && nodemon server.js",
     "setup": "node scripts/setup.js",
     "cleanup:test-data": "node scripts/removeSystemTestData.js"
   }

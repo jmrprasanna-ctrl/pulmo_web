@@ -6,6 +6,7 @@ const UiSetting = require("../models/UiSetting");
 const IMAGE_ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".bmp", ".gif", ".png"]);
 const STORAGE_ROOT = path.resolve(__dirname, "../storage/preferences");
 const LOGO_FILE_NAME = "system-logo";
+const DEFAULT_DB_NAME = "inventory";
 
 const TEMPLATE_MAP = {
   invoice: {
@@ -77,6 +78,20 @@ function ensureStorage() {
   if (!fs.existsSync(STORAGE_ROOT)) {
     fs.mkdirSync(STORAGE_ROOT, { recursive: true });
   }
+}
+
+function normalizeDbName(value) {
+  const normalized = db.normalizeDatabaseName(value);
+  return normalized || DEFAULT_DB_NAME;
+}
+
+function getRequestDbName(req) {
+  return normalizeDbName(req?.databaseName || req?.user?.database_name || req?.headers?.["x-database-name"]);
+}
+
+function getDbStorageDir(req) {
+  const dbName = getRequestDbName(req);
+  return path.join(STORAGE_ROOT, dbName);
 }
 
 function parseBase64Payload(fileDataBase64) {
@@ -177,7 +192,11 @@ exports.uploadLogo = async (req, res) => {
     }
 
     ensureStorage();
-    const targetPath = path.join(STORAGE_ROOT, `${LOGO_FILE_NAME}${ext}`);
+    const targetDir = getDbStorageDir(req);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+    const targetPath = path.join(targetDir, `${LOGO_FILE_NAME}${ext}`);
     fs.writeFileSync(targetPath, fileBuffer);
 
     const row = await getOrCreateSettings();
@@ -215,20 +234,22 @@ exports.uploadBrandImage = async (req, res) => {
       return res.status(400).json({ message: "Uploaded image is empty." });
     }
 
-    const row = await getOrCreateSettings();
-    const linkedPath = resolveBrandImagePath(row, imageType);
-    if (!linkedPath) {
-      return res.status(400).json({ message: "Cannot resolve linked path for image type." });
+    ensureStorage();
+    const targetDir = getDbStorageDir(req);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
     }
+    const targetPath = path.join(targetDir, `${safeNamePart(imageType)}${ext}`);
+    ensureDirForFile(targetPath);
+    fs.writeFileSync(targetPath, fileBuffer);
 
-    ensureDirForFile(linkedPath);
-    fs.writeFileSync(linkedPath, fileBuffer);
-    await row.update({ [meta.column]: linkedPath });
+    const row = await getOrCreateSettings();
+    await row.update({ [meta.column]: targetPath });
 
     res.json({
       message: `${imageType} image updated.`,
-      path: linkedPath,
-      file_name: path.basename(linkedPath),
+      path: targetPath,
+      file_name: path.basename(targetPath),
     });
   } catch (err) {
     console.error(err);
@@ -256,7 +277,11 @@ exports.uploadTemplate = async (req, res) => {
     }
 
     ensureStorage();
-    const targetPath = path.join(STORAGE_ROOT, `${safeNamePart(mapping.baseName)}.pdf`);
+    const targetDir = getDbStorageDir(req);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+    const targetPath = path.join(targetDir, `${safeNamePart(mapping.baseName)}.pdf`);
     fs.writeFileSync(targetPath, fileBuffer);
 
     const row = await getOrCreateSettings();

@@ -1665,12 +1665,25 @@ exports.listInvMapEntries = async (req, res) => {
   try {
     await mainDbClient.connect();
     await ensureUserInvoiceMappingTable(mainDbClient);
-    const rs = await mainDbClient.query(
-      `SELECT uim.*, u.username, u.email
-       FROM ${USER_INVOICE_MAPPING_TABLE} uim
-       LEFT JOIN users u ON u.id = uim.user_id
-       ORDER BY LOWER(uim.database_name) ASC, uim.user_id ASC, uim.id ASC`
-    );
+    const filterDatabaseName = normalizeDatabaseName(req.query?.database_name);
+    let rs;
+    if (filterDatabaseName) {
+      rs = await mainDbClient.query(
+        `SELECT uim.*, u.username, u.email
+         FROM ${USER_INVOICE_MAPPING_TABLE} uim
+         LEFT JOIN users u ON u.id = uim.user_id
+         WHERE LOWER(uim.database_name) = LOWER($1)
+         ORDER BY uim.user_id ASC, uim.id ASC`,
+        [filterDatabaseName]
+      );
+    } else {
+      rs = await mainDbClient.query(
+        `SELECT uim.*, u.username, u.email
+         FROM ${USER_INVOICE_MAPPING_TABLE} uim
+         LEFT JOIN users u ON u.id = uim.user_id
+         ORDER BY LOWER(uim.database_name) ASC, uim.user_id ASC, uim.id ASC`
+      );
+    }
 
     const rows = (rs.rows || []).map((row) => ({
       id: Number(row.id || 0),

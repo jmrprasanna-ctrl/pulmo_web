@@ -259,6 +259,10 @@
             setMappedStatusText("sealVMappedStatus", labelsByFeature.seal_v);
         }
 
+        function getActiveDatabaseName(){
+            return String(localStorage.getItem("selectedDatabaseName") || "").trim().toLowerCase();
+        }
+
         function normalizeHex(value, fallback){
             const raw = String(value || "").trim();
             if(/^#[0-9a-fA-F]{6}$/.test(raw)) return raw.toLowerCase();
@@ -282,7 +286,11 @@
             const pref = await request("/preferences", "GET");
             setStatuses(pref);
             try{
-                const invMapRes = await request("/users/inv-map/entries", "GET");
+                const dbName = getActiveDatabaseName();
+                const endpoint = dbName
+                    ? `/users/inv-map/entries?database_name=${encodeURIComponent(dbName)}`
+                    : "/users/inv-map/entries";
+                const invMapRes = await request(endpoint, "GET");
                 setMappedStatuses(invMapRes.entries);
             }catch(_err){
                 setMappedStatuses([]);
