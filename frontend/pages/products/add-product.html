@@ -146,6 +146,7 @@ const categoryPrefix = {
 };
 
 let allVendors = [];
+const modelOptionsByCategory = {};
 
 const defaultModelOptions = {
     "Accessory": ["CANON", "TOSHIBA", "RECOH", "SHARP", "KYOCERA", "SEROX", "SAMSUNG", "HP", "DELL"],
@@ -194,7 +195,7 @@ function renderVendorsByCategory(){
     const selectedCategory = normalizeCategoryName(categorySelect.selectedOptions[0]?.dataset?.name || "");
     vendorSelect.innerHTML = `<option value="">Select Vendor</option>`;
 
-    const filtered = selectedCategory
+    let filtered = selectedCategory
         ? allVendors.filter(v => {
             const rawCategories = Array.isArray(v.category_list) && v.category_list.length
                 ? v.category_list.join(",")
@@ -203,6 +204,19 @@ function renderVendorsByCategory(){
         })
         : allVendors;
 
+    const usedFallbackAllVendors = Boolean(selectedCategory && !filtered.length && allVendors.length);
+    if(usedFallbackAllVendors){
+        filtered = allVendors.slice();
+    }
+
+    if(usedFallbackAllVendors){
+        const hint = document.createElement("option");
+        hint.value = "";
+        hint.disabled = true;
+        hint.textContent = "No exact category match. Showing all vendors.";
+        vendorSelect.appendChild(hint);
+    }
+
     filtered.forEach((v) => {
         const opt = document.createElement("option");
         opt.value = v.id;
@@ -210,7 +224,7 @@ function renderVendorsByCategory(){
         vendorSelect.appendChild(opt);
     });
 
-    if(selectedCategory && !filtered.length){
+    if(selectedCategory && !filtered.length && !usedFallbackAllVendors){
         const opt = document.createElement("option");
         opt.value = "";
         opt.disabled = true;
@@ -219,7 +233,34 @@ function renderVendorsByCategory(){
     }
 }
 
-function renderModelsByCategory(){
+async function resolveModelsByCategory(categoryName){
+    const key = String(categoryName || "").trim();
+    if(!key) return [];
+    if(Array.isArray(modelOptionsByCategory[key]) && modelOptionsByCategory[key].length){
+        return modelOptionsByCategory[key];
+    }
+
+    let models = [];
+    try{
+        const rows = await request(`/category-model-options?category=${encodeURIComponent(key)}`, "GET");
+        models = Array.from(new Set(
+            (Array.isArray(rows) ? rows : [])
+                .map((row) => String(row.model_name || "").trim().toUpperCase())
+                .filter(Boolean)
+        )).sort((a, b) => a.localeCompare(b));
+    }catch(_err){
+        models = [];
+    }
+
+    if(!models.length){
+        models = Array.from(new Set(defaultModelOptions[key] || [])).sort((a, b) => a.localeCompare(b));
+    }
+
+    modelOptionsByCategory[key] = models;
+    return models;
+}
+
+async function renderModelsByCategory(){
     const modelSelect = document.getElementById("model");
     const categorySelect = document.getElementById("category");
     const selectedCategory = categorySelect.selectedOptions[0]?.dataset?.name || "";
@@ -227,7 +268,7 @@ function renderModelsByCategory(){
 
     if(!selectedCategory) return;
 
-    const list = defaultModelOptions[selectedCategory] || [];
+    const list = await resolveModelsByCategory(selectedCategory);
     list.forEach((model) => {
         const opt = document.createElement("option");
         opt.value = model;
@@ -271,7 +312,7 @@ async function generateProductID(){
     const categorySelect = document.getElementById("category");
     const categoryName = categorySelect.selectedOptions[0]?.dataset?.name || "";
     renderVendorsByCategory();
-    renderModelsByCategory();
+    await renderModelsByCategory();
     if(!categoryName){
         document.getElementById("productId").value = "";
         return;
@@ -335,7 +376,7 @@ document.getElementById("productForm").addEventListener("submit", async function
         showMessageBox("Product saved successfully");
         document.getElementById("productForm").reset();
         document.getElementById("productId").value = "";
-        renderModelsByCategory();
+        await renderModelsByCategory();
         renderVendorsByCategory();
     }catch(err){
         alert(err.message || "Failed to save product");
