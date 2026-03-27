@@ -293,6 +293,21 @@ function normalizeCompanyName(value) {
   return normalized ? normalized.slice(0, 200) : "";
 }
 
+function normalizeCompanyCode(value) {
+  const normalized = String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_-]+/g, "");
+  return normalized ? normalized.slice(0, 40) : "";
+}
+
+function normalizeEmail(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return "";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return "";
+  return normalized.slice(0, 200);
+}
+
 function parseBase64Payload(fileDataBase64) {
   const raw = String(fileDataBase64 || "").trim();
   if (!raw) {
@@ -351,6 +366,8 @@ async function ensureCompanyRegistryTable(client) {
     CREATE TABLE IF NOT EXISTS ${COMPANY_REGISTRY_TABLE} (
       id SERIAL PRIMARY KEY,
       company_name VARCHAR(200) UNIQUE NOT NULL,
+      company_code VARCHAR(40),
+      email VARCHAR(200),
       folder_name VARCHAR(120) NOT NULL,
       logo_path VARCHAR(500) NOT NULL,
       logo_file_name VARCHAR(255) NOT NULL,
@@ -358,6 +375,19 @@ async function ensureCompanyRegistryTable(client) {
       "createdAt" TIMESTAMP DEFAULT NOW(),
       "updatedAt" TIMESTAMP DEFAULT NOW()
     );
+  `);
+  await client.query(`
+    ALTER TABLE ${COMPANY_REGISTRY_TABLE}
+    ADD COLUMN IF NOT EXISTS company_code VARCHAR(40);
+  `);
+  await client.query(`
+    ALTER TABLE ${COMPANY_REGISTRY_TABLE}
+    ADD COLUMN IF NOT EXISTS email VARCHAR(200);
+  `);
+  await client.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS company_profiles_company_code_unique_idx
+    ON ${COMPANY_REGISTRY_TABLE} (UPPER(company_code))
+    WHERE company_code IS NOT NULL AND TRIM(company_code) <> '';
   `);
 }
 
@@ -462,7 +492,7 @@ async function findMappedUserProfile(userId) {
   try {
     await client.connect();
     const rs = await client.query(
-      `SELECT um.database_name, cp.company_name, cp.logo_path
+      `SELECT um.database_name, cp.company_name, cp.company_code, cp.email, cp.logo_path
        FROM user_mappings um
        JOIN ${COMPANY_REGISTRY_TABLE} cp ON cp.id = um.company_profile_id
        WHERE um.user_id = $1
@@ -473,6 +503,8 @@ async function findMappedUserProfile(userId) {
     return {
       database_name: normalizeDatabaseName(rs.rows[0]?.database_name),
       company_name: normalizeCompanyName(rs.rows[0]?.company_name),
+      company_code: normalizeCompanyCode(rs.rows[0]?.company_code),
+      email: normalizeEmail(rs.rows[0]?.email),
       logo_path: String(rs.rows[0]?.logo_path || "").trim(),
     };
   } catch (_err) {
@@ -1332,13 +1364,15 @@ exports.getCompanies = async (_req, res) => {
     await mainDbClient.connect();
     await ensureCompanyRegistryTable(mainDbClient);
     const rs = await mainDbClient.query(
-      `SELECT id, company_name, folder_name, logo_path, logo_file_name, "createdAt", "updatedAt"
+      `SELECT id, company_name, company_code, email, folder_name, logo_path, logo_file_name, "createdAt", "updatedAt"
        FROM ${COMPANY_REGISTRY_TABLE}
        ORDER BY LOWER(company_name) ASC, id ASC`
     );
     const rows = (rs.rows || []).map((row) => ({
       id: Number(row.id || 0),
       company_name: normalizeCompanyName(row.company_name),
+      company_code: normalizeCompanyCode(row.company_code),
+      email: normalizeEmail(row.email),
       folder_name: String(row.folder_name || "").trim(),
       logo_file_name: String(row.logo_file_name || "").trim(),
       logo_path: String(row.logo_path || "").trim(),
@@ -1360,10 +1394,18 @@ exports.createCompany = async (req, res) => {
   }
 
   const companyName = normalizeCompanyName(req.body?.company_name);
+  const companyCode = normalizeCompanyCode(req.body?.company_code);
+  const companyEmail = normalizeEmail(req.body?.email);
   const fileName = String(req.body?.logo_file_name || "").trim();
   const ext = path.extname(fileName).toLowerCase();
   if (!companyName) {
     return res.status(400).json({ message: "Company name is required." });
+  }
+  if (!companyCode) {
+    return res.status(400).json({ message: "Company code is required." });
+  }
+  if (!companyEmail) {
+    return res.status(400).json({ message: "Valid company email is required." });
   }
   if (!COMPANY_LOGO_EXTENSIONS.has(ext)) {
     return res.status(400).json({ message: "Invalid logo format. Allowed: .jpg, .jpeg, .bmp, .gif, .tiff, .png" });
@@ -1399,6 +1441,13 @@ exports.createCompany = async (req, res) => {
     if (existsRs.rowCount) {
       return res.status(409).json({ message: "Company already exists." });
     }
+    const codeExistsRs = await mainDbClient.query(
+      `SELECT id FROM ${COMPANY_REGISTRY_TABLE} WHERE UPPER(COALESCE(company_code, '')) = UPPER($1) LIMIT 1`,
+      [companyCode]
+    );
+    if (codeExistsRs.rowCount) {
+      return res.status(409).json({ message: "Company code already exists." });
+    }
 
     ensureDir(COMPANY_STORAGE_ROOT);
     let folderPath = resolveCompanyFolder(companyName);
@@ -1415,10 +1464,10 @@ exports.createCompany = async (req, res) => {
 
     const rs = await mainDbClient.query(
       `INSERT INTO ${COMPANY_REGISTRY_TABLE}
-       (company_name, folder_name, logo_path, logo_file_name, created_by, "createdAt", "updatedAt")
-       VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-       RETURNING id, company_name, folder_name, logo_path, logo_file_name, "createdAt", "updatedAt"`,
-      [companyName, folderName, relativeLogoPath, path.basename(logoPath), Number(req.user?.id || 0) || null]
+       (company_name, company_code, email, folder_name, logo_path, logo_file_name, created_by, "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+       RETURNING id, company_name, company_code, email, folder_name, logo_path, logo_file_name, "createdAt", "updatedAt"`,
+      [companyName, companyCode, companyEmail, folderName, relativeLogoPath, path.basename(logoPath), Number(req.user?.id || 0) || null]
     );
 
     const row = rs.rows[0];
@@ -1427,6 +1476,8 @@ exports.createCompany = async (req, res) => {
       company: {
         id: Number(row.id || 0),
         company_name: normalizeCompanyName(row.company_name),
+        company_code: normalizeCompanyCode(row.company_code),
+        email: normalizeEmail(row.email),
         folder_name: String(row.folder_name || "").trim(),
         logo_file_name: String(row.logo_file_name || "").trim(),
         logo_path: String(row.logo_path || "").trim(),
@@ -1515,7 +1566,7 @@ async function getMappingPieces(mainDbClient, userId, databaseName, companyId) {
   }
 
   const companyRs = await mainDbClient.query(
-    `SELECT id, company_name, logo_path
+    `SELECT id, company_name, company_code, email, logo_path
      FROM ${COMPANY_REGISTRY_TABLE}
      WHERE id = $1
      LIMIT 1`,
@@ -1545,6 +1596,8 @@ async function getMappingPieces(mainDbClient, userId, databaseName, companyId) {
       database_name: normalizeDatabaseName(dbRow.database_name),
       company_profile_id: Number(companyRow.id || 0),
       company_name: normalizeCompanyName(companyRow.company_name),
+      company_code: normalizeCompanyCode(companyRow.company_code),
+      email: normalizeEmail(companyRow.email),
       logo_path: String(companyRow.logo_path || "").trim(),
     },
   };
@@ -1576,7 +1629,7 @@ exports.getMappedMeta = async (_req, res) => {
        ORDER BY LOWER(database_name) ASC`
     );
     const companiesRs = await mainDbClient.query(
-      `SELECT id, company_name
+      `SELECT id, company_name, company_code, email
        FROM ${COMPANY_REGISTRY_TABLE}
        ORDER BY LOWER(company_name) ASC`
     );
@@ -1596,6 +1649,8 @@ exports.getMappedMeta = async (_req, res) => {
       companies: (companiesRs.rows || []).map((row) => ({
         id: Number(row.id || 0),
         company_name: normalizeCompanyName(row.company_name),
+        company_code: normalizeCompanyCode(row.company_code),
+        email: normalizeEmail(row.email),
       })),
     });
   } catch (err) {
@@ -1622,7 +1677,7 @@ exports.getMappedByUser = async (req, res) => {
     await mainDbClient.connect();
     await ensureUserMappingTable(mainDbClient);
     const rs = await mainDbClient.query(
-      `SELECT um.user_id, um.database_name, um.company_profile_id, um.is_verified, cp.company_name
+      `SELECT um.user_id, um.database_name, um.company_profile_id, um.is_verified, cp.company_name, cp.company_code, cp.email
        FROM user_mappings um
        JOIN ${COMPANY_REGISTRY_TABLE} cp ON cp.id = um.company_profile_id
        WHERE um.user_id = $1
@@ -1639,6 +1694,8 @@ exports.getMappedByUser = async (req, res) => {
         database_name: normalizeDatabaseName(row.database_name),
         company_profile_id: Number(row.company_profile_id || 0),
         company_name: normalizeCompanyName(row.company_name),
+        company_code: normalizeCompanyCode(row.company_code),
+        email: normalizeEmail(row.email),
         is_verified: Boolean(row.is_verified),
       },
     });
@@ -1738,6 +1795,8 @@ exports.saveMapping = async (req, res) => {
         database_name: result.normalized.database_name,
         company_profile_id: result.normalized.company_profile_id,
         company_name: result.normalized.company_name,
+        company_code: result.normalized.company_code,
+        email: result.normalized.email,
         logo_path: result.normalized.logo_path,
       },
     });

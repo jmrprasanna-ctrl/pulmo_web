@@ -31,6 +31,7 @@
     <header><h2>Email Setup</h2></header>
     <div class="card">
         <form id="emailSetupForm">
+            <div id="mappedDefaultsHint" class="path-hint" style="margin-bottom:10px;"></div>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;">
                 <div>
                     <label for="smtp_host">SMTP Host</label>
@@ -92,10 +93,27 @@ function getRole(){
 
 function canManageEmailSetup(){
     const role = getRole();
-    return role === "admin" || role === "manager";
+    if(role === "admin" || role === "manager") return true;
+    if(role === "user"){
+        if(typeof window.hasUserGrantedPath === "function"){
+            return window.hasUserGrantedPath("/support/email-setup.html");
+        }
+        return true;
+    }
+    return false;
 }
 
 function setForm(setup){
+    const mappedName = String(setup.mapped_company_name || "").trim();
+    const mappedEmail = String(setup.mapped_company_email || "").trim();
+    const hintEl = document.getElementById("mappedDefaultsHint");
+    if(hintEl){
+        if(mappedName || mappedEmail){
+            hintEl.textContent = `Mapped Company: ${mappedName || "-"} | Mapped Email: ${mappedEmail || "-"}`;
+        }else{
+            hintEl.textContent = "Mapped Company: -";
+        }
+    }
     document.getElementById("smtp_host").value = setup.smtp_host || "";
     document.getElementById("smtp_port").value = setup.smtp_port || 587;
     document.getElementById("smtp_user").value = setup.smtp_user || "";

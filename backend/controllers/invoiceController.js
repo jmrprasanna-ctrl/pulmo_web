@@ -986,14 +986,51 @@ exports.sendInvoiceEmail = async (req, res) => {
         }
 
         const currentDbName = String(db.getCurrentDatabase ? db.getCurrentDatabase() : "").trim().toLowerCase() || INVENTORY_DB_NAME;
+        const mappedProfile = await db.withDatabase(INVENTORY_DB_NAME, async () => {
+            const userId = Number(req?.user?.id || req?.user?.userId || 0);
+            if(!Number.isFinite(userId) || userId <= 0){
+                return {};
+            }
+            const rs = await db.query(
+                `SELECT cp.company_name, cp.email
+                 FROM user_mappings um
+                 JOIN company_profiles cp ON cp.id = um.company_profile_id
+                 WHERE um.user_id = $1
+                 LIMIT 1`,
+                { bind: [userId] }
+            );
+            const rows = Array.isArray(rs?.[0]) ? rs[0] : [];
+            if(!rows.length){
+                return {};
+            }
+            return {
+                company_name: String(rows[0]?.company_name || "").trim(),
+                email: String(rows[0]?.email || "").trim().toLowerCase(),
+            };
+        }).catch(() => ({}));
+        const mappedCompanyName = String(mappedProfile?.company_name || "").trim();
+        const mappedCompanyEmail = String(mappedProfile?.email || "").trim().toLowerCase();
+        const withMappedDefaults = (setupLike) => {
+            const src = setupLike && typeof setupLike.toJSON === "function" ? setupLike.toJSON() : (setupLike || {});
+            return {
+                ...src,
+                smtp_user: String(src.smtp_user || "").trim() || mappedCompanyEmail || null,
+                from_name: String(src.from_name || "").trim() || mappedCompanyName || "PULMO TECHNOLOGIES",
+                from_email: String(src.from_email || "").trim() || mappedCompanyEmail || null,
+                subject_template: String(src.subject_template || "").trim() || `Invoice {{invoice_no}} - ${mappedCompanyName || "PULMO TECHNOLOGIES"}`,
+                body_template: String(src.body_template || "").trim() || `Dear {{customer_name}},\n\nPlease find attached your invoice {{invoice_no}}.\n\nThank you.\n${mappedCompanyName || "PULMO TECHNOLOGIES"}`
+            };
+        };
         const currentSetup = await EmailSetup.findOne({ order: [["id", "ASC"]] });
         const inventorySetup = currentDbName === INVENTORY_DB_NAME
             ? currentSetup
             : await db.withDatabase(INVENTORY_DB_NAME, async () => EmailSetup.findOne({ order: [["id", "ASC"]] }));
+        const currentSetupResolved = withMappedDefaults(currentSetup);
+        const inventorySetupResolved = withMappedDefaults(inventorySetup);
 
         const smtpCandidates = [];
         const seen = new Set();
-        [currentSetup, inventorySetup, null].forEach((setupRow) => {
+        [currentSetupResolved, inventorySetupResolved, null].forEach((setupRow) => {
             const payload = buildSmtpPayload(setupRow);
             if(!hasSmtpConfig(payload)) return;
             const key = smtpSignature(payload);
@@ -1070,7 +1107,7 @@ exports.sendInvoiceEmail = async (req, res) => {
             invoice_date: new Date(invoice.invoice_date || invoice.createdAt || Date.now()).toLocaleDateString("en-GB")
         };
 
-        const templateSetup = currentSetup || inventorySetup || null;
+        const templateSetup = currentSetupResolved || inventorySetupResolved || null;
         const subjectTemplate = templateSetup?.subject_template || "Invoice {{invoice_no}} - PULMO TECHNOLOGIES";
         const bodyTemplate =
             templateSetup?.body_template ||

@@ -59,6 +59,8 @@
                 <div class="mapped-row"><strong>User Company</strong><span id="userCompanyName">-</span></div>
                 <div class="mapped-row"><strong>Database Company</strong><span id="databaseCompanyName">-</span></div>
                 <div class="mapped-row"><strong>Selected Company</strong><span id="selectedCompanyName">-</span></div>
+                <div class="mapped-row"><strong>Company Code</strong><span id="selectedCompanyCode">-</span></div>
+                <div class="mapped-row"><strong>Company Email</strong><span id="selectedCompanyEmail">-</span></div>
                 <div class="mapped-row"><strong>Verify Status</strong><span id="verifyStatus">Not verified</span></div>
             </div>
 
@@ -78,6 +80,8 @@
         const userCompanyNameEl = document.getElementById("userCompanyName");
         const databaseCompanyNameEl = document.getElementById("databaseCompanyName");
         const selectedCompanyNameEl = document.getElementById("selectedCompanyName");
+        const selectedCompanyCodeEl = document.getElementById("selectedCompanyCode");
+        const selectedCompanyEmailEl = document.getElementById("selectedCompanyEmail");
         const verifyStatusEl = document.getElementById("verifyStatus");
         const verifyBtnEl = document.getElementById("verifyBtn");
         const mappedBtnEl = document.getElementById("mappedBtn");
@@ -109,6 +113,8 @@
             userCompanyNameEl.textContent = user ? String(user.company_name || "-") : "-";
             databaseCompanyNameEl.textContent = db ? String(db.company_name || "-") : "-";
             selectedCompanyNameEl.textContent = company ? String(company.company_name || "-") : "-";
+            selectedCompanyCodeEl.textContent = company ? String(company.company_code || "-") : "-";
+            selectedCompanyEmailEl.textContent = company ? String(company.email || "-") : "-";
         }
 
         function resetVerifyState(){
@@ -150,7 +156,9 @@
             companies.forEach((c) => {
                 const opt = document.createElement("option");
                 opt.value = String(c.id);
-                opt.textContent = String(c.company_name || "");
+                const code = String(c.company_code || "").trim();
+                const email = String(c.email || "").trim();
+                opt.textContent = `${String(c.company_name || "")}${code ? ` [${code}]` : ""}${email ? ` (${email})` : ""}`;
                 companySelectEl.appendChild(opt);
             });
         }
@@ -169,6 +177,15 @@
                 }
                 if(m.company_profile_id){
                     companySelectEl.value = String(m.company_profile_id);
+                }
+                if(m.company_name){
+                    selectedCompanyNameEl.textContent = String(m.company_name || "-");
+                }
+                if(m.company_code){
+                    selectedCompanyCodeEl.textContent = String(m.company_code || "-");
+                }
+                if(m.email){
+                    selectedCompanyEmailEl.textContent = String(m.email || "-");
                 }
             }catch(_err){
             }

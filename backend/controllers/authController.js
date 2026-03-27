@@ -55,10 +55,12 @@ exports.login = async (req, res) => {
 
     let databaseName = null;
     let mappedCompanyName = null;
+    let mappedCompanyCode = null;
+    let mappedCompanyEmail = null;
     let mappedCompanyLogoUrl = null;
 
     const mappingRs = await client.query(
-      `SELECT um.database_name, cp.company_name, cp.logo_path
+      `SELECT um.database_name, cp.company_name, cp.company_code, cp.email, cp.logo_path
        FROM user_mappings um
        JOIN company_profiles cp ON cp.id = um.company_profile_id
        WHERE um.user_id = $1
@@ -72,6 +74,8 @@ exports.login = async (req, res) => {
         databaseName = mappedDb;
       }
       mappedCompanyName = String(mappingRs.rows[0]?.company_name || "").trim() || null;
+      mappedCompanyCode = String(mappingRs.rows[0]?.company_code || "").trim().toUpperCase() || null;
+      mappedCompanyEmail = String(mappingRs.rows[0]?.email || "").trim().toLowerCase() || null;
       const logoPath = String(mappingRs.rows[0]?.logo_path || "").trim();
       if (logoPath) {
         const clean = logoPath.replace(/\\/g, "/").replace(/^\/+/, "");
@@ -121,6 +125,8 @@ exports.login = async (req, res) => {
         company: user.company || "",
         database_name: databaseName,
         mapped_company_name: mappedCompanyName,
+        mapped_company_code: mappedCompanyCode,
+        mapped_company_email: mappedCompanyEmail,
         mapped_company_logo_url: mappedCompanyLogoUrl,
       },
     });

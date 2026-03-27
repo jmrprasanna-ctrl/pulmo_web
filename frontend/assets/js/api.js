@@ -49,6 +49,8 @@ let USER_ACCESS_CONFIG_APPLIES_RUNTIME = false;
 const USER_ACCESS_CONFIG_ENABLED_CACHE_KEY = "userAccessConfigEnabledRuntime";
 const MAPPED_COMPANY_NAME_KEY = "mappedCompanyName";
 const MAPPED_COMPANY_LOGO_URL_KEY = "mappedCompanyLogoUrl";
+const MAPPED_COMPANY_CODE_KEY = "mappedCompanyCode";
+const MAPPED_COMPANY_EMAIL_KEY = "mappedCompanyEmail";
 window.__userAccessPermissionsLoaded = false;
 window.__waitForUserAccessPermissions = function __waitForUserAccessPermissions(){
     if(window.__userAccessPermissionsLoaded){
@@ -131,6 +133,8 @@ function logoutForInactivity(){
     localStorage.removeItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY);
     localStorage.removeItem(MAPPED_COMPANY_NAME_KEY);
     localStorage.removeItem(MAPPED_COMPANY_LOGO_URL_KEY);
+    localStorage.removeItem(MAPPED_COMPANY_CODE_KEY);
+    localStorage.removeItem(MAPPED_COMPANY_EMAIL_KEY);
     window.location.replace(buildPagesPath("login.html"));
 }
 
@@ -933,6 +937,16 @@ async function login(){
             localStorage.setItem(MAPPED_COMPANY_NAME_KEY, String(res.user.mapped_company_name).trim());
         }else{
             localStorage.removeItem(MAPPED_COMPANY_NAME_KEY);
+        }
+        if(res.user && res.user.mapped_company_code){
+            localStorage.setItem(MAPPED_COMPANY_CODE_KEY, String(res.user.mapped_company_code).trim().toUpperCase());
+        }else{
+            localStorage.removeItem(MAPPED_COMPANY_CODE_KEY);
+        }
+        if(res.user && res.user.mapped_company_email){
+            localStorage.setItem(MAPPED_COMPANY_EMAIL_KEY, String(res.user.mapped_company_email).trim().toLowerCase());
+        }else{
+            localStorage.removeItem(MAPPED_COMPANY_EMAIL_KEY);
         }
         if(res.user && res.user.mapped_company_logo_url){
             localStorage.setItem(MAPPED_COMPANY_LOGO_URL_KEY, String(res.user.mapped_company_logo_url).trim());

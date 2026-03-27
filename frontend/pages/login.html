@@ -261,6 +261,16 @@ async function login(){
         } else {
             localStorage.removeItem("mappedCompanyName");
         }
+        if (res.user && res.user.mapped_company_code) {
+            localStorage.setItem("mappedCompanyCode", String(res.user.mapped_company_code).trim().toUpperCase());
+        } else {
+            localStorage.removeItem("mappedCompanyCode");
+        }
+        if (res.user && res.user.mapped_company_email) {
+            localStorage.setItem("mappedCompanyEmail", String(res.user.mapped_company_email).trim().toLowerCase());
+        } else {
+            localStorage.removeItem("mappedCompanyEmail");
+        }
         if (res.user && res.user.mapped_company_logo_url) {
             localStorage.setItem("mappedCompanyLogoUrl", String(res.user.mapped_company_logo_url).trim());
         } else {

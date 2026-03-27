@@ -48,6 +48,14 @@
                     <input id="companyName" type="text" placeholder="Company name">
                 </div>
                 <div>
+                    <label for="companyCode">Company Code</label>
+                    <input id="companyCode" type="text" placeholder="Company code">
+                </div>
+                <div>
+                    <label for="companyEmail">Email</label>
+                    <input id="companyEmail" type="email" placeholder="company@email.com">
+                </div>
+                <div>
                     <label for="logoFile">Company Logo</label>
                     <input id="logoFile" type="file" accept=".jpg,.jpeg,.bmp,.gif,.tiff,.tif,.png">
                     <div class="path-hint">Allowed formats: .jpg, .jpeg, .bmp, .gif, .tiff, .png</div>
@@ -65,13 +73,15 @@
                     <thead>
                         <tr>
                             <th>Company Name</th>
+                            <th>Company Code</th>
+                            <th>Email</th>
                             <th>Logo File</th>
                             <th>Created Date</th>
                             <th style="width: 120px;">Action</th>
                         </tr>
                     </thead>
                     <tbody id="companyTableBody">
-                        <tr><td colspan="4">Loading...</td></tr>
+                        <tr><td colspan="6">Loading...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -81,6 +91,8 @@
     <script src="../../assets/js/api.js"></script>
     <script>
         const companyNameEl = document.getElementById("companyName");
+        const companyCodeEl = document.getElementById("companyCode");
+        const companyEmailEl = document.getElementById("companyEmail");
         const logoFileEl = document.getElementById("logoFile");
         const saveCompanyBtnEl = document.getElementById("saveCompanyBtn");
         const companyTableBodyEl = document.getElementById("companyTableBody");
@@ -99,6 +111,12 @@
 
         function normalizeCompanyUppercase(value){
             return String(value || "").toUpperCase();
+        }
+
+        function normalizeCodeUppercase(value){
+            return String(value || "")
+                .toUpperCase()
+                .replace(/[^A-Z0-9_-]+/g, "");
         }
 
         function readFileAsDataURL(file){
@@ -122,12 +140,12 @@
         }
 
         async function loadCompanies(){
-            companyTableBodyEl.innerHTML = `<tr><td colspan="4">Loading...</td></tr>`;
+            companyTableBodyEl.innerHTML = `<tr><td colspan="6">Loading...</td></tr>`;
             try{
                 const res = await request("/users/companies", "GET");
                 const rows = Array.isArray(res.companies) ? res.companies : [];
                 if(!rows.length){
-                    companyTableBodyEl.innerHTML = `<tr><td colspan="4">No companies found.</td></tr>`;
+                    companyTableBodyEl.innerHTML = `<tr><td colspan="6">No companies found.</td></tr>`;
                     return;
                 }
                 companyTableBodyEl.innerHTML = "";
@@ -138,6 +156,8 @@
                         : `<span>-</span>`;
                     tr.innerHTML = `
                         <td>${String(row.company_name || "")}</td>
+                        <td>${String(row.company_code || "")}</td>
+                        <td>${String(row.email || "")}</td>
                         <td>${String(row.logo_file_name || "")}</td>
                         <td>${formatDate(row.created_at)}</td>
                         <td class="actions">${deleteAction}</td>
@@ -145,7 +165,7 @@
                     companyTableBodyEl.appendChild(tr);
                 });
             }catch(err){
-                companyTableBodyEl.innerHTML = `<tr><td colspan="4">${String(err.message || "Failed to load companies")}</td></tr>`;
+                companyTableBodyEl.innerHTML = `<tr><td colspan="6">${String(err.message || "Failed to load companies")}</td></tr>`;
             }
         }
 
@@ -155,10 +175,20 @@
                 return;
             }
             const companyName = String(companyNameEl.value || "").trim();
+            const companyCode = normalizeCodeUppercase(companyCodeEl.value || "");
+            const companyEmail = String(companyEmailEl.value || "").trim().toLowerCase();
             const file = logoFileEl.files && logoFileEl.files[0];
 
             if(!companyName){
                 alert("Please enter company name.");
+                return;
+            }
+            if(!companyCode){
+                alert("Please enter company code.");
+                return;
+            }
+            if(!companyEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(companyEmail)){
+                alert("Please enter valid company email.");
                 return;
             }
 
@@ -172,11 +202,15 @@
                 const fileData = await readFileAsDataURL(file);
                 await request("/users/companies/create", "POST", {
                     company_name: normalizeCompanyUppercase(companyName),
+                    company_code: companyCode,
+                    email: companyEmail,
                     logo_file_name: String(file.name || "").trim(),
                     logo_file_data_base64: fileData
                 });
                 showMessageBox("Company created");
                 companyNameEl.value = "";
+                companyCodeEl.value = "";
+                companyEmailEl.value = "";
                 logoFileEl.value = "";
                 await loadCompanies();
             }catch(err){
@@ -224,6 +258,17 @@
                 companyNameEl.value = upper;
                 if(typeof pos === "number"){
                     companyNameEl.setSelectionRange(pos, pos);
+                }
+            }
+        });
+        companyCodeEl.style.textTransform = "uppercase";
+        companyCodeEl.addEventListener("input", () => {
+            const pos = companyCodeEl.selectionStart;
+            const upper = normalizeCodeUppercase(companyCodeEl.value);
+            if(companyCodeEl.value !== upper){
+                companyCodeEl.value = upper;
+                if(typeof pos === "number"){
+                    companyCodeEl.setSelectionRange(pos, pos);
                 }
             }
         });
