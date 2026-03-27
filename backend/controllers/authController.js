@@ -60,7 +60,7 @@ exports.login = async (req, res) => {
     let mappedCompanyLogoUrl = null;
 
     const mappingRs = await client.query(
-      `SELECT um.database_name, cp.company_name, cp.company_code, cp.email, cp.logo_path
+      `SELECT um.database_name, cp.company_name, cp.company_code, COALESCE(NULLIF(TRIM(um.mapped_email), ''), cp.email) AS mapped_email, cp.logo_path
        FROM user_mappings um
        JOIN company_profiles cp ON cp.id = um.company_profile_id
        WHERE um.user_id = $1
@@ -75,7 +75,7 @@ exports.login = async (req, res) => {
       }
       mappedCompanyName = String(mappingRs.rows[0]?.company_name || "").trim() || null;
       mappedCompanyCode = String(mappingRs.rows[0]?.company_code || "").trim().toUpperCase() || null;
-      mappedCompanyEmail = String(mappingRs.rows[0]?.email || "").trim().toLowerCase() || null;
+      mappedCompanyEmail = String(mappingRs.rows[0]?.mapped_email || "").trim().toLowerCase() || null;
       const logoPath = String(mappingRs.rows[0]?.logo_path || "").trim();
       if (logoPath) {
         const clean = logoPath.replace(/\\/g, "/").replace(/^\/+/, "");

@@ -398,11 +398,16 @@ async function ensureUserMappingTable(client) {
       user_id INTEGER UNIQUE NOT NULL,
       company_profile_id INTEGER NOT NULL REFERENCES ${COMPANY_REGISTRY_TABLE}(id) ON DELETE CASCADE,
       database_name VARCHAR(120) NOT NULL,
+      mapped_email VARCHAR(200),
       is_verified BOOLEAN DEFAULT FALSE,
       created_by INTEGER,
       "createdAt" TIMESTAMP DEFAULT NOW(),
       "updatedAt" TIMESTAMP DEFAULT NOW()
     );
+  `);
+  await client.query(`
+    ALTER TABLE user_mappings
+    ADD COLUMN IF NOT EXISTS mapped_email VARCHAR(200);
   `);
 }
 
@@ -1542,7 +1547,7 @@ exports.deleteCompany = async (req, res) => {
   }
 };
 
-async function getMappingPieces(mainDbClient, userId, databaseName, companyId) {
+async function getMappingPieces(mainDbClient, userId, databaseName, companyId, mappedEmailRaw) {
   const userRs = await mainDbClient.query(
     `SELECT id, username, company
      FROM users
@@ -1579,10 +1584,13 @@ async function getMappingPieces(mainDbClient, userId, databaseName, companyId) {
   const userRow = userRs.rows[0];
   const dbRow = dbRs.rows[0];
   const companyRow = companyRs.rows[0];
+  const companyEmail = normalizeEmail(companyRow.email);
+  const mappedEmail = normalizeEmail(mappedEmailRaw);
+  const emailVerified = !!mappedEmail && !!companyEmail && mappedEmail === companyEmail;
   const userCompany = normalizeNameCompare(userRow.company);
   const dbCompany = normalizeNameCompare(dbRow.company_name);
   const selectedCompany = normalizeNameCompare(companyRow.company_name);
-  const verified = userCompany && userCompany === dbCompany && userCompany === selectedCompany;
+  const verified = userCompany && userCompany === dbCompany && userCompany === selectedCompany && emailVerified;
 
   return {
     verified: Boolean(verified),
@@ -1590,6 +1598,8 @@ async function getMappingPieces(mainDbClient, userId, databaseName, companyId) {
       user_company_name: normalizeCompanyName(userRow.company),
       database_company_name: normalizeCompanyName(dbRow.company_name),
       selected_company_name: normalizeCompanyName(companyRow.company_name),
+      selected_company_email: companyEmail,
+      mapped_email: mappedEmail,
     },
     normalized: {
       user_id: Number(userRow.id || 0),
@@ -1597,7 +1607,8 @@ async function getMappingPieces(mainDbClient, userId, databaseName, companyId) {
       company_profile_id: Number(companyRow.id || 0),
       company_name: normalizeCompanyName(companyRow.company_name),
       company_code: normalizeCompanyCode(companyRow.company_code),
-      email: normalizeEmail(companyRow.email),
+      email: companyEmail,
+      mapped_email: mappedEmail,
       logo_path: String(companyRow.logo_path || "").trim(),
     },
   };
@@ -1677,7 +1688,7 @@ exports.getMappedByUser = async (req, res) => {
     await mainDbClient.connect();
     await ensureUserMappingTable(mainDbClient);
     const rs = await mainDbClient.query(
-      `SELECT um.user_id, um.database_name, um.company_profile_id, um.is_verified, cp.company_name, cp.company_code, cp.email
+      `SELECT um.user_id, um.database_name, um.company_profile_id, um.mapped_email, um.is_verified, cp.company_name, cp.company_code, cp.email
        FROM user_mappings um
        JOIN ${COMPANY_REGISTRY_TABLE} cp ON cp.id = um.company_profile_id
        WHERE um.user_id = $1
@@ -1696,6 +1707,7 @@ exports.getMappedByUser = async (req, res) => {
         company_name: normalizeCompanyName(row.company_name),
         company_code: normalizeCompanyCode(row.company_code),
         email: normalizeEmail(row.email),
+        mapped_email: normalizeEmail(row.mapped_email || row.email),
         is_verified: Boolean(row.is_verified),
       },
     });
@@ -1714,8 +1726,9 @@ exports.verifyMapping = async (req, res) => {
   const userId = Number(req.body?.user_id || 0);
   const databaseName = normalizeDatabaseName(req.body?.database_name);
   const companyId = Number(req.body?.company_profile_id || 0);
-  if (!Number.isFinite(userId) || userId <= 0 || !databaseName || !Number.isFinite(companyId) || companyId <= 0) {
-    return res.status(400).json({ message: "User, database and company are required." });
+  const mappedEmail = normalizeEmail(req.body?.email || req.body?.mapped_email);
+  if (!Number.isFinite(userId) || userId <= 0 || !databaseName || !Number.isFinite(companyId) || companyId <= 0 || !mappedEmail) {
+    return res.status(400).json({ message: "User, database, company and email are required." });
   }
 
   const cfg = getDbConfig();
@@ -1730,11 +1743,11 @@ exports.verifyMapping = async (req, res) => {
     await mainDbClient.connect();
     await ensureDatabaseRegistryTable(mainDbClient);
     await ensureCompanyRegistryTable(mainDbClient);
-    const result = await getMappingPieces(mainDbClient, userId, databaseName, companyId);
+    const result = await getMappingPieces(mainDbClient, userId, databaseName, companyId, mappedEmail);
     res.json({
       verified: result.verified,
       names: result.names,
-      message: result.verified ? "Verified successfully." : "Company names do not match.",
+      message: result.verified ? "Verified successfully." : "Company/email does not match.",
     });
   } catch (err) {
     res.status(500).json({ message: err.message || "Failed to verify mapping." });
@@ -1751,8 +1764,9 @@ exports.saveMapping = async (req, res) => {
   const userId = Number(req.body?.user_id || 0);
   const databaseName = normalizeDatabaseName(req.body?.database_name);
   const companyId = Number(req.body?.company_profile_id || 0);
-  if (!Number.isFinite(userId) || userId <= 0 || !databaseName || !Number.isFinite(companyId) || companyId <= 0) {
-    return res.status(400).json({ message: "User, database and company are required." });
+  const mappedEmail = normalizeEmail(req.body?.email || req.body?.mapped_email);
+  if (!Number.isFinite(userId) || userId <= 0 || !databaseName || !Number.isFinite(companyId) || companyId <= 0 || !mappedEmail) {
+    return res.status(400).json({ message: "User, database, company and email are required." });
   }
 
   const cfg = getDbConfig();
@@ -1768,24 +1782,25 @@ exports.saveMapping = async (req, res) => {
     await ensureDatabaseRegistryTable(mainDbClient);
     await ensureCompanyRegistryTable(mainDbClient);
     await ensureUserMappingTable(mainDbClient);
-    const result = await getMappingPieces(mainDbClient, userId, databaseName, companyId);
+    const result = await getMappingPieces(mainDbClient, userId, databaseName, companyId, mappedEmail);
     if (!result.verified) {
       return res.status(400).json({
-        message: "Verify failed. User company, database company and selected company must match.",
+        message: "Verify failed. User company, database company, selected company and email must match.",
         names: result.names,
       });
     }
 
     await mainDbClient.query(
       `INSERT INTO user_mappings
-       (user_id, company_profile_id, database_name, is_verified, created_by, "createdAt", "updatedAt")
-       VALUES ($1, $2, $3, TRUE, $4, NOW(), NOW())
+       (user_id, company_profile_id, database_name, mapped_email, is_verified, created_by, "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, TRUE, $5, NOW(), NOW())
        ON CONFLICT (user_id)
        DO UPDATE SET company_profile_id = EXCLUDED.company_profile_id,
                      database_name = EXCLUDED.database_name,
+                     mapped_email = EXCLUDED.mapped_email,
                      is_verified = TRUE,
                      "updatedAt" = NOW()`,
-      [result.normalized.user_id, result.normalized.company_profile_id, result.normalized.database_name, Number(req.user?.id || 0) || null]
+      [result.normalized.user_id, result.normalized.company_profile_id, result.normalized.database_name, result.normalized.mapped_email, Number(req.user?.id || 0) || null]
     );
 
     res.json({
@@ -1797,6 +1812,7 @@ exports.saveMapping = async (req, res) => {
         company_name: result.normalized.company_name,
         company_code: result.normalized.company_code,
         email: result.normalized.email,
+        mapped_email: result.normalized.mapped_email,
         logo_path: result.normalized.logo_path,
       },
     });

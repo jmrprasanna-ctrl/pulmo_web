@@ -53,6 +53,10 @@
                     <label for="companySelect">Company</label>
                     <select id="companySelect"><option value="">Select company</option></select>
                 </div>
+                <div>
+                    <label for="mappingEmail">Email</label>
+                    <input id="mappingEmail" type="email" placeholder="Mapped email">
+                </div>
             </div>
 
             <div class="mapped-info">
@@ -77,6 +81,7 @@
         const userSelectEl = document.getElementById("userSelect");
         const databaseSelectEl = document.getElementById("databaseSelect");
         const companySelectEl = document.getElementById("companySelect");
+        const mappingEmailEl = document.getElementById("mappingEmail");
         const userCompanyNameEl = document.getElementById("userCompanyName");
         const databaseCompanyNameEl = document.getElementById("databaseCompanyName");
         const selectedCompanyNameEl = document.getElementById("selectedCompanyName");
@@ -115,6 +120,9 @@
             selectedCompanyNameEl.textContent = company ? String(company.company_name || "-") : "-";
             selectedCompanyCodeEl.textContent = company ? String(company.company_code || "-") : "-";
             selectedCompanyEmailEl.textContent = company ? String(company.email || "-") : "-";
+            if(company){
+                mappingEmailEl.value = String(company.email || "").trim().toLowerCase();
+            }
         }
 
         function resetVerifyState(){
@@ -126,7 +134,8 @@
             return {
                 user_id: Number(userSelectEl.value || 0),
                 database_name: String(databaseSelectEl.value || "").trim().toLowerCase(),
-                company_profile_id: Number(companySelectEl.value || 0)
+                company_profile_id: Number(companySelectEl.value || 0),
+                email: String(mappingEmailEl.value || "").trim().toLowerCase()
             };
         }
 
@@ -187,6 +196,11 @@
                 if(m.email){
                     selectedCompanyEmailEl.textContent = String(m.email || "-");
                 }
+                if(m.mapped_email){
+                    mappingEmailEl.value = String(m.mapped_email || "").trim().toLowerCase();
+                }else if(m.email){
+                    mappingEmailEl.value = String(m.email || "").trim().toLowerCase();
+                }
             }catch(_err){
             }
         }
@@ -197,8 +211,8 @@
                 return;
             }
             const payload = selectedPayload();
-            if(!payload.user_id || !payload.database_name || !payload.company_profile_id){
-                alert("Please select user, database and company.");
+            if(!payload.user_id || !payload.database_name || !payload.company_profile_id || !payload.email){
+                alert("Please select user, database, company and email.");
                 return;
             }
             try{
@@ -228,8 +242,8 @@
                 return;
             }
             const payload = selectedPayload();
-            if(!payload.user_id || !payload.database_name || !payload.company_profile_id){
-                alert("Please select user, database and company.");
+            if(!payload.user_id || !payload.database_name || !payload.company_profile_id || !payload.email){
+                alert("Please select user, database, company and email.");
                 return;
             }
             try{
@@ -262,6 +276,9 @@
         companySelectEl.addEventListener("change", () => {
             resetVerifyState();
             updateNameViews();
+        });
+        mappingEmailEl.addEventListener("input", () => {
+            resetVerifyState();
         });
 
         window.verifyMapping = verifyMapping;

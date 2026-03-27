@@ -21,7 +21,7 @@ async function resolveMappedProfile(req){
   try{
     return await db.withDatabase("inventory", async () => {
       const rs = await db.query(
-        `SELECT cp.company_name, cp.email
+        `SELECT cp.company_name, COALESCE(NULLIF(TRIM(um.mapped_email), ''), cp.email) AS email
          FROM user_mappings um
          JOIN company_profiles cp ON cp.id = um.company_profile_id
          WHERE um.user_id = $1
