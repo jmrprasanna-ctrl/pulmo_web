@@ -865,27 +865,55 @@ async function request(endpoint, method="GET", data=null){
     };
     if(data) options.body = JSON.stringify(data);
 
-    let res;
-    try{
-        const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-        res = await fetch(BASE_URL + path, options);
-    }catch(_err){
-        throw new Error(`Failed to fetch. Make sure backend server is running at ${BASE_URL.replace(/\/api$/,"")}`);
+    const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+    const apiOrigin = BASE_URL.replace(/\/api$/,"");
+    const isLoginRequest = method.toUpperCase() === "POST" && path === "/auth/login";
+    const retryableStatuses = [502, 503, 504];
+    const maxAttempts = isLoginRequest ? 2 : 1;
+    const retryDelayMs = 700;
+
+    let lastRes = null;
+    let lastResult = {};
+    for(let attempt = 1; attempt <= maxAttempts; attempt++){
+        let res;
+        try{
+            res = await fetch(BASE_URL + path, options);
+        }catch(_err){
+            if(isLoginRequest && attempt < maxAttempts){
+                await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+                continue;
+            }
+            throw new Error(`Failed to fetch. Make sure backend server is running at ${apiOrigin}`);
+        }
+
+        const raw = await res.text();
+        let result = {};
+        if(raw){
+            try{
+                result = JSON.parse(raw);
+            }catch(_err){
+                result = { message: raw };
+            }
+        }
+
+        if(!res.ok && isLoginRequest && retryableStatuses.includes(res.status) && attempt < maxAttempts){
+            await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+            continue;
+        }
+
+        lastRes = res;
+        lastResult = result;
+        break;
     }
 
-    const raw = await res.text();
-    let result = {};
-    if(raw){
-        try{
-            result = JSON.parse(raw);
-        }catch(_err){
-            result = { message: raw };
-        }
+    const res = lastRes;
+    const result = lastResult;
+    if(!res){
+        throw new Error(`Request failed for ${method} ${endpoint}`);
     }
 
     if(!res.ok){
         const isHtml = typeof result.message === "string" && /<\s*html|<!doctype/i.test(result.message);
-        const apiOrigin = BASE_URL.replace(/\/api$/,"");
         if(res.status === 404){
             throw new Error(`Endpoint not found: ${method} ${endpoint}`);
         }
