@@ -121,6 +121,22 @@ html, body { overflow-x: hidden; }
     color: #334155;
     min-height: 0;
 }
+.product-total-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 10px 14px 12px 14px;
+    font-size: 28px;
+    font-weight: 700;
+    color: #0f172a;
+}
+.product-total-row .product-total-label {
+    letter-spacing: 0.2px;
+}
+.product-total-row .product-total-value {
+    min-width: 120px;
+}
 .important-actions {
     margin-top: 12px;
     display: flex;
@@ -321,6 +337,10 @@ html, body { overflow-x: hidden; }
                                 </thead>
                                 <tbody id="productRows"></tbody>
                             </table>
+                        </div>
+                        <div class="product-total-row">
+                            <span class="product-total-label">TOTAL =</span>
+                            <span id="productsTableTotal" class="product-total-value">0.00</span>
                         </div>
                     </div>
 
@@ -941,6 +961,19 @@ function calculateRow(input){
     const vat = parseFloat(row.querySelector(".vat").value) || 0;
     const gross = (rate*qty) + ((rate*qty)*vat/100);
     row.querySelector(".gross").value = gross.toFixed(2);
+    updateProductsTableTotal();
+}
+
+function updateProductsTableTotal(){
+    const rows = Array.from(document.querySelectorAll(".invoice-product-row"));
+    const total = rows.reduce((sum, row) => {
+        const gross = parseFloat(row.querySelector(".gross")?.value || 0) || 0;
+        return sum + gross;
+    }, 0);
+    const target = document.getElementById("productsTableTotal");
+    if(target){
+        target.textContent = total.toFixed(2);
+    }
 }
 
 // Remove row
@@ -952,6 +985,7 @@ function removeRow(button){
             listEl.remove();
         }
         row.remove();
+        updateProductsTableTotal();
     }
 }
 
@@ -1014,6 +1048,7 @@ document.getElementById("invoiceForm").addEventListener("submit", async function
         showMessageBox("Invoice saved successfully!");
         document.getElementById("invoiceForm").reset();
         document.getElementById("productRows").innerHTML="";
+        updateProductsTableTotal();
         clearAllFloatingProductResults();
         importantNotes = [];
         initInvoice();
