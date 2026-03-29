@@ -818,7 +818,7 @@ function renderProductSearchOptions(listEl, rows){
 
     listEl.innerHTML = rows.map((p) => {
         const price = Number(p.selling_price || 0).toFixed(2);
-        const label = `${p.product_id || ""} - ${p.description || ""}`;
+        const label = `${p.description || ""}`;
         return `<div
             class="product-option"
             data-id="${p.id}"
