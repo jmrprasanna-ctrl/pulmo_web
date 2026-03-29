@@ -188,7 +188,7 @@ CREATE TABLE invoices (
     quotation_date DATE DEFAULT CURRENT_DATE,
     machine_description VARCHAR(255),
     serial_no VARCHAR(100),
-    machine_count INT,
+    machine_count INT DEFAULT 0,
     support_technician VARCHAR(150),
     support_technician_percentage FLOAT,
     payment_method VARCHAR(50) DEFAULT 'Cash',

@@ -392,6 +392,8 @@ exports.listInvoices = async (req,res)=>{
             customer_id: inv.customer_id,
             customer_name: inv.Customer ? inv.Customer.name : "",
             customer_mode: inv.Customer ? inv.Customer.customer_mode : "",
+            count: Number(inv.machine_count || 0),
+            machine_count: Number(inv.machine_count || 0),
             total: inv.total_amount,
             invoice_date: inv.invoice_date || inv.createdAt,
             payment_date: inv.payment_date || null,
@@ -660,7 +662,7 @@ exports.createInvoice = async (req,res)=>{
             total_amount += gross;
         }
         const parsedCount = machine_count === undefined || machine_count === null || machine_count === ""
-            ? null
+            ? 0
             : Number(machine_count);
         const parsedSupportTechnicianPercentage =
             support_technician_percentage === undefined ||
@@ -699,7 +701,7 @@ exports.createInvoice = async (req,res)=>{
             customer_id,
             machine_description: String(machine_description || "").trim() || null,
             serial_no: String(serial_no || "").trim() || null,
-            machine_count: Number.isFinite(parsedCount) ? parsedCount : null,
+            machine_count: Number.isFinite(parsedCount) && parsedCount >= 0 ? parsedCount : 0,
             support_technician: String(support_technician || "").trim() || null,
             support_technician_percentage: Number.isFinite(parsedSupportTechnicianPercentage) ? parsedSupportTechnicianPercentage : null,
             payment_method: normalizePaymentMethod(payment_method),

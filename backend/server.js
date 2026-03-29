@@ -502,6 +502,10 @@ async function ensureInvoicePaymentSchema() {
     `);
     await db.query(`
       ALTER TABLE invoices
+      ALTER COLUMN machine_count SET DEFAULT 0;
+    `);
+    await db.query(`
+      ALTER TABLE invoices
       ADD COLUMN IF NOT EXISTS support_technician VARCHAR(150);
     `);
     await db.query(`
@@ -529,6 +533,11 @@ async function ensureInvoicePaymentSchema() {
       UPDATE invoices
       SET payment_status = 'Received'
       WHERE LOWER(COALESCE(payment_status, '')) IN ('received', 'recieved');
+    `);
+    await db.query(`
+      UPDATE invoices
+      SET machine_count = 0
+      WHERE machine_count IS NULL;
     `);
     await db.query(`
       UPDATE invoices

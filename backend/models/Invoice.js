@@ -11,7 +11,7 @@ const Invoice = db.define("Invoice",{
     customer_id:{ type: DataTypes.INTEGER, references:{ model:Customer,key:"id" } },
     machine_description:{ type: DataTypes.STRING, allowNull: true },
     serial_no:{ type: DataTypes.STRING, allowNull: true },
-    machine_count:{ type: DataTypes.INTEGER, allowNull: true },
+    machine_count:{ type: DataTypes.INTEGER, allowNull: true, defaultValue: 0 },
     support_technician:{ type: DataTypes.STRING, allowNull: true },
     support_technician_percentage:{ type: DataTypes.FLOAT, allowNull: true },
     payment_method:{ type: DataTypes.STRING, allowNull: true, defaultValue: "Cash" },
