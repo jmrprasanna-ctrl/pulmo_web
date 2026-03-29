@@ -174,12 +174,21 @@ exports.technicianInvoicesMonthlyReport = async (req,res)=>{
         const normalized = invoices
             .filter((inv) => String(inv.support_technician || "").trim())
             .map((inv) => ({
+                technician_percentage: (() => {
+                    const raw = Number(inv.support_technician_percentage);
+                    if(!Number.isFinite(raw)) return 0;
+                    return Math.min(Math.max(raw, 0), 100);
+                })(),
                 id: inv.id,
                 invoice_no: inv.invoice_no,
                 technician: String(inv.support_technician || "").trim(),
                 customer_name: inv.Customer ? inv.Customer.name : "",
                 date: inv.invoice_date || inv.createdAt,
                 total_amount: Number(inv.total_amount || 0)
+            }))
+            .map((row) => ({
+                ...row,
+                allocated_amount: Number((row.total_amount * (row.technician_percentage / 100)).toFixed(2))
             }));
 
         const grouped = new Map();
@@ -188,18 +197,27 @@ exports.technicianInvoicesMonthlyReport = async (req,res)=>{
                 grouped.set(row.technician, {
                     technician: row.technician,
                     invoices_count: 0,
-                    total_amount: 0
+                    total_invoice_amount: 0,
+                    allocated_amount: 0,
+                    total_percentage: 0
                 });
             }
             const g = grouped.get(row.technician);
             g.invoices_count += 1;
-            g.total_amount += Number(row.total_amount || 0);
+            g.total_invoice_amount += Number(row.total_amount || 0);
+            g.allocated_amount += Number(row.allocated_amount || 0);
+            g.total_percentage += Number(row.technician_percentage || 0);
         });
 
         const summary = Array.from(grouped.values())
             .map((g) => ({
-                ...g,
-                total_amount: Number(g.total_amount.toFixed(2))
+                technician: g.technician,
+                invoices_count: g.invoices_count,
+                total_invoice_amount: Number(g.total_invoice_amount.toFixed(2)),
+                allocated_amount: Number(g.allocated_amount.toFixed(2)),
+                average_percentage: Number((g.invoices_count ? (g.total_percentage / g.invoices_count) : 0).toFixed(2)),
+                // Backward-compatible alias for existing frontend consumers.
+                total_amount: Number(g.allocated_amount.toFixed(2))
             }))
             .sort((a, b) => b.invoices_count - a.invoices_count);
 

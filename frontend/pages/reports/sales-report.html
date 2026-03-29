@@ -134,7 +134,8 @@
                         <tr>
                             <th>Technician</th>
                             <th>Invoices</th>
-                            <th>Total Amount</th>
+                            <th>Avg %</th>
+                            <th>Allocated Amount</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -439,6 +440,7 @@ async function loadTechnicianReport(){
             tr.innerHTML = `
                 <td>${row.technician || ""}</td>
                 <td>${row.invoices_count || 0}</td>
+                <td>${Number(row.average_percentage || 0).toFixed(2)}%</td>
                 <td>${Number(row.total_amount || 0).toFixed(2)}</td>
             `;
             tbody.appendChild(tr);
