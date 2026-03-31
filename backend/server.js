@@ -192,6 +192,10 @@ async function ensureDefaultUiSettings() {
       ALTER TABLE ui_settings
       ADD COLUMN IF NOT EXISTS quotation3_template_pdf_path VARCHAR(500);
     `);
+    await db.query(`ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS sign_q2_path VARCHAR(500);`);
+    await db.query(`ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS seal_q2_path VARCHAR(500);`);
+    await db.query(`ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS sign_q3_path VARCHAR(500);`);
+    await db.query(`ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS seal_q3_path VARCHAR(500);`);
 
     const first = await UiSetting.findOne({ order: [["id", "ASC"]] });
     if (!first) {
