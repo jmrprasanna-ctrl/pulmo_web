@@ -13,11 +13,11 @@
     <h1 class="invoice-title">Quatation Details</h1>
     <div class="invoice-address-controls">
         <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
-            <input type="checkbox" id="addressColomboChk" checked>
+            <input type="checkbox" id="addressColomboChk">
             Address Colombo
         </label>
         <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
-            <input type="checkbox" id="addressVChk">
+            <input type="checkbox" id="addressVChk" checked>
             Address V
         </label>
         <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
@@ -25,7 +25,7 @@
             SIGN C
         </label>
         <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
-            <input type="checkbox" id="signVChk">
+            <input type="checkbox" id="signVChk" checked>
             SIGN V
         </label>
         <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
@@ -33,7 +33,7 @@
             SEAL C
         </label>
         <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
-            <input type="checkbox" id="sealVChk">
+            <input type="checkbox" id="sealVChk" checked>
             SEAL V
         </label>
         <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
@@ -256,7 +256,7 @@ const ADDRESS_TEXTS = {
         "www.pulmotech.lk"
     ]
 };
-let selectedAddressKey = "colombo";
+let selectedAddressKey = "v";
 
 function getLayoutConfig(key){
     return layoutState[key] || { x: 0, y: 0, font: INPUT_FONT_SIZE, fontFamily: INPUT_FONT_FAMILY, fontWeight: "normal" };
@@ -1054,9 +1054,9 @@ function initAddressControls(){
     const cChk = document.getElementById("addressColomboChk");
     const vChk = document.getElementById("addressVChk");
     if(!cChk || !vChk) return;
-    cChk.checked = true;
-    vChk.checked = false;
-    selectedAddressKey = "colombo";
+    cChk.checked = false;
+    vChk.checked = true;
+    selectedAddressKey = "v";
 
     cChk.addEventListener("change", async () => {
         if(cChk.checked){
@@ -1106,8 +1106,8 @@ function initSignVControl(){
     const signVChk = document.getElementById("signVChk");
     if(!signVChk) return;
     const allowed = hasMappedFeature("sign_v");
-    signVChk.checked = false;
-    signVEnabled = false;
+    signVChk.checked = !!allowed;
+    signVEnabled = !!allowed;
     signVChk.disabled = !allowed;
     if(!allowed) return;
     signVChk.addEventListener("change", async () => {
@@ -1140,8 +1140,8 @@ function initSealVControl(){
     const sealVChk = document.getElementById("sealVChk");
     if(!sealVChk) return;
     const allowed = hasMappedFeature("seal_v");
-    sealVChk.checked = false;
-    sealVEnabled = false;
+    sealVChk.checked = !!allowed;
+    sealVEnabled = !!allowed;
     sealVChk.disabled = !allowed;
     if(!allowed) return;
     sealVChk.addEventListener("change", async () => {
