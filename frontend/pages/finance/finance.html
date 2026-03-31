@@ -80,30 +80,6 @@
 
     <div class="form-container section">
         <div class="section-head">
-            <h3>Total Expenses</h3>
-            <div class="section-actions">
-                <select id="expenseYearFilter" style="min-width:130px;"></select>
-                <select id="expenseMonthFilter" style="min-width:170px;"></select>
-                <button class="btn" type="button" onclick="exportMonthExpensePDF()">Save PDF</button>
-                <button class="btn" type="button" onclick="exportMonthExpenseXlsx()">Save XLSX</button>
-            </div>
-        </div>
-        <table id="monthExpenseTable">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Title</th>
-                    <th>Customer</th>
-                    <th>Category</th>
-                    <th>Amount</th>
-                </tr>
-            </thead>
-            <tbody id="monthExpenseBody"></tbody>
-        </table>
-    </div>
-
-    <div class="form-container section">
-        <div class="section-head">
             <h3>Total Sales / Expenses / Net Profit</h3>
             <div class="section-actions">
                 <button class="btn" type="button" onclick="exportSummaryPDF()">Save PDF</button>
@@ -243,48 +219,6 @@ function fmt(v){
 }
 
 let lastFinanceData = null;
-const expenseYearFilterEl = document.getElementById("expenseYearFilter");
-const expenseMonthFilterEl = document.getElementById("expenseMonthFilter");
-const MONTH_OPTION_ROWS = [
-    { value: "1", label: "January" },
-    { value: "2", label: "February" },
-    { value: "3", label: "March" },
-    { value: "4", label: "April" },
-    { value: "5", label: "May" },
-    { value: "6", label: "June" },
-    { value: "7", label: "July" },
-    { value: "8", label: "August" },
-    { value: "9", label: "September" },
-    { value: "10", label: "October" },
-    { value: "11", label: "November" },
-    { value: "12", label: "December" }
-];
-
-function fillExpenseFilters(){
-    const currentYear = new Date().getFullYear();
-    if(expenseYearFilterEl){
-        const current = String(expenseYearFilterEl.value || "");
-        expenseYearFilterEl.innerHTML = "";
-        for(let y = currentYear; y >= currentYear - 20; y -= 1){
-            const opt = document.createElement("option");
-            opt.value = String(y);
-            opt.textContent = String(y);
-            expenseYearFilterEl.appendChild(opt);
-        }
-        expenseYearFilterEl.value = current || String(currentYear);
-    }
-    if(expenseMonthFilterEl){
-        const current = String(expenseMonthFilterEl.value || "");
-        expenseMonthFilterEl.innerHTML = "";
-        MONTH_OPTION_ROWS.forEach((month) => {
-            const opt = document.createElement("option");
-            opt.value = month.value;
-            opt.textContent = month.label;
-            expenseMonthFilterEl.appendChild(opt);
-        });
-        expenseMonthFilterEl.value = current || String(new Date().getMonth() + 1);
-    }
-}
 
 function putRows(tbodyId, rows, emptyCols){
     const tbody = document.getElementById(tbodyId);
@@ -304,12 +238,7 @@ function putRows(tbodyId, rows, emptyCols){
 
 async function loadFinanceOverview(){
     try{
-        const selectedExpenseYear = String(expenseYearFilterEl?.value || "").trim();
-        const selectedExpenseMonth = String(expenseMonthFilterEl?.value || "").trim();
-        const baseDate = (selectedExpenseYear && selectedExpenseMonth)
-            ? `${selectedExpenseYear}-${String(selectedExpenseMonth).padStart(2, "0")}-01`
-            : "";
-        const query = `?date=${encodeURIComponent(baseDate)}&expenseYear=${encodeURIComponent(selectedExpenseYear)}&expenseMonth=${encodeURIComponent(selectedExpenseMonth)}`;
+        const query = `?date=${encodeURIComponent("")}`;
         const data = await request(`/reports/finance-overview${query}`, "GET");
         lastFinanceData = data;
 
@@ -317,27 +246,6 @@ async function loadFinanceOverview(){
         document.getElementById("totalSales").innerText = fmt(monthSummary.total_sales);
         document.getElementById("totalExpense").innerText = fmt(monthSummary.total_expenses);
         document.getElementById("netProfit").innerText = fmt(monthSummary.net_profit);
-
-        let monthExpenseSource = Array.isArray(data.month_expense_rows) ? data.month_expense_rows : null;
-        if(!monthExpenseSource){
-            const allExpenses = await request("/expenses", "GET");
-            const ref = baseDate ? new Date(`${baseDate}T00:00:00`) : new Date();
-            const y = ref.getFullYear();
-            const m = ref.getMonth();
-            monthExpenseSource = (Array.isArray(allExpenses) ? allExpenses : []).filter((e) => {
-                const dt = new Date(e.date || e.createdAt || e.updatedAt);
-                return !Number.isNaN(dt.getTime()) && dt.getFullYear() === y && dt.getMonth() === m;
-            });
-        }
-
-        const monthExpenseRows = (monthExpenseSource || []).map((r) => `
-            <td>${r.date ? new Date(r.date).toLocaleDateString() : ""}</td>
-            <td>${r.title || ""}</td>
-            <td>${r.customer || ""}</td>
-            <td>${r.category || ""}</td>
-            <td>${fmt(r.amount)}</td>
-        `);
-        putRows("monthExpenseBody", monthExpenseRows, 5);
 
         const summaryRows = ["week","month","year"].map((k) => {
             const s = data.summary_by_period?.[k] || {};
@@ -392,7 +300,6 @@ async function loadFinanceOverview(){
 
     }catch(err){
         putRows("summaryBody", [`<td colspan="4">${err.message || "Failed to load finance overview"}</td>`], 4);
-        putRows("monthExpenseBody", [`<td colspan="5">${err.message || "Failed to load month expense entries"}</td>`], 5);
     }
 }
 
@@ -507,13 +414,6 @@ function exportFinancePDF(){
         line(`${r.month_name || ""}: ${fmt(r.total_amount)}`);
     });
     doc.save("Finance_Overview.pdf");
-}
-
-function exportMonthExpensePDF(){
-    exportTablePDF("monthExpenseTable", "Total Expenses", "Finance_Month_Expense.pdf");
-}
-function exportMonthExpenseXlsx(){
-    exportTableXlsx("monthExpenseTable", "Finance_Month_Expense.xlsx");
 }
 
 function exportSummaryPDF(){
@@ -683,10 +583,7 @@ function logout(){
     window.location.href="../login.html";
 }
 
-fillExpenseFilters();
 loadFinanceOverview();
-expenseYearFilterEl?.addEventListener("change", loadFinanceOverview);
-expenseMonthFilterEl?.addEventListener("change", loadFinanceOverview);
 </script>
 </body>
 </html>

@@ -85,6 +85,34 @@
     <div class="form-container">
         <div class="report-block">
             <div class="report-head">
+                <h3>Total Expenses</h3>
+                <div class="report-controls">
+                    <label for="reportExpenseYear">Year</label>
+                    <select id="reportExpenseYear"></select>
+                    <label for="reportExpenseMonth">Month</label>
+                    <select id="reportExpenseMonth"></select>
+                    <button type="button" onclick="loadReportExpenses()">Load</button>
+                    <button type="button" onclick="exportReportExpensesPDF()">Export PDF</button>
+                </div>
+            </div>
+            <div class="table-scroll-wrap">
+                <table id="reportExpenseTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Title</th>
+                            <th>Customer</th>
+                            <th>Category</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="report-block">
+            <div class="report-head">
                 <h3>Sales Report</h3>
                 <div class="report-controls">
                     <select id="salesPeriod">
@@ -372,6 +400,10 @@ function exportRentalCountPDF(){
     exportTablePDF("rentalCountTable", "Rental Count Report", "Rental_Count_Report.pdf");
 }
 
+function exportReportExpensesPDF(){
+    exportTablePDF("reportExpenseTable", "Total Expenses", "SalesReport_Total_Expenses.pdf");
+}
+
 function exportTablePDF(tableId, reportTitle, fileName){
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ format: "a4" });
@@ -568,6 +600,32 @@ async function loadRentalConsumablesReport(){
     }
 }
 
+async function loadReportExpenses(){
+    try{
+        const year = String(document.getElementById("reportExpenseYear")?.value || "").trim();
+        const month = String(document.getElementById("reportExpenseMonth")?.value || "").trim();
+        const baseDate = (year && month) ? `${year}-${String(month).padStart(2, "0")}-01` : "";
+        const query = `?date=${encodeURIComponent(baseDate)}&expenseYear=${encodeURIComponent(year)}&expenseMonth=${encodeURIComponent(month)}`;
+        const data = await request(`/reports/finance-overview${query}`,"GET");
+        const tbody = document.querySelector("#reportExpenseTable tbody");
+        tbody.innerHTML = "";
+        (data.month_expense_rows || []).forEach((row) => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${row.date ? new Date(row.date).toLocaleDateString() : ""}</td>
+                <td>${row.title || ""}</td>
+                <td>${row.customer || ""}</td>
+                <td>${row.category || ""}</td>
+                <td>${Number(row.amount || 0).toFixed(2)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+        applyTableScrollLimit("reportExpenseTable");
+    }catch(err){
+        alert(err.message || "Failed to load total expenses");
+    }
+}
+
 async function loadRentalCustomerFilterOptions(){
     try{
         const select = document.getElementById("rentalCustomerFilter");
@@ -761,6 +819,26 @@ function populateSalesYearOptions(){
     yearEl.innerHTML = opts.join("");
 }
 
+function populateReportExpenseYearOptions(){
+    const yearEl = document.getElementById("reportExpenseYear");
+    if(!yearEl) return;
+    const currentYear = new Date().getFullYear();
+    const startYear = currentYear - 15;
+    const opts = [];
+    for(let y = currentYear; y >= startYear; y--){
+        opts.push(`<option value="${y}">${y}</option>`);
+    }
+    yearEl.innerHTML = opts.join("");
+}
+
+function populateReportExpenseMonthOptions(){
+    const monthEl = document.getElementById("reportExpenseMonth");
+    if(!monthEl) return;
+    monthEl.innerHTML = REPORT_MONTH_NAMES
+        .map((name, i) => `<option value="${i + 1}">${name}</option>`)
+        .join("");
+}
+
 function populateSalesMonthOptions(){
     const monthEl = document.getElementById("salesMonthSelect");
     if(!monthEl) return;
@@ -860,6 +938,8 @@ function syncSalesDateFromSelectors(){
 }
 
 document.getElementById("salesDate").value = new Date().toISOString().slice(0,10);
+populateReportExpenseYearOptions();
+populateReportExpenseMonthOptions();
 populateSalesYearOptions();
 populateSalesMonthOptions();
 populateTechYearOptions();
@@ -870,6 +950,8 @@ populateRentalCountYearOptions();
 populateRentalCountMonthOptions();
 document.getElementById("salesYearSelect").value = String(new Date().getFullYear());
 document.getElementById("salesMonthSelect").value = String(new Date().getMonth() + 1).padStart(2,"0");
+document.getElementById("reportExpenseYear").value = String(new Date().getFullYear());
+document.getElementById("reportExpenseMonth").value = String(new Date().getMonth() + 1);
 document.getElementById("techYear").value = String(new Date().getFullYear());
 document.getElementById("techMonth").value = "all";
 document.getElementById("rentalConsumablesYearFilter").value = String(new Date().getFullYear());
@@ -885,6 +967,8 @@ document.getElementById("salesPeriod").addEventListener("change", () => {
 });
 document.getElementById("salesYearSelect").addEventListener("change", syncSalesDateFromSelectors);
 document.getElementById("salesMonthSelect").addEventListener("change", syncSalesDateFromSelectors);
+document.getElementById("reportExpenseYear").addEventListener("change", loadReportExpenses);
+document.getElementById("reportExpenseMonth").addEventListener("change", loadReportExpenses);
 document.getElementById("techYear").addEventListener("change", loadTechnicianReport);
 document.getElementById("techMonth").addEventListener("change", loadTechnicianReport);
 document.getElementById("techTechnician").addEventListener("change", loadTechnicianReport);
@@ -899,6 +983,7 @@ document.getElementById("rentalCountMonthFilter").addEventListener("change", loa
 document.getElementById("rentalMachineFilter").addEventListener("change", loadRentalCountReport);
 
 loadSales();
+loadReportExpenses();
 loadRentalCustomerFilterOptions();
 loadRentalCountCustomerFilterOptions();
 loadRentalMachineFilterOptions();
