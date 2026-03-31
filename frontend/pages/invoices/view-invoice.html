@@ -139,7 +139,7 @@
     <div class="invoice-actions">
         <button class="btn btn-primary" onclick="printPDF()">Print PDF</button>
         <button class="btn btn-primary" onclick="emailInvoice()">email</button>
-        <button class="btn btn-primary" onclick="emailQuotations()">Quatation Email</button>
+        <button class="btn btn-primary" onclick="emailQuotations()">Quatation 2/3 Email</button>
         <button class="btn btn-secondary" type="button" onclick="window.location.href='invoice-list.html'">Back</button>
     </div>
 </div>
@@ -1413,7 +1413,6 @@ async function emailQuotations(){
     try{
         const attachments = [];
         const defs = [
-            { type: "quotation", feature: "quotation", prefix: "Quotation" },
             { type: "quotation2", feature: "quotation2", prefix: "Quotation_2" },
             { type: "quotation3", feature: "quotation3", prefix: "Quotation_3" }
         ];
@@ -1432,15 +1431,16 @@ async function emailQuotations(){
         }
         const res = await request(`/invoices/${invoiceId}/send-email`, "POST", {
             attachment_list: attachments,
+            email_type: "quotation23",
             require_rendered_attachment: true
         });
         if(typeof showMessageBox === "function"){
-            showMessageBox(res.message || "Quotation email sent");
+            showMessageBox(res.message || "Quotation 2/3 email sent");
         }else{
-            alert(res.message || "Quotation email sent");
+            alert(res.message || "Quotation 2/3 email sent");
         }
     }catch(err){
-        alert(err.message || "Failed to send quotation email");
+        alert(err.message || "Failed to send Quotation 2/3 email");
     }
 }
 
