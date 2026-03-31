@@ -114,6 +114,10 @@
                 <label for="yearFilter">Year</label>
                 <select id="yearFilter"></select>
             </div>
+            <div class="field" style="min-width:240px;">
+                <label for="customerSearch">Customer Search</label>
+                <input type="text" id="customerSearch" placeholder="Search customer name">
+            </div>
             <button type="button" onclick="loadInvoices()">Refresh List</button>
             <button type="button" onclick="exportPaymentsPDF()">Save PDF</button>
         </div>
@@ -164,6 +168,7 @@ const chequeField = document.getElementById("chequeField");
 const chequeNoInput = document.getElementById("chequeNo");
 const paymentStatusSelect = document.getElementById("paymentStatus");
 const statusFilterSelect = document.getElementById("statusFilter");
+const customerSearchInput = document.getElementById("customerSearch");
 
 let allGeneralInvoices = [];
 let selectedYear = String(new Date().getFullYear());
@@ -254,9 +259,15 @@ function renderTable(){
     const tbody = document.querySelector("#paymentsTable tbody");
     tbody.innerHTML = "";
     const statusFilter = String(statusFilterSelect.value || "all").toLowerCase();
+    const customerSearch = String(customerSearchInput?.value || "").trim().toLowerCase();
     const rows = getYearFilteredRows().filter((inv) => {
-        if(statusFilter === "all") return true;
-        return normalizeStatus(inv.payment_status).toLowerCase() === statusFilter;
+        const matchesStatus = statusFilter === "all"
+            ? true
+            : normalizeStatus(inv.payment_status).toLowerCase() === statusFilter;
+        const matchesCustomer = !customerSearch
+            ? true
+            : String(inv.customer_name || "").toLowerCase().includes(customerSearch);
+        return matchesStatus && matchesCustomer;
     });
 
     if(!rows.length){
@@ -392,6 +403,7 @@ paymentForm.addEventListener("submit", async (e) => {
 
 paymentModeSelect.addEventListener("change", toggleChequeField);
 statusFilterSelect.addEventListener("change", renderTable);
+customerSearchInput?.addEventListener("input", renderTable);
 const yearFilterSelect = document.getElementById("yearFilter");
 if(yearFilterSelect){
     yearFilterSelect.addEventListener("change", () => {
