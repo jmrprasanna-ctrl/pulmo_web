@@ -66,9 +66,9 @@
             <option value="sealC">SEAL Q2</option>
         </select>
         <div id="itemEditControls" style="display:none;align-items:center;gap:8px;">
-            <label for="layoutItemRowSelect" style="margin:0;font-weight:600;color:#1d3655;white-space:nowrap;">Item</label>
+            <label id="itemEditRowLabel" for="layoutItemRowSelect" style="margin:0;font-weight:600;color:#1d3655;white-space:nowrap;">Item</label>
             <select id="layoutItemRowSelect" style="min-width:120px;"></select>
-            <label for="layoutItemNameInput" style="margin:0;font-weight:600;color:#1d3655;white-space:nowrap;">Item Name</label>
+            <label id="itemEditValueLabel" for="layoutItemNameInput" style="margin:0;font-weight:600;color:#1d3655;white-space:nowrap;">Item Name</label>
             <input type="text" id="layoutItemNameInput" placeholder="Custom item name" style="min-width:220px;">
             <button class="btn btn-secondary" type="button" id="saveItemNameOverrideBtn">Apply</button>
             <button class="btn btn-secondary" type="button" id="clearItemNameOverrideBtn">Clear</button>
@@ -149,6 +149,7 @@ let invMapFlags = null;
 let qut2RenderVisibilityFromDb = null;
 let qut2RenderOverridesFromDb = null;
 let qut2ItemNameOverridesByInvoice = {};
+let qut2ItemRateOverridesByInvoice = {};
 let qut2RenderDbName = "";
 
 function hasMappedFeature(featureKey){
@@ -716,6 +717,7 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null){
     let y = tableY + m.h(POS.table.rowStart - 86);
     const rowH = m.h(POS.table.rowH + OVERLAY.rowGap);
     const currentInvoiceItemNameOverrides = getCurrentInvoiceItemNameOverrides();
+    const currentInvoiceItemRateOverrides = getCurrentInvoiceItemRateOverrides();
     data.items.slice(0, 18).forEach((item, idx) => {
         const product = item.Product || {};
         const code = product.product_id || "";
@@ -723,10 +725,12 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null){
         const overrideDesc = sanitizeQut2ItemName(currentInvoiceItemNameOverrides[String(idx + 1)] || "");
         const desc = overrideDesc || defaultDesc;
         const descriptionText = overrideDesc ? desc : `${code} ${desc}`.trim();
+        const rateOverrideValue = sanitizeQut2RateValue(currentInvoiceItemRateOverrides[String(idx + 1)]);
+        const displayRate = Number.isFinite(rateOverrideValue) ? rateOverrideValue : Number(item.rate || 0);
         if(getLayoutVisible("itemNo")) fitText(ctx, String(idx + 1), tableX + m.w(32 + itemNoCfg.x), y + m.h(itemNoCfg.y), m.w(34), itemNoFontSize, itemNoWeight, itemNoFontFamily);
         if(getLayoutVisible("description")) fitText(ctx, descriptionText, c1 + m.w(28 + descriptionCfg.x), y + m.h(descriptionCfg.y), c2 - c1 - m.w(16), descriptionFontSize, descriptionWeight, descriptionFontFamily);
         if(getLayoutVisible("qty")) drawRight(ctx, String(item.qty || 0), c3 + m.w(12 + qtyCfg.x) - m.w(190), y + m.h(qtyCfg.y), c3 - c2 - m.w(16), qtyFontSize, qtyWeight, qtyFontFamily);
-        if(getLayoutVisible("rate")) drawRightFixed(ctx, money(item.rate), c4 + m.w(12 + rateCfg.x) - m.w(150), y + m.h(rateCfg.y), rateFontSize, rateWeight, rateFontFamily);
+        if(getLayoutVisible("rate")) drawRightFixed(ctx, money(displayRate), c4 + m.w(12 + rateCfg.x) - m.w(150), y + m.h(rateCfg.y), rateFontSize, rateWeight, rateFontFamily);
         if(getLayoutVisible("vat")) drawRight(ctx, `${money(item.vat)}%`, c5 + m.w(12 + vatCfg.x) - m.w(150), y + m.h(vatCfg.y), c5 - c4 - m.w(16), vatFontSize, vatWeight, vatFontFamily);
         if(getLayoutVisible("grossAmount")) drawRight(ctx, money(item.gross), tableRight + m.w(12 + grossCfg.x) - m.w(40), y + m.h(grossCfg.y), tableRight - c5 - m.w(16), grossFontSize, grossWeight, grossFontFamily);
         y += rowH;
@@ -1012,10 +1016,23 @@ function sanitizeQut2ItemName(value){
     return String(value || "").trim().slice(0, 300);
 }
 
+function sanitizeQut2RateValue(value){
+    const numeric = Number(value);
+    if(!Number.isFinite(numeric)) return null;
+    return numeric;
+}
+
 function getCurrentInvoiceItemNameOverrides(){
     const invoiceKey = getCurrentInvoiceKey();
     if(!invoiceKey) return {};
     const map = qut2ItemNameOverridesByInvoice[invoiceKey];
+    return map && typeof map === "object" ? map : {};
+}
+
+function getCurrentInvoiceItemRateOverrides(){
+    const invoiceKey = getCurrentInvoiceKey();
+    if(!invoiceKey) return {};
+    const map = qut2ItemRateOverridesByInvoice[invoiceKey];
     return map && typeof map === "object" ? map : {};
 }
 
@@ -1024,6 +1041,14 @@ function getCurrentInvoiceItemNameOverride(rowNumber){
     if(!/^\d+$/.test(key)) return "";
     const map = getCurrentInvoiceItemNameOverrides();
     return sanitizeQut2ItemName(map[key] || "");
+}
+
+function getCurrentInvoiceItemRateOverride(rowNumber){
+    const key = String(Number(rowNumber || 0));
+    if(!/^\d+$/.test(key)) return null;
+    const map = getCurrentInvoiceItemRateOverrides();
+    const value = sanitizeQut2RateValue(map[key]);
+    return Number.isFinite(value) ? value : null;
 }
 
 function setCurrentInvoiceItemNameOverride(rowNumber, customName){
@@ -1044,21 +1069,47 @@ function setCurrentInvoiceItemNameOverride(rowNumber, customName){
     qut2ItemNameOverridesByInvoice[invoiceKey][rowKey] = safeName;
 }
 
+function setCurrentInvoiceItemRateOverride(rowNumber, customRate){
+    const invoiceKey = getCurrentInvoiceKey();
+    const rowKey = String(Number(rowNumber || 0));
+    if(!invoiceKey || !/^\d+$/.test(rowKey)) return;
+    if(!qut2ItemRateOverridesByInvoice[invoiceKey] || typeof qut2ItemRateOverridesByInvoice[invoiceKey] !== "object"){
+        qut2ItemRateOverridesByInvoice[invoiceKey] = {};
+    }
+    const safeRate = sanitizeQut2RateValue(customRate);
+    if(!Number.isFinite(safeRate)){
+        delete qut2ItemRateOverridesByInvoice[invoiceKey][rowKey];
+        if(!Object.keys(qut2ItemRateOverridesByInvoice[invoiceKey]).length){
+            delete qut2ItemRateOverridesByInvoice[invoiceKey];
+        }
+        return;
+    }
+    qut2ItemRateOverridesByInvoice[invoiceKey][rowKey] = safeRate;
+}
+
 function buildQut2RenderOverridesPayload(){
     return {
-        item_names_by_invoice: qut2ItemNameOverridesByInvoice
+        item_names_by_invoice: qut2ItemNameOverridesByInvoice,
+        item_rates_by_invoice: qut2ItemRateOverridesByInvoice
     };
 }
 
 function applyPersistedQut2RenderOverrides(){
-    const sourceMap = qut2RenderOverridesFromDb
+    const sourceNameMap = qut2RenderOverridesFromDb
         && typeof qut2RenderOverridesFromDb === "object"
         && qut2RenderOverridesFromDb.item_names_by_invoice
         && typeof qut2RenderOverridesFromDb.item_names_by_invoice === "object"
         ? qut2RenderOverridesFromDb.item_names_by_invoice
         : {};
-    const next = {};
-    Object.entries(sourceMap).forEach(([invoiceKey, itemMap]) => {
+    const sourceRateMap = qut2RenderOverridesFromDb
+        && typeof qut2RenderOverridesFromDb === "object"
+        && qut2RenderOverridesFromDb.item_rates_by_invoice
+        && typeof qut2RenderOverridesFromDb.item_rates_by_invoice === "object"
+        ? qut2RenderOverridesFromDb.item_rates_by_invoice
+        : {};
+    const nextNames = {};
+    const nextRates = {};
+    Object.entries(sourceNameMap).forEach(([invoiceKey, itemMap]) => {
         const safeInvoiceKey = String(invoiceKey || "").trim();
         if(!/^\d+$/.test(safeInvoiceKey) || !itemMap || typeof itemMap !== "object") return;
         const normalizedItemMap = {};
@@ -1070,10 +1121,26 @@ function applyPersistedQut2RenderOverrides(){
             normalizedItemMap[safeRowNumber] = safeName;
         });
         if(Object.keys(normalizedItemMap).length){
-            next[safeInvoiceKey] = normalizedItemMap;
+            nextNames[safeInvoiceKey] = normalizedItemMap;
         }
     });
-    qut2ItemNameOverridesByInvoice = next;
+    Object.entries(sourceRateMap).forEach(([invoiceKey, itemMap]) => {
+        const safeInvoiceKey = String(invoiceKey || "").trim();
+        if(!/^\d+$/.test(safeInvoiceKey) || !itemMap || typeof itemMap !== "object") return;
+        const normalizedItemMap = {};
+        Object.entries(itemMap).forEach(([rowNumber, rate]) => {
+            const safeRowNumber = String(rowNumber || "").trim();
+            if(!/^\d+$/.test(safeRowNumber)) return;
+            const safeRate = sanitizeQut2RateValue(rate);
+            if(!Number.isFinite(safeRate)) return;
+            normalizedItemMap[safeRowNumber] = safeRate;
+        });
+        if(Object.keys(normalizedItemMap).length){
+            nextRates[safeInvoiceKey] = normalizedItemMap;
+        }
+    });
+    qut2ItemNameOverridesByInvoice = nextNames;
+    qut2ItemRateOverridesByInvoice = nextRates;
 }
 
 function applyPersistedQut2RenderVisibility(){
@@ -1184,6 +1251,7 @@ function initRenderInputChecklist(){
             selectedLayoutTarget = item.key;
             targetSelect.value = item.key;
             syncLayoutEditorSelects();
+            toggleQut2ItemEditControls();
         });
 
         row.appendChild(input);
@@ -1246,11 +1314,43 @@ function getInvoiceItemDefaultName(rowNumber){
     return String(product.description || product.model || "").trim();
 }
 
+function getInvoiceItemDefaultRate(rowNumber){
+    const index = Number(rowNumber || 0) - 1;
+    if(!Number.isFinite(index) || index < 0) return "";
+    const item = Array.isArray(latestInvoiceData?.items) ? latestInvoiceData.items[index] : null;
+    if(!item) return "";
+    const numeric = Number(item.rate || 0);
+    return Number.isFinite(numeric) ? numeric.toFixed(2) : "";
+}
+
+function isQut2ItemOverrideTarget(){
+    return selectedLayoutTarget === "itemNo" || selectedLayoutTarget === "rate";
+}
+
 function syncQut2ItemOverrideInput(){
     const rowSelect = document.getElementById("layoutItemRowSelect");
     const input = document.getElementById("layoutItemNameInput");
-    if(!rowSelect || !input) return;
+    const valueLabel = document.getElementById("itemEditValueLabel");
+    if(!rowSelect || !input || !valueLabel) return;
+    if(selectedLayoutTarget === "rate"){
+        valueLabel.textContent = "Rate";
+        input.placeholder = "Custom rate";
+        input.inputMode = "decimal";
+    }else{
+        valueLabel.textContent = "Item Name";
+        input.placeholder = "Custom item name";
+        input.inputMode = "text";
+    }
     const selectedRow = String(rowSelect.value || "").trim();
+    if(selectedLayoutTarget === "rate"){
+        const overrideRate = getCurrentInvoiceItemRateOverride(selectedRow);
+        if(Number.isFinite(overrideRate)){
+            input.value = Number(overrideRate).toFixed(2);
+            return;
+        }
+        input.value = getInvoiceItemDefaultRate(selectedRow);
+        return;
+    }
     const overrideValue = getCurrentInvoiceItemNameOverride(selectedRow);
     if(overrideValue){
         input.value = overrideValue;
@@ -1288,19 +1388,33 @@ function syncQut2ItemOverrideRowOptions(){
 
 function toggleQut2ItemEditControls(){
     const wrap = document.getElementById("itemEditControls");
-    if(!wrap) return;
-    wrap.style.display = selectedLayoutTarget === "itemNo" ? "flex" : "none";
+    const rowLabel = document.getElementById("itemEditRowLabel");
+    if(!wrap || !rowLabel) return;
+    wrap.style.display = isQut2ItemOverrideTarget() ? "flex" : "none";
+    rowLabel.textContent = "Item";
+    if(isQut2ItemOverrideTarget()){
+        syncQut2ItemOverrideInput();
+    }
 }
 
 async function applyQut2ItemNameOverrideFromControl(){
     const rowSelect = document.getElementById("layoutItemRowSelect");
     const input = document.getElementById("layoutItemNameInput");
-    if(!rowSelect || !input || rowSelect.disabled) return;
+    if(!rowSelect || !input || rowSelect.disabled || !isQut2ItemOverrideTarget()) return;
     const selectedRow = String(rowSelect.value || "").trim();
     if(!selectedRow){
         return;
     }
-    setCurrentInvoiceItemNameOverride(selectedRow, input.value);
+    if(selectedLayoutTarget === "rate"){
+        const nextRate = sanitizeQut2RateValue(input.value);
+        if(!Number.isFinite(nextRate)){
+            alert("Enter a valid rate value.");
+            return;
+        }
+        setCurrentInvoiceItemRateOverride(selectedRow, nextRate);
+    }else{
+        setCurrentInvoiceItemNameOverride(selectedRow, input.value);
+    }
     syncQut2ItemOverrideInput();
     await savePersistedQut2RenderVisibility();
     await refreshPreviewFromLatest();
@@ -1308,12 +1422,16 @@ async function applyQut2ItemNameOverrideFromControl(){
 
 async function clearQut2ItemNameOverrideFromControl(){
     const rowSelect = document.getElementById("layoutItemRowSelect");
-    if(!rowSelect || rowSelect.disabled) return;
+    if(!rowSelect || rowSelect.disabled || !isQut2ItemOverrideTarget()) return;
     const selectedRow = String(rowSelect.value || "").trim();
     if(!selectedRow){
         return;
     }
-    setCurrentInvoiceItemNameOverride(selectedRow, "");
+    if(selectedLayoutTarget === "rate"){
+        setCurrentInvoiceItemRateOverride(selectedRow, null);
+    }else{
+        setCurrentInvoiceItemNameOverride(selectedRow, "");
+    }
     syncQut2ItemOverrideInput();
     await savePersistedQut2RenderVisibility();
     await refreshPreviewFromLatest();

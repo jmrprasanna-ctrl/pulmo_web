@@ -508,7 +508,11 @@ function normalizeQuotation2RenderOverrides(raw) {
   const itemNamesByInvoiceRaw = source.item_names_by_invoice && typeof source.item_names_by_invoice === "object"
     ? source.item_names_by_invoice
     : {};
+  const itemRatesByInvoiceRaw = source.item_rates_by_invoice && typeof source.item_rates_by_invoice === "object"
+    ? source.item_rates_by_invoice
+    : {};
   const itemNamesByInvoice = {};
+  const itemRatesByInvoice = {};
   Object.entries(itemNamesByInvoiceRaw).forEach(([invoiceKey, itemMapRaw]) => {
     const safeInvoiceKey = String(invoiceKey || "").trim();
     if (!/^\d+$/.test(safeInvoiceKey)) return;
@@ -525,7 +529,26 @@ function normalizeQuotation2RenderOverrides(raw) {
       itemNamesByInvoice[safeInvoiceKey] = normalizedItemMap;
     }
   });
-  return { item_names_by_invoice: itemNamesByInvoice };
+  Object.entries(itemRatesByInvoiceRaw).forEach(([invoiceKey, itemMapRaw]) => {
+    const safeInvoiceKey = String(invoiceKey || "").trim();
+    if (!/^\d+$/.test(safeInvoiceKey)) return;
+    if (!itemMapRaw || typeof itemMapRaw !== "object") return;
+    const normalizedItemMap = {};
+    Object.entries(itemMapRaw).forEach(([itemIndex, value]) => {
+      const safeItemIndex = String(itemIndex || "").trim();
+      if (!/^\d+$/.test(safeItemIndex)) return;
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return;
+      normalizedItemMap[safeItemIndex] = numeric;
+    });
+    if (Object.keys(normalizedItemMap).length) {
+      itemRatesByInvoice[safeInvoiceKey] = normalizedItemMap;
+    }
+  });
+  return {
+    item_names_by_invoice: itemNamesByInvoice,
+    item_rates_by_invoice: itemRatesByInvoice,
+  };
 }
 
 function parseQuotationRenderOverrides(row) {
@@ -533,7 +556,7 @@ function parseQuotationRenderOverrides(row) {
     const parsed = JSON.parse(String(row?.render_overrides_json || "{}"));
     return normalizeQuotation2RenderOverrides(parsed);
   } catch (_err) {
-    return { item_names_by_invoice: {} };
+    return { item_names_by_invoice: {}, item_rates_by_invoice: {} };
   }
 }
 
@@ -2364,7 +2387,7 @@ exports.getMyInvMap = async (req, res) => {
       : {};
     const quotation2RenderOverrides = visibilityRs.rowCount
       ? parseQuotationRenderOverrides(visibilityRs.rows[0])
-      : { item_names_by_invoice: {} };
+      : { item_names_by_invoice: {}, item_rates_by_invoice: {} };
     res.json({
       mapping: {
         user_id: Number(canonicalUserId || row.user_id || 0),
