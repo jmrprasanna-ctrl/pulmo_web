@@ -156,6 +156,7 @@ let templateDataUrl = "";
 let templatePlacement = { dx: 0, dy: 0, w: 1240, h: 1754 };
 const BASE_W = 1240;
 const BASE_H = 1754;
+let qut3PreviewCustomerName = "";
 const currentRole = String(localStorage.getItem("role") || "").trim().toLowerCase();
 const canConfigurePreview = currentRole === "admin" || currentRole === "manager";
 let invMapFlags = null;
@@ -670,8 +671,7 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null){
     const machineTitleWeight = getLayoutFontWeight("machineTitle");
     const supportTechnicianWeight = getLayoutFontWeight("supportTechnician");
     ctx.font = `${normalFs}px Arial`;
-    const qut3CustomerName = String(data.invoice.quotation3_customer_name || "").trim();
-    const displayCustomerName = qut3CustomerName || c.name || "";
+    const displayCustomerName = String(qut3PreviewCustomerName || "").trim() || c.name || "";
     if(getLayoutVisible("customerName")){
         fitText(ctx, displayCustomerName, m.x(POS.customer.x + customerNameCfg.x), m.y(POS.customer.nameY - 103 + customerNameCfg.y), m.w(POS.customer.w), customerNameFont, customerNameWeight, customerNameFamily);
     }
@@ -1004,7 +1004,7 @@ function syncQut3DateInput(){
 function syncQut3CustomerNameInput(){
     const input = document.getElementById("qut3CustomerNameInput");
     if(!input || !latestInvoiceData) return;
-    const overrideName = String(latestInvoiceData.invoice?.quotation3_customer_name || "").trim();
+    const overrideName = String(qut3PreviewCustomerName || "").trim();
     const fallbackName = String(latestInvoiceData.customer?.name || "").trim();
     input.value = overrideName || fallbackName;
 }
@@ -1034,24 +1034,16 @@ async function updateQuotation3DateFromTile(){
 
 async function updateQuotation3CustomerNameFromTile(){
     const input = document.getElementById("qut3CustomerNameInput");
-    const invoiceId = new URLSearchParams(window.location.search).get("id");
-    if(!input || !invoiceId) return;
+    if(!input) return;
     const value = String(input.value || "").trim();
     if(!value){
         alert("Enter a customer name.");
         return;
     }
-    try{
-        const res = await request(`/invoices/${invoiceId}/payment`, "PUT", { quotation3_customer_name: value });
-        if(!latestInvoiceData) latestInvoiceData = { invoice: {}, customer: {} };
-        if(!latestInvoiceData.invoice) latestInvoiceData.invoice = {};
-        latestInvoiceData.invoice.quotation3_customer_name = res?.invoice?.quotation3_customer_name || value;
-        await refreshPreviewFromLatest();
-        if(typeof showMessageBox === "function"){
-            showMessageBox("Qut 3 customer updated");
-        }
-    }catch(err){
-        alert(err.message || "Failed to update Qut 3 customer");
+    qut3PreviewCustomerName = value;
+    await refreshPreviewFromLatest();
+    if(typeof showMessageBox === "function"){
+        showMessageBox("Qut 3 customer updated");
     }
 }
 
@@ -1313,6 +1305,7 @@ function initLayoutEditor(){
 async function renderInvoice(){
     try{
         latestInvoiceData = await fetchInvoiceData();
+        qut3PreviewCustomerName = String(latestInvoiceData?.customer?.name || "").trim();
         syncQut3DateInput();
         syncQut3CustomerNameInput();
         await refreshPreviewFromLatest();
