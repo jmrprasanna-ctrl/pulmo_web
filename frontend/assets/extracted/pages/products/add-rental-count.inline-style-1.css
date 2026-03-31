@@ -1,0 +1,23 @@
+.button-row{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    margin-top:10px;
+}
+.button-row button,
+.button-row .btn{
+    margin-top:0;
+}
+.table-header-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:wrap;
+}
+.table-header-row h3{
+    margin:0;
+}
+.table-filter{
+    min-width:220px;
+}

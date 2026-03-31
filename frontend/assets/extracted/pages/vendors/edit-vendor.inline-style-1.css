@@ -1,0 +1,41 @@
+.helper-text{
+        margin-top: 6px;
+        font-size: 0.85rem;
+        color: #5f748a;
+    }
+    .category-grid{
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 10px;
+        margin-top: 6px;
+    }
+    .check{
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid #d9e6f3;
+        background: #f8fbff;
+        font-weight: 600;
+        color: #2a4057;
+    }
+    .check input{
+        width: 16px;
+        height: 16px;
+    }
+    .form-actions{
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+    }
+    .btn-secondary{
+        background: #e9f3fc;
+        color: #0b4f93;
+        border: 1px solid #cfe1f5;
+        text-decoration: none;
+    }
+    .btn-secondary:hover{
+        filter: brightness(0.98);
+    }

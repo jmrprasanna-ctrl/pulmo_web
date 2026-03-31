@@ -1,0 +1,31 @@
+.machine-shell{
+        overflow: visible !important;
+    }
+    .machine-table-wrap{
+        width: 100%;
+        overflow-x: auto;
+        margin-top: 12px;
+    }
+    .machine-action-row{
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+    }
+    .machine-action-btn{
+        width: 84px;
+        min-width: 84px;
+        margin-top: 0;
+        margin-left: 0;
+    }
+    @media (max-width: 900px){
+        .machine-action-row{
+            flex-direction: row !important;
+            align-items: center !important;
+            flex-wrap: nowrap !important;
+        }
+        .machine-action-row > *{
+            width: auto !important;
+        }
+    }

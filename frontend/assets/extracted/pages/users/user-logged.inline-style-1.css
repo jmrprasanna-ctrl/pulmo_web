@@ -1,0 +1,56 @@
+.log-shell{
+            overflow: visible !important;
+        }
+        .log-toolbar{
+            display:flex;
+            gap:10px;
+            align-items:flex-end;
+            flex-wrap:wrap;
+            margin-bottom:12px;
+        }
+        .log-filter{
+            min-width: 190px;
+        }
+        .log-filter label{
+            margin-top:0;
+        }
+        .log-filter select,
+        .log-filter input{
+            margin-top:0;
+        }
+        .log-actions{
+            display:flex;
+            gap:8px;
+            flex-wrap:wrap;
+            align-items:center;
+            margin-left:auto;
+        }
+        .log-table-wrap{
+            width:100%;
+            overflow-x:auto;
+            margin-top:12px;
+        }
+        #loggedTable{
+            min-width: 900px;
+        }
+        #loggedTable th,
+        #loggedTable td{
+            padding: 11px 12px;
+        }
+        @media (max-width: 900px){
+            .log-toolbar{
+                flex-direction:column;
+                align-items:stretch;
+            }
+            .log-filter,
+            .log-actions{
+                width:100%;
+            }
+            .log-filter{
+                min-width: 0;
+            }
+            .log-actions > *{
+                width:100%;
+                margin-left:0 !important;
+            }
+        }

@@ -1,0 +1,27 @@
+.uppercase-input{
+        text-transform: uppercase;
+    }
+
+    .form-actions{
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+        align-items: center;
+    }
+
+    .form-actions button,
+    .form-actions .btn{
+        margin-top: 0;
+    }
+
+    .btn-secondary{
+        background: #e9f3fc;
+        color: #0b4f93;
+        border: 1px solid #cfe1f5;
+        text-decoration: none;
+    }
+
+    .btn-secondary:hover{
+        filter: brightness(0.98);
+    }

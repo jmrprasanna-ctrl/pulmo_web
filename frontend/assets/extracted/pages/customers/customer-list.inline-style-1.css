@@ -1,0 +1,44 @@
+.btn-inline{
+        height: 36px;
+        padding: 0 12px;
+        margin-left: 8px;
+        margin-top: 0;
+    }
+    .customer-action-row{
+        display:flex;
+        gap:8px;
+        align-items:center;
+        flex-wrap:nowrap;
+        white-space:nowrap;
+    }
+    .customer-action-btn{
+        width:84px;
+        min-width:84px;
+        margin-top:0;
+        margin-left:0;
+    }
+    .search-inline{
+        width: 280px;
+        max-width: 100%;
+        margin-top: 0;
+        display: inline-block;
+        vertical-align: middle;
+    }
+    .customer-shell{
+        overflow: visible !important;
+    }
+    .customer-table-wrap{
+        width:100%;
+        overflow-x:auto;
+        margin-top:12px;
+    }
+    @media (max-width: 900px){
+        .customer-action-row{
+            flex-direction: row !important;
+            align-items: center !important;
+            flex-wrap: nowrap !important;
+        }
+        .customer-action-row > *{
+            width: auto !important;
+        }
+    }

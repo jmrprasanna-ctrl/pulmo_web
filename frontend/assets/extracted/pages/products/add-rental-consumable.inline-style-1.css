@@ -1,0 +1,94 @@
+.btn-inline{
+        height: 36px;
+        padding: 0 12px;
+        margin-top: 0;
+    }
+    .controls-row{
+        display:flex;
+        gap:8px;
+        align-items:center;
+        flex-wrap:nowrap;
+        white-space:nowrap;
+    }
+    .consumables-shell{
+        margin-bottom: 16px;
+    }
+    .section-title{
+        margin: 14px 0 10px 0;
+        color: #13304f;
+        font-size: 17px;
+    }
+    .pending-actions{
+        margin-top: 10px;
+    }
+    .consumable-table-wrap{
+        width: 100%;
+        overflow-x: auto;
+        margin-top: 10px;
+    }
+    .consumable-action-row{
+        display:flex;
+        gap:8px;
+        align-items:center;
+        flex-wrap:nowrap;
+        white-space:nowrap;
+    }
+    .consumable-action-btn{
+        width:84px;
+        min-width:84px;
+        margin-top:0;
+        margin-left:0;
+    }
+    .product-search-wrap{
+        position: relative;
+    }
+    .product-search-results{
+        position: absolute;
+        z-index: 20;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        background: #fff;
+        border: 1px solid #d9e1ec;
+        border-radius: 8px;
+        max-height: 240px;
+        overflow-y: auto;
+        box-shadow: 0 8px 20px rgba(15, 46, 79, 0.12);
+        display: none;
+    }
+    .product-search-item{
+        padding: 10px 12px;
+        border-bottom: 1px solid #edf2f7;
+        cursor: pointer;
+        font-size: 13px;
+        line-height: 1.35;
+    }
+    .product-search-item:last-child{
+        border-bottom: none;
+    }
+    .product-search-item:hover{
+        background: #f6f9ff;
+    }
+    .product-search-empty{
+        padding: 10px 12px;
+        color: #5e7085;
+        font-size: 13px;
+    }
+    @media (max-width: 900px){
+        .controls-row{
+            flex-direction: row !important;
+            align-items: center !important;
+            flex-wrap: nowrap !important;
+        }
+        .controls-row > *{
+            width: auto !important;
+        }
+        .consumable-action-row{
+            flex-direction: row !important;
+            align-items: center !important;
+            flex-wrap: nowrap !important;
+        }
+        .consumable-action-row > *{
+            width: auto !important;
+        }
+    }

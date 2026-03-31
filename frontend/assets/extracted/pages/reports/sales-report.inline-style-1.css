@@ -1,0 +1,49 @@
+.report-block{
+    border: 1px solid #d9e6f3;
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 14px;
+    background: #fff;
+    overflow: visible;
+}
+.report-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:10px;
+}
+.report-controls{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:wrap;
+}
+.report-controls input,
+.report-controls select{
+    width:auto;
+    min-width:120px;
+}
+.stock-level-input{
+    width: 78px !important;
+    min-width: 78px !important;
+}
+.mini-note{
+    color:#4f6276;
+    font-size:0.88rem;
+}
+.table-scroll-wrap{
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.table-scroll-wrap.scroll-enabled{
+    overflow-x: auto;
+    overflow-y: auto;
+}
+
+.form-container{
+    overflow-x: visible !important;
+}

@@ -1,0 +1,42 @@
+.search-inline{
+            width: 280px;
+            max-width: 100%;
+            margin-top: 0;
+            margin-left: 8px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .year-inline{
+            width: 140px;
+            max-width: 100%;
+            margin-top: 0;
+            margin-left: 8px;
+            display: inline-block;
+            vertical-align: middle;
+            height: 40px;
+        }
+        .invoice-action-row{
+            display:flex;
+            gap:8px;
+            align-items:center;
+            flex-wrap:nowrap;
+            white-space:nowrap;
+        }
+        .invoice-action-btn{
+            width:84px;
+            min-width:84px;
+            height:36px;
+            margin-top:0;
+            margin-left:0;
+            padding:0 12px;
+        }
+        @media (max-width: 900px){
+            .invoice-action-row{
+                flex-direction: row !important;
+                align-items: center !important;
+                flex-wrap: nowrap !important;
+            }
+            .invoice-action-row > *{
+                width: auto !important;
+            }
+        }

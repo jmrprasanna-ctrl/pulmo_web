@@ -1,0 +1,41 @@
+.btn-inline{
+        height: 36px;
+        padding: 0 12px;
+        margin-left: 8px;
+        margin-top: 0;
+    }
+    .action-btn{
+        width: 84px;
+        min-width: 84px;
+        margin-top: 0;
+        margin-left: 0;
+    }
+    .product-action-row{
+        display:flex;
+        gap:8px;
+        align-items:center;
+        flex-wrap:nowrap;
+        white-space:nowrap;
+    }
+    .product-action-row > .btn,
+    .product-action-row > button{
+        margin-top: 0;
+        margin-left: 0;
+    }
+    .search-inline{
+        width: 280px;
+        max-width: 100%;
+        margin-top: 0;
+        display: inline-block;
+        vertical-align: middle;
+    }
+    @media (max-width: 900px){
+        .product-action-row{
+            flex-direction: row !important;
+            align-items: center !important;
+            flex-wrap: nowrap !important;
+        }
+        .product-action-row > *{
+            width: auto !important;
+        }
+    }

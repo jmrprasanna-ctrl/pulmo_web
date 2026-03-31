@@ -1,0 +1,41 @@
+.preference-grid{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+        .preference-card{
+            background: #fff;
+            border: 1px solid #d8e7f6;
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .preference-card h3{
+            margin: 0 0 10px;
+            color: #0b4f93;
+        }
+        .preference-card p{
+            margin: 0 0 12px;
+            color: #5d6f85;
+            font-size: 14px;
+        }
+        .preference-card input[type="file"]{
+            margin-bottom: 12px;
+        }
+        .pref-status{
+            margin-top: 8px;
+            font-size: 13px;
+            color: #344a66;
+            word-break: break-all;
+        }
+        .form-actions{
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+        .btn-secondary{
+            background: #e9f3fc;
+            color: #0b4f93;
+            border: 1px solid #cfe1f5;
+            text-decoration: none;
+        }

@@ -1,0 +1,10 @@
+.db-create-wrap{max-width:760px}
+        .db-create-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+        .db-table-wrap{margin-top:20px;overflow:auto}
+        .db-table{width:100%;border-collapse:collapse;background:#fff}
+        .db-table th,.db-table td{border-bottom:1px solid #e5edf5;padding:10px 8px;text-align:left;font-size:.9rem}
+        .db-table th{background:#f5f9ff;color:#234b71}
+        .db-table td.actions{text-align:right}
+        @media (max-width: 900px){
+            .db-create-grid{grid-template-columns:1fr}
+        }

@@ -893,6 +893,19 @@ async function ensureUserSuperSchema() {
 
 // Middleware
 app.use(cors());
+app.disable("x-powered-by");
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  // Keep CSP compatible with existing pages/CDNs while blocking object/embed execution.
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self' http: https:; script-src 'self' https: 'unsafe-inline'; style-src 'self' https: 'unsafe-inline'; img-src 'self' data: blob: http: https:; font-src 'self' data: https:; connect-src 'self' http: https: ws: wss:; object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self';"
+  );
+  next();
+});
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({extended:true}));
 app.use("/storage", express.static(path.resolve(__dirname, "storage")));

@@ -1,0 +1,8 @@
+.mapped-wrap{max-width:900px}
+        .mapped-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+        .mapped-info{background:#f7fbff;border:1px solid #d8e8f8;border-radius:10px;padding:10px 12px;margin-top:12px}
+        .mapped-row{display:grid;grid-template-columns:220px 1fr;gap:10px;padding:4px 0}
+        @media (max-width: 900px){
+            .mapped-grid{grid-template-columns:1fr}
+            .mapped-row{grid-template-columns:1fr}
+        }

@@ -1,0 +1,10 @@
+.company-wrap{max-width:900px}
+        .company-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+        .company-table-wrap{margin-top:20px;overflow:auto}
+        .company-table{width:100%;border-collapse:collapse;background:#fff}
+        .company-table th,.company-table td{border-bottom:1px solid #e5edf5;padding:10px 8px;text-align:left;font-size:.9rem}
+        .company-table th{background:#f5f9ff;color:#234b71}
+        .company-table td.actions{text-align:right}
+        @media (max-width: 900px){
+            .company-grid{grid-template-columns:1fr}
+        }

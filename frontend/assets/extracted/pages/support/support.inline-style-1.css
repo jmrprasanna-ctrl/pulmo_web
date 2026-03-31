@@ -1,0 +1,19 @@
+.support-link-row{
+        display:flex;
+        gap:12px;
+        flex-wrap:wrap;
+    }
+    .support-action-row{
+        display:flex;
+        gap:8px;
+        align-items:center;
+        flex-wrap:nowrap;
+        white-space:nowrap;
+    }
+    .support-action-btn{
+        width:84px;
+        min-width:84px;
+        height:36px;
+        margin-top:0;
+        padding:0 12px;
+    }

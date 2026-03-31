@@ -7,47 +7,7 @@
 <link rel="stylesheet" href="../../assets/css/style.css">
 <link rel="stylesheet" href="../../assets/css/dashboard.css">
 <link rel="stylesheet" href="../../assets/css/add-product.css">
-<style>
-    .vendor-grid .field-span-full{
-        grid-column: 1 / -1;
-    }
-
-    .helper-text{
-        margin-top: 6px;
-        font-size: 0.85rem;
-        color: #5f748a;
-    }
-
-    .category-grid{
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        gap: 10px;
-        margin-top: 6px;
-    }
-
-    .check{
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 10px;
-        border-radius: 10px;
-        border: 1px solid #d9e6f3;
-        background: #f8fbff;
-        font-weight: 600;
-        color: #2a4057;
-    }
-
-    .check input{
-        width: 16px;
-        height: 16px;
-    }
-
-    @media (max-width: 900px){
-        .vendor-grid .field-span-full{
-            grid-column: auto;
-        }
-    }
-</style>
+<link rel="stylesheet" href="../../assets/extracted/pages/vendors/add-vendor.inline-style-1.css">
 </head>
 <body>
 
@@ -157,44 +117,6 @@
 </div>
 
 <script src="../../assets/js/api.js"></script>
-<script>
-const vendorNameInput = document.getElementById("name");
-vendorNameInput.style.textTransform = "uppercase";
-vendorNameInput.addEventListener("input", () => {
-    const pos = vendorNameInput.selectionStart;
-    vendorNameInput.value = vendorNameInput.value.toUpperCase();
-    vendorNameInput.setSelectionRange(pos, pos);
-});
-
-document.getElementById("vendorForm").addEventListener("submit", async function(e){
-    e.preventDefault();
-    const selected = Array.from(document.querySelectorAll("#category input[type='checkbox']:checked"))
-        .map((el) => el.value);
-    if(!selected.length){
-        alert("Please select at least one product category.");
-        return;
-    }
-
-    const data = {
-        name: document.getElementById("name").value.trim(),
-        address: document.getElementById("address").value.trim(),
-        category: selected
-    };
-
-    try{
-        await request("/vendors","POST",data);
-        showMessageBox("Vendor added successfully!");
-        document.getElementById("vendorForm").reset();
-    }catch(err){
-        alert(err.message || "Failed to add vendor");
-    }
-});
-
-function logout(){
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    window.location.href="../login.html";
-}
-</script>
+<script src="../../assets/extracted/pages/vendors/add-vendor.inline-script-1.js"></script>
 </body>
 </html>

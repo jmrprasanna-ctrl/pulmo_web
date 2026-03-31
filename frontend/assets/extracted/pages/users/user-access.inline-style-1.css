@@ -1,0 +1,107 @@
+.access-shell{
+            overflow: visible !important;
+        }
+        .access-grid{
+            display:grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .access-matrix{
+            display:grid;
+            grid-template-columns: 1fr;
+            gap: 14px;
+        }
+        .module-card{
+            border:1px solid #d9e4f0;
+            border-radius:12px;
+            background:#fff;
+            overflow:hidden;
+        }
+        .module-head{
+            background:#f3f8ff;
+            border-bottom:1px solid #d9e4f0;
+            padding:10px 12px;
+            font-size:0.95rem;
+            font-weight:700;
+            color:#16395b;
+        }
+        .matrix-table{
+            width:100%;
+            border-collapse:collapse;
+        }
+        .matrix-table th,
+        .matrix-table td{
+            border-bottom:1px solid #eef3f9;
+            padding:9px 8px;
+            text-align:left;
+            font-size:0.86rem;
+            vertical-align:middle;
+        }
+        .matrix-table tr:last-child td{
+            border-bottom:0;
+        }
+        .matrix-table th{
+            color:#30506f;
+            font-weight:700;
+            background:#fafcff;
+        }
+        .matrix-table th.check-col,
+        .matrix-table td.check-col{
+            width:88px;
+            text-align:center;
+        }
+        .matrix-table input[type="checkbox"]{
+            width:18px;
+            height:18px;
+            margin:0;
+            accent-color:#0f6abf;
+        }
+        .path-hint{
+            font-size:0.75rem;
+            color:#67809a;
+            margin-top:2px;
+        }
+        .access-actions{
+            display:flex;
+            gap:10px;
+            align-items:center;
+            flex-wrap:wrap;
+            margin-top: 12px;
+            margin-left: auto;
+        }
+        .access-actions .btn{
+            margin-top:0;
+            min-width: 120px;
+        }
+        @media (max-width: 1100px){
+            .matrix-table th,
+            .matrix-table td{
+                font-size:0.8rem;
+                padding:8px 6px;
+            }
+            .matrix-table th.check-col,
+            .matrix-table td.check-col{
+                width:64px;
+            }
+        }
+        @media (max-width: 900px){
+            .access-grid{
+                grid-template-columns: 1fr;
+            }
+            .access-actions{
+                width:100%;
+                flex-direction:column !important;
+                align-items:stretch !important;
+            }
+            .access-actions > *{
+                width:100% !important;
+                margin-left:0 !important;
+            }
+            .module-card{
+                overflow-x:auto;
+            }
+            .matrix-table{
+                min-width:680px;
+            }
+        }
