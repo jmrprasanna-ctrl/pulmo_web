@@ -173,22 +173,6 @@
                     <tbody></tbody>
                 </table>
             </div>
-            <h4 style="margin-top:10px;">Stock of Products</h4>
-            <div class="table-scroll-wrap">
-                <table id="outStockTable">
-                    <thead>
-                        <tr>
-                            <th>Product ID</th>
-                            <th>Description</th>
-                            <th>Model</th>
-                            <th>Qty</th>
-                            <th>Category</th>
-                            <th>Vendor</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
         </div>
 
         <div class="report-block">
@@ -337,11 +321,7 @@ function exportStockReportsPDF(){
     const doc = new jsPDF({ format: "a4" });
     doc.setFontSize(12);
     doc.text("Stock Reports", 14, 20);
-    let y = 28;
-
-    y = writeTableToDoc(doc, "Low Stock Products", "lowStockTable", y);
-    y += 6;
-    writeTableToDoc(doc, "Stock of Products", "outStockTable", y);
+    writeTableToDoc(doc, "Low Stock Products", "lowStockTable", 28);
 
     doc.save("Stock_Reports.pdf");
 }
@@ -457,10 +437,7 @@ async function loadStockReports(){
         const min = Number(document.getElementById("minStockLevel").value) || 2;
         const vendorId = String(document.getElementById("stockVendorReport").value || "").trim();
         const query = `vendor_id=${encodeURIComponent(vendorId)}&min=${encodeURIComponent(min)}`;
-        const [low, out] = await Promise.all([
-            request(`/reports/stock-low?${query}`,"GET"),
-            request(`/reports/stock-products?vendor_id=${encodeURIComponent(vendorId)}`,"GET")
-        ]);
+        const low = await request(`/reports/stock-low?${query}`,"GET");
 
         const lowBody = document.querySelector("#lowStockTable tbody");
         lowBody.innerHTML = "";
@@ -477,22 +454,6 @@ async function loadStockReports(){
             lowBody.appendChild(tr);
         });
         applyTableScrollLimit("lowStockTable");
-
-        const outBody = document.querySelector("#outStockTable tbody");
-        outBody.innerHTML = "";
-        (out.rows || []).forEach((row) => {
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-                <td>${row.product_id || ""}</td>
-                <td>${row.description || ""}</td>
-                <td>${row.model || ""}</td>
-                <td>${row.count || 0}</td>
-                <td>${row.category || ""}</td>
-                <td>${row.vendor || ""}</td>
-            `;
-            outBody.appendChild(tr);
-        });
-        applyTableScrollLimit("outStockTable");
     }catch(err){
         alert(err.message || "Failed to load stock reports");
     }

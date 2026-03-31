@@ -116,7 +116,7 @@
             </div>
             <div class="field" style="min-width:240px;">
                 <label for="customerSearch">Customer Search</label>
-                <input type="text" id="customerSearch" placeholder="Search customer name">
+                <input type="text" id="customerSearch" placeholder="Search invoice id/no, customer, amount">
             </div>
             <button type="button" onclick="loadInvoices()">Refresh List</button>
             <button type="button" onclick="exportPaymentsPDF()">Save PDF</button>
@@ -264,10 +264,16 @@ function renderTable(){
         const matchesStatus = statusFilter === "all"
             ? true
             : normalizeStatus(inv.payment_status).toLowerCase() === statusFilter;
-        const matchesCustomer = !customerSearch
+        const amountText = formatCurrency(inv.total);
+        const matchesSearch = !customerSearch
             ? true
-            : String(inv.customer_name || "").toLowerCase().includes(customerSearch);
-        return matchesStatus && matchesCustomer;
+            : (
+                String(inv.id || "").toLowerCase().includes(customerSearch) ||
+                String(inv.invoice_no || "").toLowerCase().includes(customerSearch) ||
+                String(inv.customer_name || "").toLowerCase().includes(customerSearch) ||
+                amountText.toLowerCase().includes(customerSearch)
+            );
+        return matchesStatus && matchesSearch;
     });
 
     if(!rows.length){
