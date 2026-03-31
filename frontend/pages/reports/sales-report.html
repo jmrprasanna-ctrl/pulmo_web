@@ -134,9 +134,14 @@
                     <thead>
                         <tr>
                             <th>Technician</th>
-                            <th>Invoices</th>
-                            <th>Avg %</th>
-                            <th>Allocated Amount</th>
+                            <th>Invoice No</th>
+                            <th>Customer</th>
+                            <th>Date</th>
+                            <th>Invoice Amount</th>
+                            <th>Vendor Value</th>
+                            <th>Balance Amount</th>
+                            <th>%</th>
+                            <th>Payable Amount</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -420,13 +425,19 @@ async function loadTechnicianReport(){
 
         const tbody = document.querySelector("#technicianSummaryTable tbody");
         tbody.innerHTML = "";
-        (data.summary || []).forEach((row) => {
+        (data.rows || []).forEach((row) => {
             const tr = document.createElement("tr");
+            const dtText = row.date ? new Date(row.date).toLocaleDateString() : "";
             tr.innerHTML = `
                 <td>${row.technician || ""}</td>
-                <td>${row.invoices_count || 0}</td>
-                <td>${Number(row.average_percentage || 0).toFixed(2)}%</td>
+                <td>${row.invoice_no || ""}</td>
+                <td>${row.customer_name || ""}</td>
+                <td>${dtText}</td>
                 <td>${Number(row.total_amount || 0).toFixed(2)}</td>
+                <td>${Number(row.vendor_product_value || 0).toFixed(2)}</td>
+                <td>${Number(row.balance_amount || 0).toFixed(2)}</td>
+                <td>${Number(row.technician_percentage || 0).toFixed(2)}%</td>
+                <td>${Number(row.allocated_amount || 0).toFixed(2)}</td>
             `;
             tbody.appendChild(tr);
         });
