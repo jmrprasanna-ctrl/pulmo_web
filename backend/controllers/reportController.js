@@ -536,18 +536,86 @@ exports.rentalConsumablesMachineCustomerReport = async (req,res)=>{
 exports.rentalCountMachineCustomerReport = async (req,res)=>{
     try{
         const rentalMachineId = Number(req.query.rental_machine_id);
+        const customerId = Number(req.query.customer_id);
+        const requestedYear = Number(req.query.year || 0);
+        const monthToken = String(req.query.month || "").trim().toLowerCase();
+        const isAllMonths = monthToken === "all" || monthToken === "0";
+        const requestedMonth = Number(req.query.month || 0);
+        const now = new Date();
+        const safeYear = Number.isFinite(requestedYear) && requestedYear >= 2000 && requestedYear <= 9999
+            ? requestedYear
+            : now.getFullYear();
+        const safeMonth = Number.isFinite(requestedMonth) && requestedMonth >= 1 && requestedMonth <= 12
+            ? requestedMonth
+            : (now.getMonth() + 1);
+        const startDate = isAllMonths
+            ? new Date(safeYear, 0, 1, 0, 0, 0, 0)
+            : new Date(safeYear, safeMonth - 1, 1, 0, 0, 0, 0);
+        const endDate = isAllMonths
+            ? new Date(safeYear, 11, 31, 23, 59, 59, 999)
+            : new Date(safeYear, safeMonth, 0, 23, 59, 59, 999);
+        const startDateText = startDate.toISOString().slice(0, 10);
+        const endDateText = endDate.toISOString().slice(0, 10);
+
         const where = {};
         if(Number.isFinite(rentalMachineId) && rentalMachineId > 0){
             where.rental_machine_id = rentalMachineId;
         }
+        if(Number.isFinite(customerId) && customerId > 0){
+            where.customer_id = customerId;
+        }
+        where[Op.or] = [
+            { entry_date: { [Op.between]: [startDateText, endDateText] } },
+            {
+                entry_date: { [Op.is]: null },
+                createdAt: { [Op.between]: [startDate, endDate] }
+            }
+        ];
         const counts = await RentalMachineCount.findAll({
             where,
             include: [
                 { model: Customer, attributes: ["id", "name"] },
-                { model: RentalMachine, attributes: ["id", "machine_id", "model", "serial_no", "start_count", "updated_count"] }
+                { model: RentalMachine, attributes: ["id", "machine_id", "model", "serial_no", "start_count", "updated_count", "page_per_price"] }
             ],
             order: [["createdAt", "DESC"], ["id", "DESC"]]
         });
+
+        if(Number.isFinite(customerId) && customerId > 0){
+            const detailedRows = counts.map((row) => {
+                const machine = row.RentalMachine || null;
+                const inputCount = Number(row.input_count || 0);
+                const updatedCount = Number(row.updated_count || 0);
+                const copiedPages = Math.max(updatedCount - inputCount, 0);
+                const pagePrice = Number((machine && machine.page_per_price) || 0);
+                const price = copiedPages * pagePrice;
+                return {
+                    id: row.id,
+                    customer_id: Number((row.Customer && row.Customer.id) || row.customer_id || 0),
+                    customer_name: row.Customer ? row.Customer.name : "",
+                    machine_id: machine ? String(machine.machine_id || "") : "",
+                    machine_model: machine ? String(machine.model || "") : "",
+                    serial_no: machine ? String(machine.serial_no || "") : "",
+                    transaction_id: row.transaction_id || "",
+                    input_count: inputCount,
+                    updated_count: updatedCount,
+                    copied_pages: copiedPages,
+                    page_per_price: Number(pagePrice.toFixed(4)),
+                    price: Number(price.toFixed(2)),
+                    entry_at: row.entry_date || row.createdAt
+                };
+            });
+
+            return res.json({
+                mode: "detailed",
+                rental_machine_id: Number.isFinite(rentalMachineId) && rentalMachineId > 0 ? rentalMachineId : null,
+                customer_id: customerId,
+                year: safeYear,
+                month: isAllMonths ? "all" : safeMonth,
+                period: isAllMonths ? "year" : "month",
+                total: detailedRows.length,
+                rows: detailedRows
+            });
+        }
 
         const grouped = new Map();
         counts.forEach((row) => {
@@ -572,12 +640,19 @@ exports.rentalCountMachineCustomerReport = async (req,res)=>{
                     last_input_count: Number(row.input_count || 0),
                     last_transaction_id: row.transaction_id || "",
                     latest_entry_at: row.createdAt,
-                    total_transactions: 0
+                    total_transactions: 0,
+                    total_price: 0
                 });
             }
 
             const g = grouped.get(key);
             g.total_transactions += 1;
+            const inputCount = Number(row.input_count || 0);
+            const updatedCount = Number(row.updated_count || 0);
+            const copiedPages = Math.max(updatedCount - inputCount, 0);
+            const pagePrice = Number((machine && machine.page_per_price) || 0);
+            const rowPrice = copiedPages * pagePrice;
+            g.total_price += rowPrice;
             if(new Date(row.createdAt).getTime() >= new Date(g.latest_entry_at).getTime()){
                 g.updated_copy_count = Number(row.updated_count || 0);
                 g.last_input_count = Number(row.input_count || 0);
@@ -591,10 +666,19 @@ exports.rentalCountMachineCustomerReport = async (req,res)=>{
                 const customerCmp = String(a.customer_name || "").localeCompare(String(b.customer_name || ""));
                 if(customerCmp !== 0) return customerCmp;
                 return String(a.machine_id || "").localeCompare(String(b.machine_id || ""));
-            });
+            })
+            .map((r) => ({
+                ...r,
+                total_price: Number((r.total_price || 0).toFixed(2))
+            }));
 
         res.json({
+            mode: "grouped",
             rental_machine_id: Number.isFinite(rentalMachineId) && rentalMachineId > 0 ? rentalMachineId : null,
+            customer_id: Number.isFinite(customerId) && customerId > 0 ? customerId : null,
+            year: safeYear,
+            month: isAllMonths ? "all" : safeMonth,
+            period: isAllMonths ? "year" : "month",
             total: rows.length,
             rows
         });

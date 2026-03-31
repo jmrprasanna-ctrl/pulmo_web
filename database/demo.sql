@@ -232,6 +232,14 @@ CREATE TABLE expenses (
     updatedAt TIMESTAMP DEFAULT NOW()
 );
 
+DO $$
+BEGIN
+    IF to_regclass('public.rental_machine_counts') IS NOT NULL THEN
+        CREATE INDEX IF NOT EXISTS rental_machine_counts_customer_entry_machine_idx
+        ON rental_machine_counts(customer_id, entry_date, rental_machine_id, id);
+    END IF;
+END $$;
+
 
 -- ==========================
 -- Stocks Table

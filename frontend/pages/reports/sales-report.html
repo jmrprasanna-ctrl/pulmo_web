@@ -220,6 +220,14 @@
             <div class="report-head">
                 <h3>Rental Machine Count</h3>
                 <div class="report-controls">
+                    <label for="rentalCountCustomerFilter">Rental Customer</label>
+                    <select id="rentalCountCustomerFilter">
+                        <option value="">All Rental Customers</option>
+                    </select>
+                    <label for="rentalCountYearFilter">Year</label>
+                    <select id="rentalCountYearFilter"></select>
+                    <label for="rentalCountMonthFilter">Month</label>
+                    <select id="rentalCountMonthFilter"></select>
                     <label for="rentalMachineFilter">Rental Machines</label>
                     <select id="rentalMachineFilter">
                         <option value="">All Rental Machines</option>
@@ -230,20 +238,7 @@
             </div>
             <div class="table-scroll-wrap">
                 <table id="rentalCountTable">
-                    <thead>
-                        <tr>
-                            <th>Customer</th>
-                            <th>Machine ID</th>
-                            <th>Model</th>
-                            <th>Serial No</th>
-                            <th>Start Count</th>
-                            <th>Last Input Count</th>
-                            <th>Updated Copy Count</th>
-                            <th>Transactions</th>
-                            <th>Last Transaction ID</th>
-                            <th>Latest Entry</th>
-                        </tr>
-                    </thead>
+                    <thead id="rentalCountHead"></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -605,27 +600,79 @@ async function loadRentalCustomerFilterOptions(){
 
 async function loadRentalCountReport(){
     try{
+        const customerId = String(document.getElementById("rentalCountCustomerFilter").value || "").trim();
+        const year = String(document.getElementById("rentalCountYearFilter").value || "").trim();
+        const month = String(document.getElementById("rentalCountMonthFilter").value || "").trim();
         const rentalMachineId = String(document.getElementById("rentalMachineFilter").value || "").trim();
-        const query = rentalMachineId ? `?rental_machine_id=${encodeURIComponent(rentalMachineId)}` : "";
+        const query = `?rental_machine_id=${encodeURIComponent(rentalMachineId)}&customer_id=${encodeURIComponent(customerId)}&year=${encodeURIComponent(year)}&month=${encodeURIComponent(month)}`;
         const data = await request(`/reports/rental-counts${query}`,"GET");
+        const head = document.getElementById("rentalCountHead");
         const tbody = document.querySelector("#rentalCountTable tbody");
         tbody.innerHTML = "";
-        (data.rows || []).forEach((row) => {
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-                <td>${row.customer_name || ""}</td>
-                <td>${row.machine_id || ""}</td>
-                <td>${row.machine_model || ""}</td>
-                <td>${row.serial_no || ""}</td>
-                <td>${Number(row.start_count || 0)}</td>
-                <td>${Number(row.last_input_count || 0)}</td>
-                <td>${Number(row.updated_copy_count || 0)}</td>
-                <td>${Number(row.total_transactions || 0)}</td>
-                <td>${row.last_transaction_id || ""}</td>
-                <td>${row.latest_entry_at ? new Date(row.latest_entry_at).toLocaleDateString() : ""}</td>
+
+        if(String(data.mode || "") === "detailed"){
+            head.innerHTML = `
+                <tr>
+                    <th>Customer</th>
+                    <th>Machine ID</th>
+                    <th>Model</th>
+                    <th>Serial No</th>
+                    <th>Transaction ID</th>
+                    <th>Input Count</th>
+                    <th>Updated Count</th>
+                    <th>Copied Pages</th>
+                    <th>Price</th>
+                    <th>Entry Date</th>
+                </tr>
             `;
-            tbody.appendChild(tr);
-        });
+            (data.rows || []).forEach((row) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${row.customer_name || ""}</td>
+                    <td>${row.machine_id || ""}</td>
+                    <td>${row.machine_model || ""}</td>
+                    <td>${row.serial_no || ""}</td>
+                    <td>${row.transaction_id || ""}</td>
+                    <td>${Number(row.input_count || 0)}</td>
+                    <td>${Number(row.updated_count || 0)}</td>
+                    <td>${Number(row.copied_pages || 0)}</td>
+                    <td>${Number(row.price || 0).toFixed(2)}</td>
+                    <td>${row.entry_at ? new Date(row.entry_at).toLocaleDateString() : ""}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }else{
+            head.innerHTML = `
+                <tr>
+                    <th>Customer</th>
+                    <th>Machine ID</th>
+                    <th>Model</th>
+                    <th>Serial No</th>
+                    <th>Start Count</th>
+                    <th>Last Input Count</th>
+                    <th>Updated Copy Count</th>
+                    <th>Transactions</th>
+                    <th>Price</th>
+                    <th>Latest Entry</th>
+                </tr>
+            `;
+            (data.rows || []).forEach((row) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${row.customer_name || ""}</td>
+                    <td>${row.machine_id || ""}</td>
+                    <td>${row.machine_model || ""}</td>
+                    <td>${row.serial_no || ""}</td>
+                    <td>${Number(row.start_count || 0)}</td>
+                    <td>${Number(row.last_input_count || 0)}</td>
+                    <td>${Number(row.updated_copy_count || 0)}</td>
+                    <td>${Number(row.total_transactions || 0)}</td>
+                    <td>${Number(row.total_price || 0).toFixed(2)}</td>
+                    <td>${row.latest_entry_at ? new Date(row.latest_entry_at).toLocaleDateString() : ""}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
         applyTableScrollLimit("rentalCountTable");
     }catch(err){
         alert(err.message || "Failed to load rental count report");
@@ -658,6 +705,36 @@ async function loadRentalMachineFilterOptions(){
         });
 
         if(previous && sorted.some((m) => String(m.id) === previous)){
+            select.value = previous;
+        }
+    }catch(_err){
+    }
+}
+
+async function loadRentalCountCustomerFilterOptions(){
+    try{
+        const select = document.getElementById("rentalCountCustomerFilter");
+        if(!select) return;
+        const previous = String(select.value || "");
+        const customers = await request("/customers","GET");
+        const rentalCustomers = (Array.isArray(customers) ? customers : [])
+            .filter((c) => String(c.customer_mode || "").toLowerCase() === "rental")
+            .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+
+        select.innerHTML = "";
+        const allOpt = document.createElement("option");
+        allOpt.value = "";
+        allOpt.textContent = "All Rental Customers";
+        select.appendChild(allOpt);
+
+        rentalCustomers.forEach((c) => {
+            const opt = document.createElement("option");
+            opt.value = String(c.id);
+            opt.textContent = String(c.name || "");
+            select.appendChild(opt);
+        });
+
+        if(previous && rentalCustomers.some((c) => String(c.id) === previous)){
             select.value = previous;
         }
     }catch(_err){
@@ -734,6 +811,27 @@ function populateRentalConsumablesMonthOptions(){
     ].join("");
 }
 
+function populateRentalCountYearOptions(){
+    const yearEl = document.getElementById("rentalCountYearFilter");
+    if(!yearEl) return;
+    const currentYear = new Date().getFullYear();
+    const startYear = currentYear - 15;
+    const opts = [];
+    for(let y = currentYear; y >= startYear; y--){
+        opts.push(`<option value="${y}">${y}</option>`);
+    }
+    yearEl.innerHTML = opts.join("");
+}
+
+function populateRentalCountMonthOptions(){
+    const monthEl = document.getElementById("rentalCountMonthFilter");
+    if(!monthEl) return;
+    monthEl.innerHTML = [
+        `<option value="all">All Months (Full Year)</option>`,
+        ...REPORT_MONTH_NAMES.map((name, i) => `<option value="${i + 1}">${name}</option>`)
+    ].join("");
+}
+
 function toggleSalesPeriodSelectors(){
     const period = (document.getElementById("salesPeriod")?.value || "month").toLowerCase();
     const yearEl = document.getElementById("salesYearSelect");
@@ -768,12 +866,16 @@ populateTechYearOptions();
 populateTechMonthOptions();
 populateRentalConsumablesYearOptions();
 populateRentalConsumablesMonthOptions();
+populateRentalCountYearOptions();
+populateRentalCountMonthOptions();
 document.getElementById("salesYearSelect").value = String(new Date().getFullYear());
 document.getElementById("salesMonthSelect").value = String(new Date().getMonth() + 1).padStart(2,"0");
 document.getElementById("techYear").value = String(new Date().getFullYear());
 document.getElementById("techMonth").value = "all";
 document.getElementById("rentalConsumablesYearFilter").value = String(new Date().getFullYear());
 document.getElementById("rentalConsumablesMonthFilter").value = "all";
+document.getElementById("rentalCountYearFilter").value = String(new Date().getFullYear());
+document.getElementById("rentalCountMonthFilter").value = "all";
 toggleSalesPeriodSelectors();
 syncSalesDateFromSelectors();
 
@@ -791,10 +893,14 @@ document.getElementById("minStockLevel").addEventListener("change", loadStockRep
 document.getElementById("rentalCustomerFilter").addEventListener("change", loadRentalConsumablesReport);
 document.getElementById("rentalConsumablesYearFilter").addEventListener("change", loadRentalConsumablesReport);
 document.getElementById("rentalConsumablesMonthFilter").addEventListener("change", loadRentalConsumablesReport);
+document.getElementById("rentalCountCustomerFilter").addEventListener("change", loadRentalCountReport);
+document.getElementById("rentalCountYearFilter").addEventListener("change", loadRentalCountReport);
+document.getElementById("rentalCountMonthFilter").addEventListener("change", loadRentalCountReport);
 document.getElementById("rentalMachineFilter").addEventListener("change", loadRentalCountReport);
 
 loadSales();
 loadRentalCustomerFilterOptions();
+loadRentalCountCustomerFilterOptions();
 loadRentalMachineFilterOptions();
 loadRentalConsumablesReport();
 loadRentalCountReport();
