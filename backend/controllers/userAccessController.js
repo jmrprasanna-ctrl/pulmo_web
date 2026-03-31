@@ -470,11 +470,16 @@ async function ensureUserQuotationRenderTable(client) {
       database_name VARCHAR(120) NOT NULL,
       quotation_type VARCHAR(32) NOT NULL,
       render_visibility_json TEXT NOT NULL DEFAULT '{}',
+      render_overrides_json TEXT NOT NULL DEFAULT '{}',
       created_by INTEGER,
       "createdAt" TIMESTAMP DEFAULT NOW(),
       "updatedAt" TIMESTAMP DEFAULT NOW(),
       UNIQUE(user_id, database_name, quotation_type)
     );
+  `);
+  await client.query(`
+    ALTER TABLE ${USER_QUOTATION_RENDER_TABLE}
+    ADD COLUMN IF NOT EXISTS render_overrides_json TEXT NOT NULL DEFAULT '{}';
   `);
 }
 
@@ -495,6 +500,40 @@ function parseQuotationRenderVisibility(row) {
     return normalizeQuotation2RenderVisibility(parsed);
   } catch (_err) {
     return {};
+  }
+}
+
+function normalizeQuotation2RenderOverrides(raw) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  const itemNamesByInvoiceRaw = source.item_names_by_invoice && typeof source.item_names_by_invoice === "object"
+    ? source.item_names_by_invoice
+    : {};
+  const itemNamesByInvoice = {};
+  Object.entries(itemNamesByInvoiceRaw).forEach(([invoiceKey, itemMapRaw]) => {
+    const safeInvoiceKey = String(invoiceKey || "").trim();
+    if (!/^\d+$/.test(safeInvoiceKey)) return;
+    if (!itemMapRaw || typeof itemMapRaw !== "object") return;
+    const normalizedItemMap = {};
+    Object.entries(itemMapRaw).forEach(([itemIndex, value]) => {
+      const safeItemIndex = String(itemIndex || "").trim();
+      if (!/^\d+$/.test(safeItemIndex)) return;
+      const safeName = String(value || "").trim().slice(0, 300);
+      if (!safeName) return;
+      normalizedItemMap[safeItemIndex] = safeName;
+    });
+    if (Object.keys(normalizedItemMap).length) {
+      itemNamesByInvoice[safeInvoiceKey] = normalizedItemMap;
+    }
+  });
+  return { item_names_by_invoice: itemNamesByInvoice };
+}
+
+function parseQuotationRenderOverrides(row) {
+  try {
+    const parsed = JSON.parse(String(row?.render_overrides_json || "{}"));
+    return normalizeQuotation2RenderOverrides(parsed);
+  } catch (_err) {
+    return { item_names_by_invoice: {} };
   }
 }
 
@@ -2314,7 +2353,7 @@ exports.getMyInvMap = async (req, res) => {
     }
     const row = rs.rows[0];
     const visibilityRs = await mainDbClient.query(
-      `SELECT render_visibility_json
+      `SELECT render_visibility_json, render_overrides_json
        FROM ${USER_QUOTATION_RENDER_TABLE}
        WHERE user_id = $1 AND LOWER(database_name) = LOWER($2) AND quotation_type = 'quotation2'
        LIMIT 1`,
@@ -2323,6 +2362,9 @@ exports.getMyInvMap = async (req, res) => {
     const quotation2RenderVisibility = visibilityRs.rowCount
       ? parseQuotationRenderVisibility(visibilityRs.rows[0])
       : {};
+    const quotation2RenderOverrides = visibilityRs.rowCount
+      ? parseQuotationRenderOverrides(visibilityRs.rows[0])
+      : { item_names_by_invoice: {} };
     res.json({
       mapping: {
         user_id: Number(canonicalUserId || row.user_id || 0),
@@ -2342,6 +2384,7 @@ exports.getMyInvMap = async (req, res) => {
         theme: Boolean(row.theme_enabled),
       },
       quotation2_render_visibility: quotation2RenderVisibility,
+      quotation2_render_overrides: quotation2RenderOverrides,
     });
   } catch (err) {
     res.status(500).json({ message: err.message || "Failed to load your Inv Map." });
@@ -2359,10 +2402,19 @@ exports.saveMyQuotation2RenderVisibility = async (req, res) => {
   const requesterDatabase = normalizeDatabaseName(req.databaseName || req.user?.database_name || req.headers["x-database-name"]) || INVENTORY_DB_NAME;
   const databaseName = normalizeDatabaseName(req.body?.database_name) || requesterDatabase;
   const rawVisibility = req.body?.render_visibility;
-  const normalizedVisibility = normalizeQuotation2RenderVisibility(rawVisibility);
-  if (!Object.keys(normalizedVisibility).length) {
-    return res.status(400).json({ message: "At least one render input value is required." });
+  const rawOverrides = req.body?.render_overrides;
+  const hasVisibilityPayload = rawVisibility && typeof rawVisibility === "object";
+  const hasOverridesPayload = rawOverrides && typeof rawOverrides === "object";
+  if (!hasVisibilityPayload && !hasOverridesPayload) {
+    return res.status(400).json({ message: "At least one render input payload is required." });
   }
+  const normalizedVisibility = hasVisibilityPayload ? normalizeQuotation2RenderVisibility(rawVisibility) : null;
+  if (hasVisibilityPayload && !Object.keys(normalizedVisibility).length) {
+    return res.status(400).json({ message: "At least one render visibility value is required." });
+  }
+  const normalizedOverrides = hasOverridesPayload
+    ? normalizeQuotation2RenderOverrides(rawOverrides)
+    : null;
 
   const cfg = getDbConfig();
   const mainDbClient = new Client({
@@ -2382,17 +2434,29 @@ exports.saveMyQuotation2RenderVisibility = async (req, res) => {
 
     await mainDbClient.connect();
     await ensureUserQuotationRenderTable(mainDbClient);
+    const existingRs = await mainDbClient.query(
+      `SELECT render_visibility_json, render_overrides_json
+       FROM ${USER_QUOTATION_RENDER_TABLE}
+       WHERE user_id = $1 AND LOWER(database_name) = LOWER($2) AND quotation_type = 'quotation2'
+       LIMIT 1`,
+      [Number(canonicalUserId || userId), databaseName]
+    );
+    const existingRow = existingRs.rowCount ? existingRs.rows[0] : null;
+    const finalVisibility = normalizedVisibility || parseQuotationRenderVisibility(existingRow);
+    const finalOverrides = normalizedOverrides || parseQuotationRenderOverrides(existingRow);
     await mainDbClient.query(
       `INSERT INTO ${USER_QUOTATION_RENDER_TABLE}
-       (user_id, database_name, quotation_type, render_visibility_json, created_by, "createdAt", "updatedAt")
-       VALUES ($1, $2, 'quotation2', $3, $4, NOW(), NOW())
+       (user_id, database_name, quotation_type, render_visibility_json, render_overrides_json, created_by, "createdAt", "updatedAt")
+       VALUES ($1, $2, 'quotation2', $3, $4, $5, NOW(), NOW())
        ON CONFLICT (user_id, database_name, quotation_type)
        DO UPDATE SET render_visibility_json = EXCLUDED.render_visibility_json,
+                     render_overrides_json = EXCLUDED.render_overrides_json,
                      "updatedAt" = NOW()`,
       [
         Number(canonicalUserId || userId),
         databaseName,
-        JSON.stringify(normalizedVisibility),
+        JSON.stringify(finalVisibility),
+        JSON.stringify(finalOverrides),
         Number(req.user?.id || 0) || null,
       ]
     );
@@ -2400,7 +2464,8 @@ exports.saveMyQuotation2RenderVisibility = async (req, res) => {
     res.json({
       message: "Quotation 2 render inputs saved.",
       database_name: databaseName,
-      render_visibility: normalizedVisibility,
+      render_visibility: finalVisibility,
+      render_overrides: finalOverrides,
     });
   } catch (err) {
     res.status(500).json({ message: err.message || "Failed to save quotation 2 render inputs." });

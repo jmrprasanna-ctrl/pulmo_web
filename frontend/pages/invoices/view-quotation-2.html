@@ -65,6 +65,14 @@
             <option value="signC">SIGN Q2</option>
             <option value="sealC">SEAL Q2</option>
         </select>
+        <div id="itemEditControls" style="display:none;align-items:center;gap:8px;">
+            <label for="layoutItemRowSelect" style="margin:0;font-weight:600;color:#1d3655;white-space:nowrap;">Item</label>
+            <select id="layoutItemRowSelect" style="min-width:120px;"></select>
+            <label for="layoutItemNameInput" style="margin:0;font-weight:600;color:#1d3655;white-space:nowrap;">Item Name</label>
+            <input type="text" id="layoutItemNameInput" placeholder="Custom item name" style="min-width:220px;">
+            <button class="btn btn-secondary" type="button" id="saveItemNameOverrideBtn">Apply</button>
+            <button class="btn btn-secondary" type="button" id="clearItemNameOverrideBtn">Clear</button>
+        </div>
         <label for="layoutFontSelect" style="margin:0;font-weight:600;color:#1d3655;white-space:nowrap;">Font size</label>
         <select id="layoutFontSelect" style="min-width:90px;">
             <option value="10">10</option>
@@ -139,6 +147,8 @@ const currentRole = String(localStorage.getItem("role") || "").trim().toLowerCas
 const canConfigurePreview = currentRole === "admin" || currentRole === "manager";
 let invMapFlags = null;
 let qut2RenderVisibilityFromDb = null;
+let qut2RenderOverridesFromDb = null;
+let qut2ItemNameOverridesByInvoice = {};
 let qut2RenderDbName = "";
 
 function hasMappedFeature(featureKey){
@@ -154,11 +164,16 @@ async function loadInvMapFlags(){
         const renderVisibility = res && res.quotation2_render_visibility && typeof res.quotation2_render_visibility === "object"
             ? res.quotation2_render_visibility
             : null;
+        const renderOverrides = res && res.quotation2_render_overrides && typeof res.quotation2_render_overrides === "object"
+            ? res.quotation2_render_overrides
+            : null;
         qut2RenderVisibilityFromDb = renderVisibility;
+        qut2RenderOverridesFromDb = renderOverrides;
         qut2RenderDbName = String(res?.mapping?.database_name || "").trim();
     }catch(_err){
         invMapFlags = null;
         qut2RenderVisibilityFromDb = null;
+        qut2RenderOverridesFromDb = null;
         qut2RenderDbName = "";
     }
 }
@@ -700,10 +715,13 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null){
     ctx.font = `${rowFs}px Arial`;
     let y = tableY + m.h(POS.table.rowStart - 86);
     const rowH = m.h(POS.table.rowH + OVERLAY.rowGap);
+    const currentInvoiceItemNameOverrides = getCurrentInvoiceItemNameOverrides();
     data.items.slice(0, 18).forEach((item, idx) => {
         const product = item.Product || {};
         const code = product.product_id || "";
-        const desc = product.description || product.model || "";
+        const defaultDesc = String(product.description || product.model || "").trim();
+        const overrideDesc = sanitizeQut2ItemName(currentInvoiceItemNameOverrides[String(idx + 1)] || "");
+        const desc = overrideDesc || defaultDesc;
         if(getLayoutVisible("itemNo")) fitText(ctx, String(idx + 1), tableX + m.w(32 + itemNoCfg.x), y + m.h(itemNoCfg.y), m.w(34), itemNoFontSize, itemNoWeight, itemNoFontFamily);
         if(getLayoutVisible("description")) fitText(ctx, `${code} ${desc}`.trim(), c1 + m.w(28 + descriptionCfg.x), y + m.h(descriptionCfg.y), c2 - c1 - m.w(16), descriptionFontSize, descriptionWeight, descriptionFontFamily);
         if(getLayoutVisible("qty")) drawRight(ctx, String(item.qty || 0), c3 + m.w(12 + qtyCfg.x) - m.w(190), y + m.h(qtyCfg.y), c3 - c2 - m.w(16), qtyFontSize, qtyWeight, qtyFontFamily);
@@ -977,6 +995,86 @@ function syncRenderInputChecklist(){
     updateRenderInputToggleText();
 }
 
+function getCurrentInvoiceKey(){
+    const invoiceId = Number(new URLSearchParams(window.location.search).get("id") || 0);
+    if(Number.isFinite(invoiceId) && invoiceId > 0){
+        return String(invoiceId);
+    }
+    const fallbackInvoiceId = Number(latestInvoiceData?.invoice?.id || 0);
+    if(Number.isFinite(fallbackInvoiceId) && fallbackInvoiceId > 0){
+        return String(fallbackInvoiceId);
+    }
+    return "";
+}
+
+function sanitizeQut2ItemName(value){
+    return String(value || "").trim().slice(0, 300);
+}
+
+function getCurrentInvoiceItemNameOverrides(){
+    const invoiceKey = getCurrentInvoiceKey();
+    if(!invoiceKey) return {};
+    const map = qut2ItemNameOverridesByInvoice[invoiceKey];
+    return map && typeof map === "object" ? map : {};
+}
+
+function getCurrentInvoiceItemNameOverride(rowNumber){
+    const key = String(Number(rowNumber || 0));
+    if(!/^\d+$/.test(key)) return "";
+    const map = getCurrentInvoiceItemNameOverrides();
+    return sanitizeQut2ItemName(map[key] || "");
+}
+
+function setCurrentInvoiceItemNameOverride(rowNumber, customName){
+    const invoiceKey = getCurrentInvoiceKey();
+    const rowKey = String(Number(rowNumber || 0));
+    if(!invoiceKey || !/^\d+$/.test(rowKey)) return;
+    if(!qut2ItemNameOverridesByInvoice[invoiceKey] || typeof qut2ItemNameOverridesByInvoice[invoiceKey] !== "object"){
+        qut2ItemNameOverridesByInvoice[invoiceKey] = {};
+    }
+    const safeName = sanitizeQut2ItemName(customName);
+    if(!safeName){
+        delete qut2ItemNameOverridesByInvoice[invoiceKey][rowKey];
+        if(!Object.keys(qut2ItemNameOverridesByInvoice[invoiceKey]).length){
+            delete qut2ItemNameOverridesByInvoice[invoiceKey];
+        }
+        return;
+    }
+    qut2ItemNameOverridesByInvoice[invoiceKey][rowKey] = safeName;
+}
+
+function buildQut2RenderOverridesPayload(){
+    return {
+        item_names_by_invoice: qut2ItemNameOverridesByInvoice
+    };
+}
+
+function applyPersistedQut2RenderOverrides(){
+    const sourceMap = qut2RenderOverridesFromDb
+        && typeof qut2RenderOverridesFromDb === "object"
+        && qut2RenderOverridesFromDb.item_names_by_invoice
+        && typeof qut2RenderOverridesFromDb.item_names_by_invoice === "object"
+        ? qut2RenderOverridesFromDb.item_names_by_invoice
+        : {};
+    const next = {};
+    Object.entries(sourceMap).forEach(([invoiceKey, itemMap]) => {
+        const safeInvoiceKey = String(invoiceKey || "").trim();
+        if(!/^\d+$/.test(safeInvoiceKey) || !itemMap || typeof itemMap !== "object") return;
+        const normalizedItemMap = {};
+        Object.entries(itemMap).forEach(([rowNumber, name]) => {
+            const safeRowNumber = String(rowNumber || "").trim();
+            if(!/^\d+$/.test(safeRowNumber)) return;
+            const safeName = sanitizeQut2ItemName(name);
+            if(!safeName) return;
+            normalizedItemMap[safeRowNumber] = safeName;
+        });
+        if(Object.keys(normalizedItemMap).length){
+            next[safeInvoiceKey] = normalizedItemMap;
+        }
+    });
+    qut2ItemNameOverridesByInvoice = next;
+}
+
 function applyPersistedQut2RenderVisibility(){
     if(!qut2RenderVisibilityFromDb || typeof qut2RenderVisibilityFromDb !== "object") return;
     const targetSelect = document.getElementById("layoutTargetSelect");
@@ -1002,7 +1100,8 @@ async function savePersistedQut2RenderVisibility(){
         });
         await request("/users/inv-map/me/quotation2-render-inputs", "PUT", {
             database_name: qut2RenderDbName || undefined,
-            render_visibility: renderVisibility
+            render_visibility: renderVisibility,
+            render_overrides: buildQut2RenderOverridesPayload()
         });
     }catch(_err){
     }
@@ -1129,6 +1228,96 @@ async function moveSelectedLayout(dx, dy){
     await refreshPreviewFromLatest();
 }
 
+function getInvoiceItemLabel(item, index){
+    const product = item && item.Product ? item.Product : {};
+    const code = String(product.product_id || "").trim();
+    const desc = String(product.description || product.model || "").trim();
+    const defaultLabel = desc || code || `Item ${index + 1}`;
+    return `${index + 1} - ${defaultLabel}`.trim();
+}
+
+function getInvoiceItemDefaultName(rowNumber){
+    const index = Number(rowNumber || 0) - 1;
+    if(!Number.isFinite(index) || index < 0) return "";
+    const item = Array.isArray(latestInvoiceData?.items) ? latestInvoiceData.items[index] : null;
+    if(!item) return "";
+    const product = item.Product || {};
+    return String(product.description || product.model || "").trim();
+}
+
+function syncQut2ItemOverrideInput(){
+    const rowSelect = document.getElementById("layoutItemRowSelect");
+    const input = document.getElementById("layoutItemNameInput");
+    if(!rowSelect || !input) return;
+    const selectedRow = String(rowSelect.value || "").trim();
+    const overrideValue = getCurrentInvoiceItemNameOverride(selectedRow);
+    if(overrideValue){
+        input.value = overrideValue;
+        return;
+    }
+    input.value = getInvoiceItemDefaultName(selectedRow);
+}
+
+function syncQut2ItemOverrideRowOptions(){
+    const rowSelect = document.getElementById("layoutItemRowSelect");
+    if(!rowSelect) return;
+    const items = Array.isArray(latestInvoiceData?.items) ? latestInvoiceData.items : [];
+    rowSelect.innerHTML = "";
+    if(!items.length){
+        const emptyOption = document.createElement("option");
+        emptyOption.value = "";
+        emptyOption.textContent = "No items";
+        rowSelect.appendChild(emptyOption);
+        rowSelect.disabled = true;
+        const input = document.getElementById("layoutItemNameInput");
+        if(input) input.value = "";
+        return;
+    }
+    rowSelect.disabled = false;
+    items.forEach((item, idx) => {
+        const rowNumber = String(idx + 1);
+        const option = document.createElement("option");
+        option.value = rowNumber;
+        option.textContent = getInvoiceItemLabel(item, idx);
+        rowSelect.appendChild(option);
+    });
+    rowSelect.value = rowSelect.options[0].value;
+    syncQut2ItemOverrideInput();
+}
+
+function toggleQut2ItemEditControls(){
+    const wrap = document.getElementById("itemEditControls");
+    if(!wrap) return;
+    wrap.style.display = selectedLayoutTarget === "itemNo" ? "flex" : "none";
+}
+
+async function applyQut2ItemNameOverrideFromControl(){
+    const rowSelect = document.getElementById("layoutItemRowSelect");
+    const input = document.getElementById("layoutItemNameInput");
+    if(!rowSelect || !input || rowSelect.disabled) return;
+    const selectedRow = String(rowSelect.value || "").trim();
+    if(!selectedRow){
+        return;
+    }
+    setCurrentInvoiceItemNameOverride(selectedRow, input.value);
+    syncQut2ItemOverrideInput();
+    await savePersistedQut2RenderVisibility();
+    await refreshPreviewFromLatest();
+}
+
+async function clearQut2ItemNameOverrideFromControl(){
+    const rowSelect = document.getElementById("layoutItemRowSelect");
+    if(!rowSelect || rowSelect.disabled) return;
+    const selectedRow = String(rowSelect.value || "").trim();
+    if(!selectedRow){
+        return;
+    }
+    setCurrentInvoiceItemNameOverride(selectedRow, "");
+    syncQut2ItemOverrideInput();
+    await savePersistedQut2RenderVisibility();
+    await refreshPreviewFromLatest();
+}
+
 function initLayoutEditor(){
     const targetSelect = document.getElementById("layoutTargetSelect");
     const fontSelect = document.getElementById("layoutFontSelect");
@@ -1139,6 +1328,10 @@ function initLayoutEditor(){
     const rightBtn = document.getElementById("moveRightBtn");
     const upBtn = document.getElementById("moveUpBtn");
     const downBtn = document.getElementById("moveDownBtn");
+    const itemRowSelect = document.getElementById("layoutItemRowSelect");
+    const itemNameInput = document.getElementById("layoutItemNameInput");
+    const saveItemNameBtn = document.getElementById("saveItemNameOverrideBtn");
+    const clearItemNameBtn = document.getElementById("clearItemNameOverrideBtn");
 
     if(!targetSelect || !fontSelect || !fontFamilySelect || !weightSelect || !previewSelect || !leftBtn || !rightBtn || !upBtn || !downBtn){
         return;
@@ -1146,13 +1339,16 @@ function initLayoutEditor(){
 
     targetSelect.value = selectedLayoutTarget;
     applyPersistedQut2RenderVisibility();
+    applyPersistedQut2RenderOverrides();
     syncLayoutEditorSelects();
     syncRenderInputChecklist();
+    toggleQut2ItemEditControls();
 
     targetSelect.addEventListener("change", () => {
         selectedLayoutTarget = targetSelect.value || "customerName";
         syncLayoutEditorSelects();
         syncRenderInputChecklist();
+        toggleQut2ItemEditControls();
     });
 
     fontSelect.addEventListener("change", async () => {
@@ -1186,12 +1382,37 @@ function initLayoutEditor(){
     rightBtn.addEventListener("click", async () => moveSelectedLayout(LAYOUT_STEP, 0));
     upBtn.addEventListener("click", async () => moveSelectedLayout(0, -LAYOUT_STEP));
     downBtn.addEventListener("click", async () => moveSelectedLayout(0, LAYOUT_STEP));
+
+    if(itemRowSelect){
+        itemRowSelect.addEventListener("change", () => {
+            syncQut2ItemOverrideInput();
+        });
+    }
+    if(saveItemNameBtn){
+        saveItemNameBtn.addEventListener("click", async () => {
+            await applyQut2ItemNameOverrideFromControl();
+        });
+    }
+    if(clearItemNameBtn){
+        clearItemNameBtn.addEventListener("click", async () => {
+            await clearQut2ItemNameOverrideFromControl();
+        });
+    }
+    if(itemNameInput){
+        itemNameInput.addEventListener("keydown", async (ev) => {
+            if(ev.key === "Enter"){
+                ev.preventDefault();
+                await applyQut2ItemNameOverrideFromControl();
+            }
+        });
+    }
 }
 
 async function renderInvoice(){
     try{
         latestInvoiceData = await fetchInvoiceData();
         qut2PreviewCustomerName = String(latestInvoiceData?.customer?.name || "").trim();
+        syncQut2ItemOverrideRowOptions();
         syncQut2DateInput();
         syncQut2CustomerNameInput();
         await refreshPreviewFromLatest();
