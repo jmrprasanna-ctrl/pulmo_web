@@ -17,27 +17,13 @@
             SIGN C
         </label>
         <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
-            <input type="checkbox" id="signVChk">
-            SIGN V
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
             <input type="checkbox" id="seal1Chk">
             SEAL C
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
-            <input type="checkbox" id="sealVChk">
-            SEAL V
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
-            <input type="checkbox" id="logoWithNameChk">
-            Logo with Name
         </label>
         <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
             <input type="checkbox" id="editModeChk">
             Edit
         </label>
-        <input type="file" id="logoFileInput" accept="image/*" style="display:none;">
-        <button class="btn btn-secondary" type="button" id="logoBrowseBtn" title="Browse logo">Browse</button>
         <div class="invoice-date-inline">
             <label for="qut2DateInput" style="margin:0;font-weight:600;color:#1d3655;white-space:nowrap;">Qut 2 Date</label>
             <input type="date" id="qut2DateInput">
@@ -71,11 +57,8 @@
             <option value="rate">RATE</option>
             <option value="vat">VAT</option>
             <option value="grossAmount">GROSS AMOUNT</option>
-            <option value="logoWithName">Logo with Name</option>
             <option value="signC">SIGN C</option>
-            <option value="signV">SIGN V</option>
             <option value="sealC">SEAL C</option>
-            <option value="sealV">SEAL V</option>
         </select>
         <label for="layoutFontSelect" style="margin:0;font-weight:600;color:#1d3655;white-space:nowrap;">Font size</label>
         <select id="layoutFontSelect" style="min-width:90px;">
@@ -837,22 +820,6 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null){
         });
     }
 
-    if(logoWithNameEnabled && getLayoutVisible("logoWithName")){
-        const logoCfg = getLayoutConfig("logoWithName");
-        const logoImg = await ensureLogoWithNameImage();
-        if(logoImg){
-            const logoW = m.w(290);
-            const logoH = m.h(95);
-            ctx.drawImage(
-                logoImg,
-                m.x(46 + logoCfg.x),
-                m.y(60 + logoCfg.y),
-                logoW,
-                logoH
-            );
-        }
-    }
-
     // Optional signature image
     if(sign1Enabled && getLayoutVisible("signC")){
         const signImg = await ensureSign1Image();
@@ -871,24 +838,6 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null){
         }
     }
 
-    // Optional V signature image
-    if(signVEnabled && getLayoutVisible("signV")){
-        const signVImg = await ensureSignVImage();
-        if(signVImg){
-            const signVCfg = getLayoutConfig("signV");
-            ctx.drawImage(
-                signVImg,
-                m.x(POS.signV.x + signVCfg.x),
-                m.y(POS.signV.y + signVCfg.y),
-                m.w(POS.signV.w),
-                m.h(POS.signV.h)
-            );
-        }else if(!signVLoadFailedNotified){
-            signVLoadFailedNotified = true;
-            alert("SIGN V image not found. Expected file: frontend/assets/images/pulmo-sign-v.png");
-        }
-    }
-
     // Optional seal image
     if(seal1Enabled && getLayoutVisible("sealC")){
         const sealImg = await ensureSeal1Image();
@@ -904,24 +853,6 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null){
         }else if(!seal1LoadFailedNotified){
             seal1LoadFailedNotified = true;
             alert("SEAL 1 image not found. Expected file: frontend/assets/images/pulmo-seal-1.png");
-        }
-    }
-
-    // Optional seal V image
-    if(sealVEnabled && getLayoutVisible("sealV")){
-        const sealVImg = await ensureSealVImage();
-        if(sealVImg){
-            const sealVCfg = getLayoutConfig("sealV");
-            ctx.drawImage(
-                sealVImg,
-                m.x(POS.sealV.x + sealVCfg.x),
-                m.y(POS.sealV.y + sealVCfg.y),
-                m.w(POS.sealV.w),
-                m.h(POS.sealV.h)
-            );
-        }else if(!sealVLoadFailedNotified){
-            sealVLoadFailedNotified = true;
-            alert("SEAL V image not found. Expected file: frontend/assets/images/pulmo-seal-v.png");
         }
     }
 
@@ -1297,10 +1228,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     if(canConfigurePreview){
         initEditModeControl();
         initSignControl();
-        initSignVControl();
         initSealControl();
-        initSealVControl();
-        initLogoWithNameControl();
         initLayoutEditor();
     }
     renderInvoice();
