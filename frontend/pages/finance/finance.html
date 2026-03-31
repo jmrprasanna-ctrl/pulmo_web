@@ -120,7 +120,7 @@
 
     <div class="form-container section">
         <div class="section-head">
-            <h3>Vendor Buy Products Dealer Price (Week, Month, Annual)</h3>
+            <h3>Vendor Products Dealer Price</h3>
             <div class="section-actions">
                 <button class="btn" type="button" onclick="exportVendorPDF()">Save PDF</button>
                 <button class="btn" type="button" onclick="exportVendorXlsx()">Save XLSX</button>
@@ -135,7 +135,7 @@
             </thead>
             <tbody id="vendorTotalBody"></tbody>
         </table>
-        <h3 style="margin-top:10px;">Vendor Wise Detail (Selected Period)</h3>
+        <h3 style="margin-top:10px;">Vendor Detail</h3>
         <table id="vendorDetailTable">
             <thead>
                 <tr>
@@ -150,7 +150,7 @@
 
     <div class="form-container section">
         <div class="section-head">
-            <h3>Rental Consumables Total Amount (Month Wise / Annual Wise / Customer Wise)</h3>
+            <h3>Rental Consumables</h3>
             <div class="section-actions">
                 <button class="btn" type="button" onclick="exportRentalConsumablesPDF()">Save PDF</button>
                 <button class="btn" type="button" onclick="exportRentalConsumablesXlsx()">Save XLSX</button>
@@ -434,16 +434,16 @@ function exportVendorPDF(){
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ format: "a4" });
     doc.setFontSize(12);
-    doc.text("Vendor Buy Products Dealer Price", 14, 20);
+    doc.text("Vendor Products Dealer Price", 14, 20);
     let y = 28;
 
-    y = writeTableToDoc(doc, "Vendor Buy Products Dealer Price (Week, Month, Annual)", "vendorTotalTable", y);
+    y = writeTableToDoc(doc, "Vendor Products Dealer Price", "vendorTotalTable", y);
     if(y === -1){
         alert("No data to export. Please click Refresh first.");
         return;
     }
     y += 6;
-    writeTableToDoc(doc, "Vendor Wise Detail (Selected Period)", "vendorDetailTable", y);
+    writeTableToDoc(doc, "Vendor Detail", "vendorDetailTable", y);
     doc.save("Finance_Vendor_Dealer_Price.pdf");
 }
 
@@ -451,7 +451,7 @@ function exportRentalConsumablesPDF(){
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ format: "a4" });
     doc.setFontSize(12);
-    doc.text("Rental Consumables Total Amount", 14, 20);
+    doc.text("Rental Consumables", 14, 20);
     let y = 28;
 
     y = writeTableToDoc(doc, "Month Wise", "rcMonthTable", y);
@@ -479,8 +479,8 @@ function exportRentalConsumablesXlsx(){
 function exportVendorXlsx(){
     exportMultiTableXlsx(
         [
-            { title: "Vendor Buy Products Dealer Price (Week, Month, Annual)", tableId: "vendorTotalTable" },
-            { title: "Vendor Wise Detail (Selected Period)", tableId: "vendorDetailTable" }
+            { title: "Vendor Products Dealer Price", tableId: "vendorTotalTable" },
+            { title: "Vendor Detail", tableId: "vendorDetailTable" }
         ],
         "Finance_Vendor_Dealer_Price.xlsx"
     );
