@@ -511,8 +511,12 @@ function normalizeQuotation2RenderOverrides(raw) {
   const itemRatesByInvoiceRaw = source.item_rates_by_invoice && typeof source.item_rates_by_invoice === "object"
     ? source.item_rates_by_invoice
     : {};
+  const layoutStateRaw = source.layout_state && typeof source.layout_state === "object"
+    ? source.layout_state
+    : {};
   const itemNamesByInvoice = {};
   const itemRatesByInvoice = {};
+  const layoutState = {};
   Object.entries(itemNamesByInvoiceRaw).forEach(([invoiceKey, itemMapRaw]) => {
     const safeInvoiceKey = String(invoiceKey || "").trim();
     if (!/^\d+$/.test(safeInvoiceKey)) return;
@@ -545,9 +549,31 @@ function normalizeQuotation2RenderOverrides(raw) {
       itemRatesByInvoice[safeInvoiceKey] = normalizedItemMap;
     }
   });
+  Object.entries(layoutStateRaw).forEach(([layoutKey, rawConfig]) => {
+    const safeLayoutKey = String(layoutKey || "").trim();
+    if (!safeLayoutKey || safeLayoutKey.length > 80) return;
+    if (!rawConfig || typeof rawConfig !== "object") return;
+    const next = {};
+    const x = Number(rawConfig.x);
+    const y = Number(rawConfig.y);
+    const font = Number(rawConfig.font);
+    const fontFamily = String(rawConfig.fontFamily || "").trim().slice(0, 80);
+    const fontWeight = String(rawConfig.fontWeight || "").trim().toLowerCase() === "bold" ? "bold" : "normal";
+    const visible = rawConfig.visible;
+    if (Number.isFinite(x)) next.x = x;
+    if (Number.isFinite(y)) next.y = y;
+    if (Number.isFinite(font) && font > 0) next.font = font;
+    if (fontFamily) next.fontFamily = fontFamily;
+    next.fontWeight = fontWeight;
+    if (typeof visible === "boolean") next.visible = visible;
+    if (Object.keys(next).length) {
+      layoutState[safeLayoutKey] = next;
+    }
+  });
   return {
     item_names_by_invoice: itemNamesByInvoice,
     item_rates_by_invoice: itemRatesByInvoice,
+    layout_state: layoutState,
   };
 }
 
@@ -556,7 +582,7 @@ function parseQuotationRenderOverrides(row) {
     const parsed = JSON.parse(String(row?.render_overrides_json || "{}"));
     return normalizeQuotation2RenderOverrides(parsed);
   } catch (_err) {
-    return { item_names_by_invoice: {}, item_rates_by_invoice: {} };
+    return { item_names_by_invoice: {}, item_rates_by_invoice: {}, layout_state: {} };
   }
 }
 
@@ -2387,7 +2413,7 @@ exports.getMyInvMap = async (req, res) => {
       : {};
     const quotation2RenderOverrides = visibilityRs.rowCount
       ? parseQuotationRenderOverrides(visibilityRs.rows[0])
-      : { item_names_by_invoice: {}, item_rates_by_invoice: {} };
+      : { item_names_by_invoice: {}, item_rates_by_invoice: {}, layout_state: {} };
     res.json({
       mapping: {
         user_id: Number(canonicalUserId || row.user_id || 0),

@@ -1087,10 +1087,34 @@ function setCurrentInvoiceItemRateOverride(rowNumber, customRate){
     qut2ItemRateOverridesByInvoice[invoiceKey][rowKey] = safeRate;
 }
 
+function buildQut2LayoutStatePayload(){
+    const out = {};
+    Object.entries(layoutState).forEach(([key, cfg]) => {
+        if(!cfg || typeof cfg !== "object") return;
+        const next = {};
+        const x = Number(cfg.x);
+        const y = Number(cfg.y);
+        const font = Number(cfg.font);
+        const fontFamily = String(cfg.fontFamily || "").trim().slice(0, 80);
+        const fontWeight = String(cfg.fontWeight || "normal").toLowerCase() === "bold" ? "bold" : "normal";
+        if(Number.isFinite(x)) next.x = x;
+        if(Number.isFinite(y)) next.y = y;
+        if(Number.isFinite(font) && font > 0) next.font = font;
+        if(fontFamily) next.fontFamily = fontFamily;
+        next.fontWeight = fontWeight;
+        if(typeof cfg.visible === "boolean"){
+            next.visible = cfg.visible;
+        }
+        out[key] = next;
+    });
+    return out;
+}
+
 function buildQut2RenderOverridesPayload(){
     return {
         item_names_by_invoice: qut2ItemNameOverridesByInvoice,
-        item_rates_by_invoice: qut2ItemRateOverridesByInvoice
+        item_rates_by_invoice: qut2ItemRateOverridesByInvoice,
+        layout_state: buildQut2LayoutStatePayload()
     };
 }
 
@@ -1106,6 +1130,12 @@ function applyPersistedQut2RenderOverrides(){
         && qut2RenderOverridesFromDb.item_rates_by_invoice
         && typeof qut2RenderOverridesFromDb.item_rates_by_invoice === "object"
         ? qut2RenderOverridesFromDb.item_rates_by_invoice
+        : {};
+    const sourceLayoutState = qut2RenderOverridesFromDb
+        && typeof qut2RenderOverridesFromDb === "object"
+        && qut2RenderOverridesFromDb.layout_state
+        && typeof qut2RenderOverridesFromDb.layout_state === "object"
+        ? qut2RenderOverridesFromDb.layout_state
         : {};
     const nextNames = {};
     const nextRates = {};
@@ -1138,6 +1168,22 @@ function applyPersistedQut2RenderOverrides(){
         if(Object.keys(normalizedItemMap).length){
             nextRates[safeInvoiceKey] = normalizedItemMap;
         }
+    });
+    Object.entries(sourceLayoutState).forEach(([layoutKey, rawCfg]) => {
+        const cfg = rawCfg && typeof rawCfg === "object" ? rawCfg : null;
+        const target = layoutState[layoutKey];
+        if(!cfg || !target) return;
+        const x = Number(cfg.x);
+        const y = Number(cfg.y);
+        const font = Number(cfg.font);
+        const fontFamily = String(cfg.fontFamily || "").trim();
+        const fontWeight = String(cfg.fontWeight || "").trim().toLowerCase() === "bold" ? "bold" : "normal";
+        if(Number.isFinite(x)) target.x = x;
+        if(Number.isFinite(y)) target.y = y;
+        if(Number.isFinite(font) && font > 0) target.font = font;
+        if(fontFamily) target.fontFamily = fontFamily;
+        target.fontWeight = fontWeight;
+        if(typeof cfg.visible === "boolean") target.visible = cfg.visible;
     });
     qut2ItemNameOverridesByInvoice = nextNames;
     qut2ItemRateOverridesByInvoice = nextRates;
@@ -1294,6 +1340,7 @@ async function moveSelectedLayout(dx, dy){
     const cfg = getLayoutConfig(selectedLayoutTarget);
     cfg.x += dx;
     cfg.y += dy;
+    await savePersistedQut2RenderVisibility();
     await refreshPreviewFromLatest();
 }
 
@@ -1474,6 +1521,7 @@ function initLayoutEditor(){
         const nextFont = Number(fontSelect.value || INPUT_FONT_SIZE);
         if(Number.isFinite(nextFont) && nextFont > 0){
             getLayoutConfig(selectedLayoutTarget).font = nextFont;
+            await savePersistedQut2RenderVisibility();
             await refreshPreviewFromLatest();
         }
     });
@@ -1481,12 +1529,14 @@ function initLayoutEditor(){
     fontFamilySelect.addEventListener("change", async () => {
         const nextFamily = String(fontFamilySelect.value || INPUT_FONT_FAMILY).trim();
         getLayoutConfig(selectedLayoutTarget).fontFamily = nextFamily || INPUT_FONT_FAMILY;
+        await savePersistedQut2RenderVisibility();
         await refreshPreviewFromLatest();
     });
 
     weightSelect.addEventListener("change", async () => {
         const nextWeight = String(weightSelect.value || "normal").toLowerCase() === "bold" ? "bold" : "normal";
         getLayoutConfig(selectedLayoutTarget).fontWeight = nextWeight;
+        await savePersistedQut2RenderVisibility();
         await refreshPreviewFromLatest();
     });
 
