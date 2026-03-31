@@ -496,11 +496,12 @@ async function loadStockFilterOptions(){
                 vendorEl.appendChild(opt);
             });
             const pulmoVendor = (Array.isArray(vendors) ? vendors : []).find((v) => String(v?.name || "").trim().toLowerCase().includes("pulmo"));
-            if(previousVendor && Array.from(vendorEl.options).some((o) => o.value === previousVendor)){
-                vendorEl.value = previousVendor;
-            }else if(pulmoVendor && Number.isFinite(Number(pulmoVendor.id))){
+            if(pulmoVendor && Number.isFinite(Number(pulmoVendor.id))){
                 vendorEl.value = String(pulmoVendor.id);
+            }else if(previousVendor && Array.from(vendorEl.options).some((o) => o.value === previousVendor)){
+                vendorEl.value = previousVendor;
             }
+            await loadStockReports();
         }
     }catch(_err){
     }
@@ -734,7 +735,6 @@ loadRentalCountReport();
 if(isAdminManager){
     loadStockFilterOptions();
     loadTechnicianReport();
-    loadStockReports();
 }
 </script>
 </body>
