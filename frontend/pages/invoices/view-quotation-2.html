@@ -722,8 +722,9 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null){
         const defaultDesc = String(product.description || product.model || "").trim();
         const overrideDesc = sanitizeQut2ItemName(currentInvoiceItemNameOverrides[String(idx + 1)] || "");
         const desc = overrideDesc || defaultDesc;
+        const descriptionText = overrideDesc ? desc : `${code} ${desc}`.trim();
         if(getLayoutVisible("itemNo")) fitText(ctx, String(idx + 1), tableX + m.w(32 + itemNoCfg.x), y + m.h(itemNoCfg.y), m.w(34), itemNoFontSize, itemNoWeight, itemNoFontFamily);
-        if(getLayoutVisible("description")) fitText(ctx, `${code} ${desc}`.trim(), c1 + m.w(28 + descriptionCfg.x), y + m.h(descriptionCfg.y), c2 - c1 - m.w(16), descriptionFontSize, descriptionWeight, descriptionFontFamily);
+        if(getLayoutVisible("description")) fitText(ctx, descriptionText, c1 + m.w(28 + descriptionCfg.x), y + m.h(descriptionCfg.y), c2 - c1 - m.w(16), descriptionFontSize, descriptionWeight, descriptionFontFamily);
         if(getLayoutVisible("qty")) drawRight(ctx, String(item.qty || 0), c3 + m.w(12 + qtyCfg.x) - m.w(190), y + m.h(qtyCfg.y), c3 - c2 - m.w(16), qtyFontSize, qtyWeight, qtyFontFamily);
         if(getLayoutVisible("rate")) drawRightFixed(ctx, money(item.rate), c4 + m.w(12 + rateCfg.x) - m.w(150), y + m.h(rateCfg.y), rateFontSize, rateWeight, rateFontFamily);
         if(getLayoutVisible("vat")) drawRight(ctx, `${money(item.vat)}%`, c5 + m.w(12 + vatCfg.x) - m.w(150), y + m.h(vatCfg.y), c5 - c4 - m.w(16), vatFontSize, vatWeight, vatFontFamily);
