@@ -294,6 +294,8 @@ SET entry_date = COALESCE(entry_date, DATE("createdAt"), CURRENT_DATE)
 WHERE entry_date IS NULL;
 CREATE INDEX IF NOT EXISTS rental_machine_consumables_entry_date_idx
 ON rental_machine_consumables(entry_date);
+CREATE INDEX IF NOT EXISTS rental_machine_consumables_customer_entry_idx
+ON rental_machine_consumables(customer_id, entry_date, id);
 
 DO $$
 BEGIN

@@ -199,6 +199,8 @@ CREATE TABLE invoices (
     createdAt TIMESTAMP DEFAULT NOW(),
     updatedAt TIMESTAMP DEFAULT NOW()
 );
+CREATE INDEX IF NOT EXISTS rental_machine_consumables_customer_entry_idx
+ON rental_machine_consumables(customer_id, entry_date, id);
 CREATE INDEX IF NOT EXISTS invoices_invoice_date_no_idx ON invoices(invoice_date, invoice_no);
 CREATE INDEX IF NOT EXISTS invoices_pending_lookup_idx ON invoices(payment_status, invoice_date, id);
 

@@ -85,7 +85,7 @@
     <div class="form-container">
         <div class="report-block">
             <div class="report-head">
-                <h3>Sales Report (Week / Month / Annual)</h3>
+                <h3>Sales Report</h3>
                 <div class="report-controls">
                     <select id="salesPeriod">
                         <option value="week">Week</option>
@@ -189,6 +189,10 @@
                     <select id="rentalCustomerFilter">
                         <option value="">All Rental Customers</option>
                     </select>
+                    <label for="rentalConsumablesYearFilter">Year</label>
+                    <select id="rentalConsumablesYearFilter"></select>
+                    <label for="rentalConsumablesMonthFilter">Month</label>
+                    <select id="rentalConsumablesMonthFilter"></select>
                     <button type="button" onclick="loadRentalConsumablesReport()">Load</button>
                     <button type="button" onclick="exportRentalConsumablesPDF()">Export PDF</button>
                 </div>
@@ -315,7 +319,40 @@ async function loadSales(){
 }
 
 function exportSalesPDF(){
-    exportTablePDF("salesTable", "Sales Report", "Sales_Report.pdf");
+    const rows = Array.from(document.querySelectorAll("#salesTable tbody tr"));
+    if(!rows.length){
+        alert("No data to export. Please click Load first.");
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ format: "a4" });
+    doc.setFontSize(12);
+    doc.text("Sales Report", 14, 20);
+
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const maxWidth = doc.internal.pageSize.getWidth() - 28;
+    let y = 28;
+
+    doc.setFontSize(9);
+    rows.forEach((row) => {
+        const cells = Array.from(row.children).map((td) => td.innerText.trim());
+        const invoiceNo = cells[0] || "";
+        const customer = cells[1] || "";
+        const dateText = cells[2] || "";
+        const totalAmount = cells[3] || "";
+        const line = [dateText, invoiceNo, customer, totalAmount].join(" | ");
+        const wrapped = doc.splitTextToSize(line, maxWidth);
+        const nextY = y + (wrapped.length * 5);
+        if(nextY > pageHeight - 10){
+            doc.addPage();
+            y = 15;
+        }
+        doc.text(wrapped, 14, y);
+        y += (wrapped.length * 5) + 3;
+    });
+
+    doc.save("Sales_Report.pdf");
 }
 
 function exportTechnicianPDF(){
@@ -510,7 +547,9 @@ async function loadStockFilterOptions(){
 async function loadRentalConsumablesReport(){
     try{
         const customerId = String(document.getElementById("rentalCustomerFilter").value || "").trim();
-        const query = customerId ? `?customer_id=${encodeURIComponent(customerId)}` : "";
+        const year = String(document.getElementById("rentalConsumablesYearFilter")?.value || "").trim();
+        const month = String(document.getElementById("rentalConsumablesMonthFilter")?.value || "").trim();
+        const query = `?customer_id=${encodeURIComponent(customerId)}&year=${encodeURIComponent(year)}&month=${encodeURIComponent(month)}`;
         const data = await request(`/reports/rental-consumables${query}`,"GET");
         const tbody = document.querySelector("#rentalConsumablesTable tbody");
         tbody.innerHTML = "";
@@ -674,6 +713,27 @@ function populateTechMonthOptions(){
     ].join("");
 }
 
+function populateRentalConsumablesYearOptions(){
+    const yearEl = document.getElementById("rentalConsumablesYearFilter");
+    if(!yearEl) return;
+    const currentYear = new Date().getFullYear();
+    const startYear = currentYear - 15;
+    const opts = [];
+    for(let y = currentYear; y >= startYear; y--){
+        opts.push(`<option value="${y}">${y}</option>`);
+    }
+    yearEl.innerHTML = opts.join("");
+}
+
+function populateRentalConsumablesMonthOptions(){
+    const monthEl = document.getElementById("rentalConsumablesMonthFilter");
+    if(!monthEl) return;
+    monthEl.innerHTML = [
+        `<option value="all">All Months (Full Year)</option>`,
+        ...REPORT_MONTH_NAMES.map((name, i) => `<option value="${i + 1}">${name}</option>`)
+    ].join("");
+}
+
 function toggleSalesPeriodSelectors(){
     const period = (document.getElementById("salesPeriod")?.value || "month").toLowerCase();
     const yearEl = document.getElementById("salesYearSelect");
@@ -706,10 +766,14 @@ populateSalesYearOptions();
 populateSalesMonthOptions();
 populateTechYearOptions();
 populateTechMonthOptions();
+populateRentalConsumablesYearOptions();
+populateRentalConsumablesMonthOptions();
 document.getElementById("salesYearSelect").value = String(new Date().getFullYear());
 document.getElementById("salesMonthSelect").value = String(new Date().getMonth() + 1).padStart(2,"0");
 document.getElementById("techYear").value = String(new Date().getFullYear());
 document.getElementById("techMonth").value = "all";
+document.getElementById("rentalConsumablesYearFilter").value = String(new Date().getFullYear());
+document.getElementById("rentalConsumablesMonthFilter").value = "all";
 toggleSalesPeriodSelectors();
 syncSalesDateFromSelectors();
 
@@ -725,6 +789,8 @@ document.getElementById("techTechnician").addEventListener("change", loadTechnic
 document.getElementById("stockVendorReport").addEventListener("change", loadStockReports);
 document.getElementById("minStockLevel").addEventListener("change", loadStockReports);
 document.getElementById("rentalCustomerFilter").addEventListener("change", loadRentalConsumablesReport);
+document.getElementById("rentalConsumablesYearFilter").addEventListener("change", loadRentalConsumablesReport);
+document.getElementById("rentalConsumablesMonthFilter").addEventListener("change", loadRentalConsumablesReport);
 document.getElementById("rentalMachineFilter").addEventListener("change", loadRentalCountReport);
 
 loadSales();

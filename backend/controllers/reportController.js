@@ -423,10 +423,38 @@ exports.vendorWiseProductsReport = async (req,res)=>{
 exports.rentalConsumablesMachineCustomerReport = async (req,res)=>{
     try{
         const customerId = Number(req.query.customer_id);
+        const requestedYear = Number(req.query.year || 0);
+        const monthToken = String(req.query.month || "").trim().toLowerCase();
+        const isAllMonths = monthToken === "all" || monthToken === "0";
+        const requestedMonth = Number(req.query.month || 0);
+        const now = new Date();
+        const safeYear = Number.isFinite(requestedYear) && requestedYear >= 2000 && requestedYear <= 9999
+            ? requestedYear
+            : now.getFullYear();
+        const safeMonth = Number.isFinite(requestedMonth) && requestedMonth >= 1 && requestedMonth <= 12
+            ? requestedMonth
+            : (now.getMonth() + 1);
+
+        const startDate = isAllMonths
+            ? new Date(safeYear, 0, 1, 0, 0, 0, 0)
+            : new Date(safeYear, safeMonth - 1, 1, 0, 0, 0, 0);
+        const endDate = isAllMonths
+            ? new Date(safeYear, 11, 31, 23, 59, 59, 999)
+            : new Date(safeYear, safeMonth, 0, 23, 59, 59, 999);
+        const startDateText = startDate.toISOString().slice(0, 10);
+        const endDateText = endDate.toISOString().slice(0, 10);
+
         const where = {};
         if(Number.isFinite(customerId) && customerId > 0){
             where.customer_id = customerId;
         }
+        where[Op.or] = [
+            { entry_date: { [Op.between]: [startDateText, endDateText] } },
+            {
+                entry_date: { [Op.is]: null },
+                createdAt: { [Op.between]: [startDate, endDate] }
+            }
+        ];
         const consumables = await RentalMachineConsumable.findAll({
             where,
             include: [
@@ -494,6 +522,9 @@ exports.rentalConsumablesMachineCustomerReport = async (req,res)=>{
 
         res.json({
             customer_id: Number.isFinite(customerId) && customerId > 0 ? customerId : null,
+            year: safeYear,
+            month: isAllMonths ? "all" : safeMonth,
+            period: isAllMonths ? "year" : "month",
             total: rows.length,
             rows
         });
