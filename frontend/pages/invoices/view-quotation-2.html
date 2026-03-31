@@ -160,19 +160,9 @@ const INPUT_FONT_FAMILY = "Calibri";
 let sign1Enabled = false;
 let sign1Image = null;
 let sign1LoadFailedNotified = false;
-let signVEnabled = false;
-let signVImage = null;
-let signVLoadFailedNotified = false;
 let seal1Enabled = false;
 let seal1Image = null;
 let seal1LoadFailedNotified = false;
-let sealVEnabled = false;
-let sealVImage = null;
-let sealVLoadFailedNotified = false;
-let logoWithNameEnabled = false;
-let logoWithNameImage = null;
-let logoWithNameDataUrl = "";
-const LOGO_STORAGE_KEY = "invoice_logo_with_name_data_url";
 const LAYOUT_STEP = 4;
 const layoutState = {
     customerName: { x: 0, y: 0, font: 25, fontFamily: INPUT_FONT_FAMILY, fontWeight: "normal" },
@@ -283,28 +273,6 @@ async function ensureSign1Image(){
     }
 }
 
-async function ensureSignVImage(){
-    if(signVImage) return signVImage;
-    try{
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${BASE_URL}/invoices/signv-image`, {
-            headers: { "Authorization": `Bearer ${token}` }
-        });
-        if(!res.ok){
-            signVImage = null;
-            return null;
-        }
-        const blob = await res.blob();
-        const objectUrl = URL.createObjectURL(blob);
-        signVImage = await loadImage(objectUrl);
-        URL.revokeObjectURL(objectUrl);
-        return signVImage;
-    }catch(_err){
-        signVImage = null;
-        return null;
-    }
-}
-
 async function ensureSeal1Image(){
     if(seal1Image) return seal1Image;
     try{
@@ -323,40 +291,6 @@ async function ensureSeal1Image(){
         return seal1Image;
     }catch(_err){
         seal1Image = null;
-        return null;
-    }
-}
-
-async function ensureSealVImage(){
-    if(sealVImage) return sealVImage;
-    try{
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${BASE_URL}/invoices/sealv-image`, {
-            headers: { "Authorization": `Bearer ${token}` }
-        });
-        if(!res.ok){
-            sealVImage = null;
-            return null;
-        }
-        const blob = await res.blob();
-        const objectUrl = URL.createObjectURL(blob);
-        sealVImage = await loadImage(objectUrl);
-        URL.revokeObjectURL(objectUrl);
-        return sealVImage;
-    }catch(_err){
-        sealVImage = null;
-        return null;
-    }
-}
-
-async function ensureLogoWithNameImage(){
-    if(logoWithNameImage) return logoWithNameImage;
-    if(!logoWithNameDataUrl) return null;
-    try{
-        logoWithNameImage = await loadImage(logoWithNameDataUrl);
-        return logoWithNameImage;
-    }catch(_err){
-        logoWithNameImage = null;
         return null;
     }
 }
@@ -971,23 +905,6 @@ function initSignControl(){
     });
 }
 
-function initSignVControl(){
-    const signVChk = document.getElementById("signVChk");
-    if(!signVChk) return;
-    const allowed = hasMappedFeature("sign_v");
-    signVChk.checked = false;
-    signVEnabled = false;
-    signVChk.disabled = !allowed;
-    if(!allowed) return;
-    signVChk.addEventListener("change", async () => {
-        signVEnabled = !!signVChk.checked;
-        if(signVEnabled){
-            signVLoadFailedNotified = false;
-        }
-        await refreshPreviewFromLatest();
-    });
-}
-
 function initSealControl(){
     const sealChk = document.getElementById("seal1Chk");
     if(!sealChk) return;
@@ -1001,64 +918,6 @@ function initSealControl(){
         if(seal1Enabled){
             seal1LoadFailedNotified = false;
         }
-        await refreshPreviewFromLatest();
-    });
-}
-
-function initSealVControl(){
-    const sealVChk = document.getElementById("sealVChk");
-    if(!sealVChk) return;
-    const allowed = hasMappedFeature("seal_v");
-    sealVChk.checked = false;
-    sealVEnabled = false;
-    sealVChk.disabled = !allowed;
-    if(!allowed) return;
-    sealVChk.addEventListener("change", async () => {
-        sealVEnabled = !!sealVChk.checked;
-        if(sealVEnabled){
-            sealVLoadFailedNotified = false;
-        }
-        await refreshPreviewFromLatest();
-    });
-}
-
-function initLogoWithNameControl(){
-    const logoChk = document.getElementById("logoWithNameChk");
-    const fileInput = document.getElementById("logoFileInput");
-    const browseBtn = document.getElementById("logoBrowseBtn");
-    if(!logoChk || !fileInput || !browseBtn) return;
-    const allowed = hasMappedFeature("logo");
-
-    logoWithNameDataUrl = String(localStorage.getItem(LOGO_STORAGE_KEY) || "");
-    logoWithNameEnabled = !!logoWithNameDataUrl;
-    logoChk.checked = logoWithNameEnabled;
-    logoWithNameImage = null;
-    logoChk.disabled = !allowed;
-    browseBtn.disabled = !allowed;
-    if(!allowed){
-        logoWithNameEnabled = false;
-        logoChk.checked = false;
-        return;
-    }
-
-    browseBtn.addEventListener("click", () => fileInput.click());
-    fileInput.addEventListener("change", async () => {
-        const file = fileInput.files && fileInput.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = async () => {
-            logoWithNameDataUrl = String(reader.result || "");
-            localStorage.setItem(LOGO_STORAGE_KEY, logoWithNameDataUrl);
-            logoWithNameImage = null;
-            logoWithNameEnabled = true;
-            logoChk.checked = true;
-            await refreshPreviewFromLatest();
-        };
-        reader.readAsDataURL(file);
-    });
-
-    logoChk.addEventListener("change", async () => {
-        logoWithNameEnabled = !!logoChk.checked;
         await refreshPreviewFromLatest();
     });
 }
