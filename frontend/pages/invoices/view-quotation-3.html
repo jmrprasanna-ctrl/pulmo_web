@@ -58,7 +58,12 @@
         </div>
     </div>
     <div class="invoice-layout-controls" style="margin: 0 0 12px; padding: 10px 12px; background: rgba(255, 255, 255, 0.86); border: 1px solid #d6e3f2; border-radius: 14px; display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; overflow-x: auto;">
-        <label for="layoutTargetSelect" style="margin:0;font-weight:600;color:#1d3655;">Render Input</label>
+        <label for="renderInputToggle" style="margin:0;font-weight:600;color:#1d3655;">Render Input</label>
+        <div id="renderInputDropdown" style="position:relative;min-width:220px;">
+            <button type="button" class="btn btn-secondary" id="renderInputToggle" style="margin-top:0;width:100%;text-align:left;">Render Inputs</button>
+            <div id="renderInputChecklist" style="display:none;position:fixed;z-index:9999;min-width:300px;max-width:360px;max-height:260px;overflow:auto;background:#fff;border:1px solid #d6e3f2;border-radius:10px;padding:8px;box-shadow:0 10px 25px rgba(0,0,0,.12);"></div>
+        </div>
+        <label for="layoutTargetSelect" style="margin:0;font-weight:600;color:#1d3655;">Edit Input</label>
         <select id="layoutTargetSelect" style="min-width:180px;">
             <option value="customerName">Customer Name</option>
             <option value="customerAddress">Address</option>
@@ -1298,6 +1303,146 @@ function syncLayoutEditorSelects(){
     previewSelect.value = getLayoutVisible(selectedLayoutTarget) ? "true" : "false";
 }
 
+function updateRenderInputToggleText(){
+    const toggle = document.getElementById("renderInputToggle");
+    const targetSelect = document.getElementById("layoutTargetSelect");
+    if(!toggle || !targetSelect) return;
+    const total = targetSelect.options.length;
+    let visibleCount = 0;
+    Array.from(targetSelect.options).forEach((opt) => {
+        if(getLayoutVisible(String(opt.value || ""))){
+            visibleCount += 1;
+        }
+    });
+    toggle.textContent = `Render Inputs (${visibleCount}/${total})`;
+}
+
+function syncRenderInputChecklist(){
+    const panel = document.getElementById("renderInputChecklist");
+    if(!panel) return;
+    panel.querySelectorAll("input[type='checkbox'][data-layout-key]").forEach((input) => {
+        const key = String(input.getAttribute("data-layout-key") || "").trim();
+        input.checked = getLayoutVisible(key);
+    });
+    updateRenderInputToggleText();
+}
+
+function initRenderInputChecklist(){
+    const dropdown = document.getElementById("renderInputDropdown");
+    const toggle = document.getElementById("renderInputToggle");
+    const panel = document.getElementById("renderInputChecklist");
+    const targetSelect = document.getElementById("layoutTargetSelect");
+    if(!dropdown || !toggle || !panel || !targetSelect) return;
+
+    const options = Array.from(targetSelect.options).map((opt) => ({
+        key: String(opt.value || "").trim(),
+        label: String(opt.textContent || "").trim()
+    }));
+    let panelOpen = false;
+
+    const placePanel = () => {
+        const rect = toggle.getBoundingClientRect();
+        const top = rect.bottom + 6;
+        let left = rect.left;
+        const maxLeft = window.innerWidth - 280;
+        if(left > maxLeft){
+            left = Math.max(8, maxLeft);
+        }
+        panel.style.top = `${Math.max(8, top)}px`;
+        panel.style.left = `${Math.max(8, left)}px`;
+    };
+
+    panel.innerHTML = "";
+    options.forEach((item) => {
+        if(!item.key) return;
+        const row = document.createElement("label");
+        row.style.display = "flex";
+        row.style.alignItems = "center";
+        row.style.justifyContent = "flex-start";
+        row.style.gap = "8px";
+        row.style.padding = "4px 2px";
+        row.style.cursor = "pointer";
+        row.style.whiteSpace = "nowrap";
+
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.setAttribute("data-layout-key", item.key);
+        input.style.width = "16px";
+        input.style.minWidth = "16px";
+        input.style.maxWidth = "16px";
+        input.style.height = "16px";
+        input.style.margin = "0";
+        input.style.padding = "0";
+        input.style.appearance = "auto";
+        input.style.webkitAppearance = "checkbox";
+        input.style.accentColor = "#0f6abf";
+        input.style.flex = "0 0 16px";
+        input.checked = getLayoutVisible(item.key);
+        input.addEventListener("change", async () => {
+            getLayoutConfig(item.key).visible = !!input.checked;
+            if(!input.checked && selectedLayoutTarget === item.key){
+                const fallback = options.find((o) => getLayoutVisible(o.key));
+                if(fallback){
+                    selectedLayoutTarget = fallback.key;
+                    targetSelect.value = fallback.key;
+                    syncLayoutEditorSelects();
+                    toggleQut3ItemEditControls();
+                }
+            }
+            syncRenderInputChecklist();
+            await savePersistedQut3RenderSettings();
+            await refreshPreviewFromLatest();
+        });
+
+        const text = document.createElement("span");
+        text.textContent = item.label;
+        text.style.fontWeight = "500";
+        text.style.whiteSpace = "normal";
+        text.style.lineHeight = "1.2";
+        text.style.wordBreak = "break-word";
+        text.addEventListener("click", () => {
+            selectedLayoutTarget = item.key;
+            targetSelect.value = item.key;
+            syncLayoutEditorSelects();
+            toggleQut3ItemEditControls();
+        });
+
+        row.appendChild(input);
+        row.appendChild(text);
+        panel.appendChild(row);
+    });
+
+    toggle.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        panelOpen = !panelOpen;
+        if(panelOpen){
+            placePanel();
+            panel.style.display = "block";
+        }else{
+            panel.style.display = "none";
+        }
+    });
+
+    document.addEventListener("click", (ev) => {
+        if(!dropdown.contains(ev.target)){
+            panel.style.display = "none";
+            panelOpen = false;
+        }
+    });
+    window.addEventListener("resize", () => {
+        if(panelOpen){
+            placePanel();
+        }
+    });
+    window.addEventListener("scroll", () => {
+        if(panelOpen){
+            placePanel();
+        }
+    }, true);
+
+    syncRenderInputChecklist();
+}
+
 function getCurrentInvoiceKey(){
     const invoiceId = Number(new URLSearchParams(window.location.search).get("id") || 0);
     if(Number.isFinite(invoiceId) && invoiceId > 0){
@@ -1686,11 +1831,13 @@ function initLayoutEditor(){
     applyPersistedQut3RenderVisibility();
     applyPersistedQut3RenderOverrides();
     syncLayoutEditorSelects();
+    syncRenderInputChecklist();
     toggleQut3ItemEditControls();
 
     targetSelect.addEventListener("change", () => {
         selectedLayoutTarget = targetSelect.value || "customerName";
         syncLayoutEditorSelects();
+        syncRenderInputChecklist();
         toggleQut3ItemEditControls();
     });
 
@@ -1719,6 +1866,7 @@ function initLayoutEditor(){
 
     previewSelect.addEventListener("change", async () => {
         getLayoutConfig(selectedLayoutTarget).visible = previewSelect.value !== "false";
+        syncRenderInputChecklist();
         await savePersistedQut3RenderSettings();
         await refreshPreviewFromLatest();
     });
@@ -1846,6 +1994,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         initSealControl();
         initSealVControl();
         initLogoWithNameControl();
+        initRenderInputChecklist();
         initLayoutEditor();
     }
     renderInvoice();
