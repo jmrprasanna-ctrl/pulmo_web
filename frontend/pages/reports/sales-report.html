@@ -604,7 +604,9 @@ async function loadReportExpenses(){
     try{
         const year = String(document.getElementById("reportExpenseYear")?.value || "").trim();
         const month = String(document.getElementById("reportExpenseMonth")?.value || "").trim();
-        const baseDate = (year && month) ? `${year}-${String(month).padStart(2, "0")}-01` : "";
+        const baseDate = (year && month && month !== "all")
+            ? `${year}-${String(month).padStart(2, "0")}-01`
+            : (year ? `${year}-01-01` : "");
         const query = `?date=${encodeURIComponent(baseDate)}&expenseYear=${encodeURIComponent(year)}&expenseMonth=${encodeURIComponent(month)}`;
         const data = await request(`/reports/finance-overview${query}`,"GET");
         const tbody = document.querySelector("#reportExpenseTable tbody");
@@ -845,9 +847,10 @@ function populateReportExpenseYearOptions(){
 function populateReportExpenseMonthOptions(){
     const monthEl = document.getElementById("reportExpenseMonth");
     if(!monthEl) return;
-    monthEl.innerHTML = REPORT_MONTH_NAMES
-        .map((name, i) => `<option value="${i + 1}">${name}</option>`)
-        .join("");
+    monthEl.innerHTML = [
+        `<option value="all">All Months (Full Year)</option>`,
+        ...REPORT_MONTH_NAMES.map((name, i) => `<option value="${i + 1}">${name}</option>`)
+    ].join("");
 }
 
 function populateSalesMonthOptions(){

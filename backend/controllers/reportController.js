@@ -832,10 +832,14 @@ exports.pendingInvoicesByYear = async (req, res) => {
 exports.financeOverview = async (req,res)=>{
     try{
         const rawExpenseYear = Number(req.query.expenseYear || 0);
-        const rawExpenseMonth = Number(req.query.expenseMonth || 0);
+        const rawExpenseMonthParam = String(req.query.expenseMonth || "").trim().toLowerCase();
+        const rawExpenseMonth = Number(rawExpenseMonthParam || 0);
+        const hasValidExpenseYear = Number.isFinite(rawExpenseYear) && rawExpenseYear >= 2000 && rawExpenseYear <= 9999;
+        const hasValidExpenseMonth = Number.isFinite(rawExpenseMonth) && rawExpenseMonth >= 1 && rawExpenseMonth <= 12;
+        const isAllExpenseMonths = rawExpenseMonthParam === "all";
         let baseDateForPeriods = req.query.date;
-        if(Number.isFinite(rawExpenseYear) && rawExpenseYear >= 2000 && rawExpenseYear <= 9999){
-            const m = Number.isFinite(rawExpenseMonth) && rawExpenseMonth >= 1 && rawExpenseMonth <= 12
+        if(hasValidExpenseYear){
+            const m = hasValidExpenseMonth
                 ? rawExpenseMonth
                 : (new Date().getMonth() + 1);
             baseDateForPeriods = `${rawExpenseYear}-${String(m).padStart(2, "0")}-01`;
@@ -862,8 +866,18 @@ exports.financeOverview = async (req,res)=>{
             };
         }
 
+        const expenseRange = (hasValidExpenseYear && isAllExpenseMonths)
+            ? {
+                start: `${rawExpenseYear}-01-01`,
+                end: `${rawExpenseYear}-12-31`
+            }
+            : {
+                start: month.start,
+                end: month.end
+            };
+
         const monthExpenseRowsRaw = await Expense.findAll({
-            where: { date: { [Op.between]: [month.start, month.end] } },
+            where: { date: { [Op.between]: [expenseRange.start, expenseRange.end] } },
             order: [["date", "DESC"], ["id", "DESC"]],
             attributes: ["id", "title", "customer", "category", "amount", "date"]
         });
