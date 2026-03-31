@@ -282,7 +282,8 @@ exports.lowStockReport = async (req,res)=>{
         const min = Math.max(1, Number(req.query.min) || 2);
         const vendorId = Number(req.query.vendor_id);
         const where = {
-            count: { [Op.gt]: 0, [Op.lt]: min }
+            // Show all products strictly below selected low-stock level, including zero/negative balances.
+            count: { [Op.lt]: min }
         };
         if(Number.isFinite(vendorId) && vendorId > 0){
             where.vendor_id = vendorId;
