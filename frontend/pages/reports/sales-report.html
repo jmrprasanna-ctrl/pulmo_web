@@ -387,14 +387,18 @@ async function loadTechnicianReport(){
         const techEl = document.getElementById("techTechnician");
         const selectedTechnician = String(techEl?.value || "").trim();
         let year = Number(document.getElementById("techYear")?.value || 0);
-        let month = Number(document.getElementById("techMonth")?.value || 0);
+        const monthRaw = String(document.getElementById("techMonth")?.value || "").trim().toLowerCase();
+        let monthParam = monthRaw || String(new Date().getMonth() + 1);
         if(!Number.isFinite(year) || year <= 0){
             year = new Date().getFullYear();
         }
-        if(!Number.isFinite(month) || month <= 0){
-            month = new Date().getMonth() + 1;
+        if(monthParam !== "all"){
+            const monthNum = Number(monthParam);
+            if(!Number.isFinite(monthNum) || monthNum <= 0){
+                monthParam = String(new Date().getMonth() + 1);
+            }
         }
-        const query = `year=${year}&month=${month}&technician=${encodeURIComponent(selectedTechnician)}`;
+        const query = `year=${year}&month=${encodeURIComponent(monthParam)}&technician=${encodeURIComponent(selectedTechnician)}`;
         const data = await request(`/reports/technician-invoices-monthly?${query}`,"GET");
 
         if(techEl){
@@ -652,9 +656,10 @@ function populateTechYearOptions(){
 function populateTechMonthOptions(){
     const monthEl = document.getElementById("techMonth");
     if(!monthEl) return;
-    monthEl.innerHTML = REPORT_MONTH_NAMES
-        .map((name, i) => `<option value="${i + 1}">${name}</option>`)
-        .join("");
+    monthEl.innerHTML = [
+        `<option value="all">All Months (Full Year)</option>`,
+        ...REPORT_MONTH_NAMES.map((name, i) => `<option value="${i + 1}">${name}</option>`)
+    ].join("");
 }
 
 function toggleSalesPeriodSelectors(){
@@ -692,7 +697,7 @@ populateTechMonthOptions();
 document.getElementById("salesYearSelect").value = String(new Date().getFullYear());
 document.getElementById("salesMonthSelect").value = String(new Date().getMonth() + 1).padStart(2,"0");
 document.getElementById("techYear").value = String(new Date().getFullYear());
-document.getElementById("techMonth").value = String(new Date().getMonth() + 1);
+document.getElementById("techMonth").value = "all";
 toggleSalesPeriodSelectors();
 syncSalesDateFromSelectors();
 

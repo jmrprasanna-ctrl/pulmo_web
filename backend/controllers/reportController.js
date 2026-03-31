@@ -160,12 +160,18 @@ exports.technicianInvoicesMonthlyReport = async (req,res)=>{
     try{
         const now = new Date();
         const year = Number(req.query.year) || now.getFullYear();
+        const monthToken = String(req.query.month || "").trim().toLowerCase();
+        const isFullYear = monthToken === "all" || monthToken === "0";
         const month = Number(req.query.month) || (now.getMonth() + 1);
         const safeMonth = Math.min(Math.max(month, 1), 12);
         const technicianFilterRaw = String(req.query.technician || "").trim();
 
-        const start = new Date(year, safeMonth - 1, 1, 0, 0, 0, 0);
-        const end = new Date(year, safeMonth, 0, 23, 59, 59, 999);
+        const start = isFullYear
+            ? new Date(year, 0, 1, 0, 0, 0, 0)
+            : new Date(year, safeMonth - 1, 1, 0, 0, 0, 0);
+        const end = isFullYear
+            ? new Date(year, 11, 31, 23, 59, 59, 999)
+            : new Date(year, safeMonth, 0, 23, 59, 59, 999);
 
         const baseWhere = {
             invoice_date: { [Op.between]: [start, end] },
@@ -257,7 +263,8 @@ exports.technicianInvoicesMonthlyReport = async (req,res)=>{
 
         res.json({
             year,
-            month: safeMonth,
+            month: isFullYear ? "all" : safeMonth,
+            period: isFullYear ? "year" : "month",
             technician: technicianFilterRaw || "",
             technicians,
             start,
