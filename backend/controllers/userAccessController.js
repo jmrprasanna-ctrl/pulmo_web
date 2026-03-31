@@ -1105,6 +1105,10 @@ async function getPreferenceAvailability(databaseName, userId) {
         ALTER TABLE ui_settings
         ADD COLUMN IF NOT EXISTS quotation3_template_pdf_path VARCHAR(500);
       `);
+      await db.query(`ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS sign_q2_path VARCHAR(500);`);
+      await db.query(`ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS seal_q2_path VARCHAR(500);`);
+      await db.query(`ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS sign_q3_path VARCHAR(500);`);
+      await db.query(`ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS seal_q3_path VARCHAR(500);`);
     });
     ensuredUiSettingsDbSet.add(targetDb);
   }
@@ -1122,6 +1126,10 @@ async function getPreferenceAvailability(databaseName, userId) {
         sign_v_path VARCHAR(500),
         seal_c_path VARCHAR(500),
         seal_v_path VARCHAR(500),
+        sign_q2_path VARCHAR(500),
+        seal_q2_path VARCHAR(500),
+        sign_q3_path VARCHAR(500),
+        seal_q3_path VARCHAR(500),
         primary_color VARCHAR(24),
         background_color VARCHAR(24),
         button_color VARCHAR(24),
@@ -1171,6 +1179,10 @@ async function getPreferenceAvailability(databaseName, userId) {
   const signVPath = resolveFile(row?.sign_v_path, globalRow?.sign_v_path);
   const sealCPath = resolveFile(row?.seal_c_path, globalRow?.seal_c_path);
   const sealVPath = resolveFile(row?.seal_v_path, globalRow?.seal_v_path);
+  const signQ2Path = resolveFile(row?.sign_q2_path, globalRow?.sign_q2_path);
+  const sealQ2Path = resolveFile(row?.seal_q2_path, globalRow?.seal_q2_path);
+  const signQ3Path = resolveFile(row?.sign_q3_path, globalRow?.sign_q3_path);
+  const sealQ3Path = resolveFile(row?.seal_q3_path, globalRow?.seal_q3_path);
   const themeMode = String(row?.mode_theme || globalRow?.mode_theme || "").trim();
 
   return {
@@ -1183,10 +1195,10 @@ async function getPreferenceAvailability(databaseName, userId) {
     sign_v: Boolean(signVPath),
     seal_c: Boolean(sealCPath),
     seal_v: Boolean(sealVPath),
-    sign_q2: Boolean(signCPath),
-    seal_q2: Boolean(sealCPath),
-    sign_q3: Boolean(signCPath),
-    seal_q3: Boolean(sealCPath),
+    sign_q2: Boolean(signQ2Path),
+    seal_q2: Boolean(sealQ2Path),
+    sign_q3: Boolean(signQ3Path),
+    seal_q3: Boolean(sealQ3Path),
     theme: Boolean(themeMode),
   };
 }

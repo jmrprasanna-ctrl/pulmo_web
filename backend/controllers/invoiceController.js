@@ -255,6 +255,10 @@ async function ensureUserPreferenceTableForCurrentDb() {
             sign_v_path VARCHAR(500),
             seal_c_path VARCHAR(500),
             seal_v_path VARCHAR(500),
+            sign_q2_path VARCHAR(500),
+            seal_q2_path VARCHAR(500),
+            sign_q3_path VARCHAR(500),
+            seal_q3_path VARCHAR(500),
             primary_color VARCHAR(24),
             background_color VARCHAR(24),
             button_color VARCHAR(24),
@@ -263,6 +267,10 @@ async function ensureUserPreferenceTableForCurrentDb() {
             "updatedAt" TIMESTAMP DEFAULT NOW()
         );
     `);
+    await db.query(`ALTER TABLE ${USER_PREF_TABLE} ADD COLUMN IF NOT EXISTS sign_q2_path VARCHAR(500);`);
+    await db.query(`ALTER TABLE ${USER_PREF_TABLE} ADD COLUMN IF NOT EXISTS seal_q2_path VARCHAR(500);`);
+    await db.query(`ALTER TABLE ${USER_PREF_TABLE} ADD COLUMN IF NOT EXISTS sign_q3_path VARCHAR(500);`);
+    await db.query(`ALTER TABLE ${USER_PREF_TABLE} ADD COLUMN IF NOT EXISTS seal_q3_path VARCHAR(500);`);
     ensuredUserPrefTableByDb.add(activeDb);
 }
 
@@ -631,6 +639,86 @@ exports.getSeal1Image = async (req,res)=>{
     }catch(err){
         console.error(err);
         res.status(500).json({ message: err.message || "Failed to load Seal 1 image." });
+    }
+};
+
+exports.getSignQ2Image = async (req,res)=>{
+    try{
+        const signPath = await resolveImagePath(
+            req,
+            "sign_q2_path",
+            "INVOICE_SIGNQ2_IMAGE",
+            path.resolve(__dirname, "../../frontend/assets/images/pulmo-sign-1.png"),
+            path.resolve(__dirname, "../../frontend/assets/images/pulmo-sign-1.png")
+        );
+        if(!fs.existsSync(signPath)){
+            return res.status(404).json({ message: `Sign Q2 image not found at ${signPath}` });
+        }
+        res.setHeader("Content-Type", getImageMimeType(signPath));
+        res.sendFile(signPath);
+    }catch(err){
+        console.error(err);
+        res.status(500).json({ message: err.message || "Failed to load Sign Q2 image." });
+    }
+};
+
+exports.getSealQ2Image = async (req,res)=>{
+    try{
+        const sealPath = await resolveImagePath(
+            req,
+            "seal_q2_path",
+            "INVOICE_SEALQ2_IMAGE",
+            path.resolve(__dirname, "../../frontend/assets/images/pulmo-seal-1.png"),
+            path.resolve(__dirname, "../../frontend/assets/images/pulmo-seal-1.png")
+        );
+        if(!fs.existsSync(sealPath)){
+            return res.status(404).json({ message: `Seal Q2 image not found at ${sealPath}` });
+        }
+        res.setHeader("Content-Type", getImageMimeType(sealPath));
+        res.sendFile(sealPath);
+    }catch(err){
+        console.error(err);
+        res.status(500).json({ message: err.message || "Failed to load Seal Q2 image." });
+    }
+};
+
+exports.getSignQ3Image = async (req,res)=>{
+    try{
+        const signPath = await resolveImagePath(
+            req,
+            "sign_q3_path",
+            "INVOICE_SIGNQ3_IMAGE",
+            path.resolve(__dirname, "../../frontend/assets/images/pulmo-sign-1.png"),
+            path.resolve(__dirname, "../../frontend/assets/images/pulmo-sign-1.png")
+        );
+        if(!fs.existsSync(signPath)){
+            return res.status(404).json({ message: `Sign Q3 image not found at ${signPath}` });
+        }
+        res.setHeader("Content-Type", getImageMimeType(signPath));
+        res.sendFile(signPath);
+    }catch(err){
+        console.error(err);
+        res.status(500).json({ message: err.message || "Failed to load Sign Q3 image." });
+    }
+};
+
+exports.getSealQ3Image = async (req,res)=>{
+    try{
+        const sealPath = await resolveImagePath(
+            req,
+            "seal_q3_path",
+            "INVOICE_SEALQ3_IMAGE",
+            path.resolve(__dirname, "../../frontend/assets/images/pulmo-seal-1.png"),
+            path.resolve(__dirname, "../../frontend/assets/images/pulmo-seal-1.png")
+        );
+        if(!fs.existsSync(sealPath)){
+            return res.status(404).json({ message: `Seal Q3 image not found at ${sealPath}` });
+        }
+        res.setHeader("Content-Type", getImageMimeType(sealPath));
+        res.sendFile(sealPath);
+    }catch(err){
+        console.error(err);
+        res.status(500).json({ message: err.message || "Failed to load Seal Q3 image." });
     }
 };
 

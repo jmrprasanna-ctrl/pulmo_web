@@ -155,6 +155,42 @@
             </div>
 
             <div class="preference-card">
+                <h3>SIGN Q2</h3>
+                <p>Upload SIGN Q2 image to linked system path (map preview like SIGN C).</p>
+                <input id="signQ2File" type="file" accept=".jpg,.jpeg,.bmp,.gif,.png">
+                <button class="btn btn-primary" type="button" onclick="uploadBrandImage('sign_q2')">Save SIGN Q2</button>
+                <div class="pref-status" id="signQ2Status">Current: -</div>
+                <div class="pref-status" id="signQ2MappedStatus">Mapped Users: -</div>
+            </div>
+
+            <div class="preference-card">
+                <h3>SEAL Q2</h3>
+                <p>Upload SEAL Q2 image to linked system path (map preview like SEAL C).</p>
+                <input id="sealQ2File" type="file" accept=".jpg,.jpeg,.bmp,.gif,.png">
+                <button class="btn btn-primary" type="button" onclick="uploadBrandImage('seal_q2')">Save SEAL Q2</button>
+                <div class="pref-status" id="sealQ2Status">Current: -</div>
+                <div class="pref-status" id="sealQ2MappedStatus">Mapped Users: -</div>
+            </div>
+
+            <div class="preference-card">
+                <h3>SIGN Q3</h3>
+                <p>Upload SIGN Q3 image to linked system path (map preview like SIGN C).</p>
+                <input id="signQ3File" type="file" accept=".jpg,.jpeg,.bmp,.gif,.png">
+                <button class="btn btn-primary" type="button" onclick="uploadBrandImage('sign_q3')">Save SIGN Q3</button>
+                <div class="pref-status" id="signQ3Status">Current: -</div>
+                <div class="pref-status" id="signQ3MappedStatus">Mapped Users: -</div>
+            </div>
+
+            <div class="preference-card">
+                <h3>SEAL Q3</h3>
+                <p>Upload SEAL Q3 image to linked system path (map preview like SEAL C).</p>
+                <input id="sealQ3File" type="file" accept=".jpg,.jpeg,.bmp,.gif,.png">
+                <button class="btn btn-primary" type="button" onclick="uploadBrandImage('seal_q3')">Save SEAL Q3</button>
+                <div class="pref-status" id="sealQ3Status">Current: -</div>
+                <div class="pref-status" id="sealQ3MappedStatus">Mapped Users: -</div>
+            </div>
+
+            <div class="preference-card">
                 <h3>Theme Settings</h3>
                 <p>Dashboard color, background color, button color and mode.</p>
 
@@ -213,6 +249,10 @@
             document.getElementById("signVStatus").textContent = `Current: ${pref.sign_v_file_name || "-"} | Path: ${pref.sign_v_path || "-"}`;
             document.getElementById("sealCStatus").textContent = `Current: ${pref.seal_c_file_name || "-"} | Path: ${pref.seal_c_path || "-"}`;
             document.getElementById("sealVStatus").textContent = `Current: ${pref.seal_v_file_name || "-"} | Path: ${pref.seal_v_path || "-"}`;
+            document.getElementById("signQ2Status").textContent = `Current: ${pref.sign_q2_file_name || "-"} | Path: ${pref.sign_q2_path || "-"}`;
+            document.getElementById("sealQ2Status").textContent = `Current: ${pref.seal_q2_file_name || "-"} | Path: ${pref.seal_q2_path || "-"}`;
+            document.getElementById("signQ3Status").textContent = `Current: ${pref.sign_q3_file_name || "-"} | Path: ${pref.sign_q3_path || "-"}`;
+            document.getElementById("sealQ3Status").textContent = `Current: ${pref.seal_q3_file_name || "-"} | Path: ${pref.seal_q3_path || "-"}`;
         }
 
         function setMappedStatusText(elementId, labels){
@@ -244,7 +284,11 @@
                 sign_c: [],
                 sign_v: [],
                 seal_c: [],
-                seal_v: []
+                seal_v: [],
+                sign_q2: [],
+                seal_q2: [],
+                sign_q3: [],
+                seal_q3: []
             };
 
             rows.forEach((entry) => {
@@ -272,6 +316,10 @@
             setMappedStatusText("signVMappedStatus", labelsByFeature.sign_v);
             setMappedStatusText("sealCMappedStatus", labelsByFeature.seal_c);
             setMappedStatusText("sealVMappedStatus", labelsByFeature.seal_v);
+            setMappedStatusText("signQ2MappedStatus", labelsByFeature.sign_q2);
+            setMappedStatusText("sealQ2MappedStatus", labelsByFeature.seal_q2);
+            setMappedStatusText("signQ3MappedStatus", labelsByFeature.sign_q3);
+            setMappedStatusText("sealQ3MappedStatus", labelsByFeature.seal_q3);
         }
 
         function getActiveDatabaseName(){
@@ -393,6 +441,10 @@
             if(imageType === "sign_c") return document.getElementById("signCFile");
             if(imageType === "sign_v") return document.getElementById("signVFile");
             if(imageType === "seal_c") return document.getElementById("sealCFile");
+            if(imageType === "sign_q2") return document.getElementById("signQ2File");
+            if(imageType === "seal_q2") return document.getElementById("sealQ2File");
+            if(imageType === "sign_q3") return document.getElementById("signQ3File");
+            if(imageType === "seal_q3") return document.getElementById("sealQ3File");
             return document.getElementById("sealVFile");
         }
 

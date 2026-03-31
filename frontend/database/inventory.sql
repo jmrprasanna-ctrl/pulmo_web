@@ -716,6 +716,10 @@ ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS sign_c_path VARCHAR(500);
 ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS sign_v_path VARCHAR(500);
 ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS seal_c_path VARCHAR(500);
 ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS seal_v_path VARCHAR(500);
+ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS sign_q2_path VARCHAR(500);
+ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS seal_q2_path VARCHAR(500);
+ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS sign_q3_path VARCHAR(500);
+ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS seal_q3_path VARCHAR(500);
 ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP DEFAULT NOW();
 ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP DEFAULT NOW();
 
@@ -760,6 +764,10 @@ CREATE TABLE IF NOT EXISTS user_preference_settings (
     sign_v_path VARCHAR(500),
     seal_c_path VARCHAR(500),
     seal_v_path VARCHAR(500),
+    sign_q2_path VARCHAR(500),
+    seal_q2_path VARCHAR(500),
+    sign_q3_path VARCHAR(500),
+    seal_q3_path VARCHAR(500),
     primary_color VARCHAR(24),
     background_color VARCHAR(24),
     button_color VARCHAR(24),
@@ -767,6 +775,10 @@ CREATE TABLE IF NOT EXISTS user_preference_settings (
     "createdAt" TIMESTAMP DEFAULT NOW(),
     "updatedAt" TIMESTAMP DEFAULT NOW()
 );
+ALTER TABLE user_preference_settings ADD COLUMN IF NOT EXISTS sign_q2_path VARCHAR(500);
+ALTER TABLE user_preference_settings ADD COLUMN IF NOT EXISTS seal_q2_path VARCHAR(500);
+ALTER TABLE user_preference_settings ADD COLUMN IF NOT EXISTS sign_q3_path VARCHAR(500);
+ALTER TABLE user_preference_settings ADD COLUMN IF NOT EXISTS seal_q3_path VARCHAR(500);
 
 CREATE TABLE IF NOT EXISTS user_quotation_render_settings (
     id SERIAL PRIMARY KEY,

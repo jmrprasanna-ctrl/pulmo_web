@@ -53,6 +53,30 @@ const BRAND_IMAGE_MAP = {
     defaultPath: path.resolve(__dirname, "../../frontend/assets/images/pulmo-seal-v.png"),
     fallbackPath: path.resolve(__dirname, "../../frontend/assets/images/pulmo-seal-1.png"),
   },
+  sign_q2: {
+    column: "sign_q2_path",
+    env: "INVOICE_SIGNQ2_IMAGE",
+    defaultPath: path.resolve(__dirname, "../../frontend/assets/images/pulmo-sign-1.png"),
+    fallbackPath: path.resolve(__dirname, "../../frontend/assets/images/pulmo-sign-1.png"),
+  },
+  seal_q2: {
+    column: "seal_q2_path",
+    env: "INVOICE_SEALQ2_IMAGE",
+    defaultPath: path.resolve(__dirname, "../../frontend/assets/images/pulmo-seal-1.png"),
+    fallbackPath: path.resolve(__dirname, "../../frontend/assets/images/pulmo-seal-1.png"),
+  },
+  sign_q3: {
+    column: "sign_q3_path",
+    env: "INVOICE_SIGNQ3_IMAGE",
+    defaultPath: path.resolve(__dirname, "../../frontend/assets/images/pulmo-sign-1.png"),
+    fallbackPath: path.resolve(__dirname, "../../frontend/assets/images/pulmo-sign-1.png"),
+  },
+  seal_q3: {
+    column: "seal_q3_path",
+    env: "INVOICE_SEALQ3_IMAGE",
+    defaultPath: path.resolve(__dirname, "../../frontend/assets/images/pulmo-seal-1.png"),
+    fallbackPath: path.resolve(__dirname, "../../frontend/assets/images/pulmo-seal-1.png"),
+  },
 };
 
 let preferenceSchemaEnsured = false;
@@ -63,6 +87,10 @@ async function ensurePreferenceSchema() {
     ALTER TABLE ui_settings
     ADD COLUMN IF NOT EXISTS quotation3_template_pdf_path VARCHAR(500);
   `);
+  await db.query(`ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS sign_q2_path VARCHAR(500);`);
+  await db.query(`ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS seal_q2_path VARCHAR(500);`);
+  await db.query(`ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS sign_q3_path VARCHAR(500);`);
+  await db.query(`ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS seal_q3_path VARCHAR(500);`);
   preferenceSchemaEnsured = true;
 }
 
@@ -80,6 +108,10 @@ async function ensureUserPreferenceTable() {
       sign_v_path VARCHAR(500),
       seal_c_path VARCHAR(500),
       seal_v_path VARCHAR(500),
+      sign_q2_path VARCHAR(500),
+      seal_q2_path VARCHAR(500),
+      sign_q3_path VARCHAR(500),
+      seal_q3_path VARCHAR(500),
       primary_color VARCHAR(24),
       background_color VARCHAR(24),
       button_color VARCHAR(24),
@@ -88,6 +120,10 @@ async function ensureUserPreferenceTable() {
       "updatedAt" TIMESTAMP DEFAULT NOW()
     );
   `);
+  await db.query(`ALTER TABLE ${USER_PREF_TABLE} ADD COLUMN IF NOT EXISTS sign_q2_path VARCHAR(500);`);
+  await db.query(`ALTER TABLE ${USER_PREF_TABLE} ADD COLUMN IF NOT EXISTS seal_q2_path VARCHAR(500);`);
+  await db.query(`ALTER TABLE ${USER_PREF_TABLE} ADD COLUMN IF NOT EXISTS sign_q3_path VARCHAR(500);`);
+  await db.query(`ALTER TABLE ${USER_PREF_TABLE} ADD COLUMN IF NOT EXISTS seal_q3_path VARCHAR(500);`);
 }
 
 async function getOrCreateSettings() {
@@ -242,6 +278,14 @@ exports.getPreferences = async (_req, res) => {
       seal_c_file_name: currentFileNameFromPath(readPath("seal_c_path")),
       seal_v_path: readPath("seal_v_path"),
       seal_v_file_name: currentFileNameFromPath(readPath("seal_v_path")),
+      sign_q2_path: readPath("sign_q2_path"),
+      sign_q2_file_name: currentFileNameFromPath(readPath("sign_q2_path")),
+      seal_q2_path: readPath("seal_q2_path"),
+      seal_q2_file_name: currentFileNameFromPath(readPath("seal_q2_path")),
+      sign_q3_path: readPath("sign_q3_path"),
+      sign_q3_file_name: currentFileNameFromPath(readPath("sign_q3_path")),
+      seal_q3_path: readPath("seal_q3_path"),
+      seal_q3_file_name: currentFileNameFromPath(readPath("seal_q3_path")),
       logo_url: "/api/preferences/logo-file",
       updated_at: row.updatedAt ? row.updatedAt.toISOString() : "",
     });

@@ -10,8 +10,12 @@ router.get("/quotation-template-pdf", authMiddleware, roleMiddleware(["admin","m
 router.get("/quotation-2-template-pdf", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.getQuotation2TemplatePdf);
 router.get("/quotation-3-template-pdf", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.getQuotation3TemplatePdf);
 router.get("/sign1-image", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.getSign1Image);
+router.get("/sign-q2-image", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.getSignQ2Image);
+router.get("/sign-q3-image", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.getSignQ3Image);
 router.get("/signv-image", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.getSignVImage);
 router.get("/seal1-image", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.getSeal1Image);
+router.get("/seal-q2-image", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.getSealQ2Image);
+router.get("/seal-q3-image", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.getSealQ3Image);
 router.get("/sealv-image", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.getSealVImage);
 router.get("/warranty-invoices", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.listWarrantyInvoices);
 router.get("/", authMiddleware, roleMiddleware(["admin","manager","user"]), invoiceController.listInvoices);

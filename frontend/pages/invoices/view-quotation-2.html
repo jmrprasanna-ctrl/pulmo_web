@@ -298,7 +298,7 @@ async function ensureSign1Image(){
     if(sign1Image) return sign1Image;
     try{
         const token = localStorage.getItem("token");
-        const res = await fetch(`${BASE_URL}/invoices/sign1-image`, {
+        const res = await fetch(`${BASE_URL}/invoices/sign-q2-image`, {
             headers: { "Authorization": `Bearer ${token}` }
         });
         if(!res.ok){
@@ -320,7 +320,7 @@ async function ensureSeal1Image(){
     if(seal1Image) return seal1Image;
     try{
         const token = localStorage.getItem("token");
-        const res = await fetch(`${BASE_URL}/invoices/seal1-image`, {
+        const res = await fetch(`${BASE_URL}/invoices/seal-q2-image`, {
             headers: { "Authorization": `Bearer ${token}` }
         });
         if(!res.ok){

@@ -827,6 +827,10 @@ async function ensureUserPreferenceSettingsSchema() {
         sign_v_path VARCHAR(500),
         seal_c_path VARCHAR(500),
         seal_v_path VARCHAR(500),
+        sign_q2_path VARCHAR(500),
+        seal_q2_path VARCHAR(500),
+        sign_q3_path VARCHAR(500),
+        seal_q3_path VARCHAR(500),
         primary_color VARCHAR(24),
         background_color VARCHAR(24),
         button_color VARCHAR(24),
@@ -835,6 +839,10 @@ async function ensureUserPreferenceSettingsSchema() {
         "updatedAt" TIMESTAMP DEFAULT NOW()
       );
     `);
+    await db.query(`ALTER TABLE user_preference_settings ADD COLUMN IF NOT EXISTS sign_q2_path VARCHAR(500);`);
+    await db.query(`ALTER TABLE user_preference_settings ADD COLUMN IF NOT EXISTS seal_q2_path VARCHAR(500);`);
+    await db.query(`ALTER TABLE user_preference_settings ADD COLUMN IF NOT EXISTS sign_q3_path VARCHAR(500);`);
+    await db.query(`ALTER TABLE user_preference_settings ADD COLUMN IF NOT EXISTS seal_q3_path VARCHAR(500);`);
   });
 }
 

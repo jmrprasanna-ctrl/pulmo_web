@@ -291,10 +291,15 @@ CREATE TABLE IF NOT EXISTS ui_settings (
     invoice_template_pdf_path VARCHAR(500),
     quotation_template_pdf_path VARCHAR(500),
     quotation2_template_pdf_path VARCHAR(500),
+    quotation3_template_pdf_path VARCHAR(500),
     sign_c_path VARCHAR(500),
     sign_v_path VARCHAR(500),
     seal_c_path VARCHAR(500),
     seal_v_path VARCHAR(500),
+    sign_q2_path VARCHAR(500),
+    seal_q2_path VARCHAR(500),
+    sign_q3_path VARCHAR(500),
+    seal_q3_path VARCHAR(500),
     createdAt TIMESTAMP DEFAULT NOW(),
     updatedAt TIMESTAMP DEFAULT NOW()
 );
