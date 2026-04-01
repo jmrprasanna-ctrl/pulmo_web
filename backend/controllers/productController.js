@@ -271,7 +271,7 @@ exports.deleteProduct = async (req,res)=>{
                 message: "Cannot delete product. Invoices are linked to this product."
             });
         }
-        // Remove stock history rows for this product so zero-quantity cleanup can proceed.
+                                                                                           
         await Stock.destroy({ where: { product_id: id } });
         await product.destroy();
         res.json({ message: "Product deleted successfully." });

@@ -1,4 +1,4 @@
-/* backend/services/stockAlertService.js */
+                                           
 import pool from '../config/database.js';
 import { sendEmail } from './emailService.js';
 
@@ -14,7 +14,7 @@ export const checkLowStockAndNotify = async () => {
             .map(p => `Product: ${p.description} | Remaining Stock: ${p.quantity}`)
             .join('\n');
 
-        // Send email to admin/manager
+                                      
         await sendEmail({
             to: process.env.ADMIN_EMAIL || 'admin@company.com',
             subject: 'Low Stock Alert',

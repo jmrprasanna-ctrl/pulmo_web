@@ -256,7 +256,7 @@ exports.technicianInvoicesMonthlyReport = async (req,res)=>{
                 total_invoice_amount: Number(g.total_invoice_amount.toFixed(2)),
                 allocated_amount: Number(g.allocated_amount.toFixed(2)),
                 average_percentage: Number((g.invoices_count ? (g.total_percentage / g.invoices_count) : 0).toFixed(2)),
-                // Backward-compatible alias for existing frontend consumers.
+                                                                             
                 total_amount: Number(g.allocated_amount.toFixed(2))
             }))
             .sort((a, b) => b.invoices_count - a.invoices_count);
@@ -282,7 +282,7 @@ exports.lowStockReport = async (req,res)=>{
         const min = Math.max(1, Number(req.query.min) || 2);
         const vendorId = Number(req.query.vendor_id);
         const where = {
-            // Show all products strictly below selected low-stock level, including zero/negative balances.
+                                                                                                           
             count: { [Op.lt]: min }
         };
         if(Number.isFinite(vendorId) && vendorId > 0){

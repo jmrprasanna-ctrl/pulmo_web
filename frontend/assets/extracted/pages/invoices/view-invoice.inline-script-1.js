@@ -23,7 +23,7 @@ async function loadInvMapFlags(){
     }
 }
 const OVERLAY = {
-    // Keep neutral mapping to preserve original-template alignment
+                                                                   
     shiftX: 0,
     shiftY: 0,
     fontScale: 1,
@@ -504,7 +504,7 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null, template
         const bg = await loadImage(bgUrl);
         ctx.drawImage(bg, 0, 0, W, H);
     }catch(_err){
-        // Fallback when template PDF cannot be loaded
+                                                      
         ctx.strokeStyle = "#111";
         ctx.lineWidth = 1;
         ctx.strokeRect(18, 18, W - 36, H - 36);
@@ -513,7 +513,7 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null, template
     const c = data.customer || {};
     const m = mapFactory();
 
-    // Customer block
+                     
     ctx.fillStyle = "#000";
     const normalFs = m.fs(POS.customer.fs);
     const rowFs = m.fs(POS.table.fs);
@@ -558,7 +558,7 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null, template
     }
     fitText(ctx, c.vat_number || "", m.x(POS.customer.x), m.y(POS.customer.vatY - 95), m.w(POS.customer.w), INPUT_FONT_SIZE, "normal", "Calibri");
 
-    // Invoice meta block
+                         
     if(getLayoutVisible("date")){
         fitText(ctx, asDate(data.invoice.invoice_date || data.invoice.createdAt), m.x(POS.meta.dateX + 205 + dateCfg.x), m.y(POS.meta.dateY - 105 + dateCfg.y), m.w(POS.meta.w), dateFont, dateWeight, dateFamily);
     }
@@ -572,7 +572,7 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null, template
         fitText(ctx, data.invoice.support_technician || "", m.x(POS.meta.noX + 205 + supportTechnicianCfg.x), m.y(POS.meta.supportY - 125 + supportTechnicianCfg.y), m.w(POS.meta.w), supportTechnicianFont, supportTechnicianWeight, supportTechnicianFamily);
     }
 
-    // Payment method block (Cash / Cheque / Credit)
+                                                    
     const selectedPaymentMethod = String(data.invoice.payment_method || "Cash").trim().toLowerCase();
     const paymentMethodCfg = getLayoutConfig("paymentMethod");
     const paymentMethodFont = getLayoutFont("paymentMethod", INPUT_FONT_SIZE);
@@ -603,7 +603,7 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null, template
         }
     });
 
-    // Count + Serial row
+                         
     const countCfg = getLayoutConfig("count");
     const countFontSize = getLayoutFont("count", INPUT_FONT_SIZE);
     const countFontFamily = getLayoutFontFamily("count", INPUT_FONT_FAMILY);
@@ -633,7 +633,7 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null, template
         );
     }
 
-    // Items table values
+                         
     const tableX = m.x(POS.table.x);
     const tableY = m.y(POS.table.y);
     const tableW = m.w(BASE_W - 70);
@@ -684,7 +684,7 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null, template
         y += rowH;
     });
 
-    // Total
+            
     ctx.font = `bold ${totalFs}px Arial`;
     const amountY = tableY + m.h(POS.total.yFromTable);
     const totalAmountCfg = getLayoutConfig("totalAmount");
@@ -701,7 +701,7 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null, template
         );
     }
 
-    // Amount in words
+                      
     const amountWordsCfg = getLayoutConfig("amountWords");
     if(getLayoutVisible("amountWords")){
         drawFixedText(
@@ -715,7 +715,7 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null, template
         );
     }
 
-    // Optional selectable address label block
+                                              
     if(selectedAddressKey && ADDRESS_TEXTS[selectedAddressKey] && getLayoutVisible(selectedAddressKey === "colombo" ? "addressColombo" : "addressV")){
         const blockPos = selectedAddressKey === "colombo"
             ? POS.addressBlockColombo
@@ -745,7 +745,7 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null, template
         );
     }
 
-    // Important notes
+                      
     const importantCfg = getLayoutConfig("important");
     if(getLayoutVisible("important")){
         const importantNotes = getImportantNotes(data.invoice);
@@ -785,7 +785,7 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null, template
         }
     }
 
-    // Optional signature image
+                               
     if(sign1Enabled && getLayoutVisible("signC")){
         const signImg = await ensureSign1Image();
         if(signImg){
@@ -803,7 +803,7 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null, template
         }
     }
 
-    // Optional V signature image
+                                 
     if(signVEnabled && getLayoutVisible("signV")){
         const signVImg = await ensureSignVImage();
         if(signVImg){
@@ -821,7 +821,7 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null, template
         }
     }
 
-    // Optional seal image
+                          
     if(seal1Enabled && getLayoutVisible("sealC")){
         const sealImg = await ensureSeal1Image();
         if(sealImg){
@@ -839,7 +839,7 @@ async function drawInvoice(data, mimeType="image/png", renderSize=null, template
         }
     }
 
-    // Optional seal V image
+                            
     if(sealVEnabled && getLayoutVisible("sealV")){
         const sealVImg = await ensureSealVImage();
         if(sealVImg){

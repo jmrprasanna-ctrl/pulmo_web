@@ -1,12 +1,12 @@
-/* backend/utils/profitCalculator.js */
+                                       
 import pool from '../config/database.js';
 
-/**
- * Calculate total sales, total expenses, and profit/loss
- */
+   
+                                                         
+   
 export const calculateProfitLoss = async (startDate, endDate) => {
     try {
-        // Total Sales
+                      
         const salesResult = await pool.query(
             `SELECT COALESCE(SUM(total),0) AS total_sales
              FROM invoices
@@ -15,7 +15,7 @@ export const calculateProfitLoss = async (startDate, endDate) => {
         );
         const totalSales = parseFloat(salesResult.rows[0].total_sales);
 
-        // Total Expenses
+                         
         const expenseResult = await pool.query(
             `SELECT COALESCE(SUM(amount),0) AS total_expenses
              FROM expenses
@@ -24,7 +24,7 @@ export const calculateProfitLoss = async (startDate, endDate) => {
         );
         const totalExpenses = parseFloat(expenseResult.rows[0].total_expenses);
 
-        // Profit / Loss
+                        
         const profit = totalSales - totalExpenses;
 
         return {
@@ -38,9 +38,9 @@ export const calculateProfitLoss = async (startDate, endDate) => {
     }
 };
 
-/**
- * Calculate monthly profit/loss for chart analytics
- */
+   
+                                                    
+   
 export const calculateMonthlyProfit = async (year) => {
     try {
         const monthlyData = [];

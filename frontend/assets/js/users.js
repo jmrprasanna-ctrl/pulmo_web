@@ -1,4 +1,4 @@
-/* frontend/js/users.js */
+                          
 import { getData, postData, deleteData } from './api.js';
 
 const loadUsers = async () => {

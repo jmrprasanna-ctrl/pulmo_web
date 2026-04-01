@@ -1,4 +1,4 @@
-/* frontend/js/products.js */
+                             
 import { getData, postData, putData, deleteData } from './api.js';
 
 const loadProducts = async () => {

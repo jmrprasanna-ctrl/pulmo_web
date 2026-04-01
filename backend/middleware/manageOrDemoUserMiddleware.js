@@ -4,7 +4,7 @@ module.exports = function manageOrDemoUserMiddleware(req, res, next) {
     return next();
   }
 
-  // Training users assigned to demo DB can perform manager-like CRUD.
+                                                                      
   const resolvedDb = String(req.databaseName || "").toLowerCase();
   const tokenDb = String(req.user?.database_name || "").toLowerCase();
   if (role === "user" && (resolvedDb === "demo" || tokenDb === "demo")) {

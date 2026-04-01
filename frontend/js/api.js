@@ -1,6 +1,6 @@
-/* ======================
-   CENTRAL API REQUEST
-   ====================== */
+                         
+                      
+                            
 function resolveBaseUrl(){
     const isHttpUrl = (value) => /^https?:\/\//i.test(String(value || "").trim());
     const normalizeApiBase = (value) => {
@@ -362,24 +362,24 @@ function setSidebarReadyState(isReady){
 }
 
 function setupSidebarAccessObserver(){
-    // Disabled: Mutation observer can cause render loops on some browsers.
-    // We enforce menu restrictions through explicit guard passes instead.
+                                                                           
+                                                                          
 }
 
 function applyFinanceNav(){
-    // Deprecated: sidebar now rendered strictly by access matrix in renderSidebarMenuByAccess().
+                                                                                                 
 }
 
 function applySupportNav(){
-    // Deprecated: sidebar now rendered strictly by access matrix in renderSidebarMenuByAccess().
+                                                                                                 
 }
 
 function applyAdminUsersNav(){
-    // Deprecated: sidebar now rendered strictly by access matrix in renderSidebarMenuByAccess().
+                                                                                                 
 }
 
 function applyStockNav(){
-    // Deprecated: sidebar now rendered strictly by access matrix in renderSidebarMenuByAccess().
+                                                                                                 
 }
 
 function applyAccessGuards(){
@@ -535,7 +535,7 @@ function applyUiSettingsToPage(settings){
     if(settings.footer_text){
         const footer = document.getElementById("app-global-footer");
         if(footer){
-            // Enforce one global footer text on all pages.
+                                                           
             footer.textContent = GLOBAL_FOOTER_TEXT;
         }
     }
@@ -736,8 +736,8 @@ async function loadUserAccessPermissions(){
         ]));
         if(typeof data?.has_access_config === "boolean"){
             let nextConfigState = data.has_access_config;
-            // For admin/manager, once a restricted config is known, keep it sticky across refreshes.
-            // This prevents accidental broad access when backend lookup is temporarily inconsistent.
+                                                                                                     
+                                                                                                     
             if((role === "admin" || role === "manager") && previousConfigState === true && nextConfigState === false){
                 nextConfigState = true;
             }
@@ -761,10 +761,10 @@ async function loadUserAccessPermissions(){
         if(data.database_name){
             localStorage.setItem("selectedDatabaseName", String(data.database_name));
         }else{
-            // keep previous selected DB to avoid accidental runtime DB drift on transient API failures
+                                                                                                       
         }
     }catch(_err){
-        // keep cached or current runtime permissions
+                                                     
     }
 }
 
@@ -960,9 +960,9 @@ async function request(endpoint, method="GET", data=null){
     return result;
 }
 
-/* ======================
-   LOGIN PAGE FUNCTIONS
-   ====================== */
+                         
+                       
+                            
 async function login(){
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value.trim();
@@ -974,7 +974,7 @@ async function login(){
     }
 
     try{
-        // Prevent permission cache from a previous session/user leaking into current session.
+                                                                                              
         localStorage.removeItem(USER_ALLOWED_CACHE_KEY);
         localStorage.removeItem(USER_ALLOWED_ACTIONS_CACHE_KEY);
         localStorage.removeItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY);

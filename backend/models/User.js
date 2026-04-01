@@ -8,12 +8,12 @@ const User = db.define("User", {
     department: { type: DataTypes.STRING },
     telephone: { type: DataTypes.STRING },
     email: { type: DataTypes.STRING, unique: true, allowNull: false },
-    // Use STRING to avoid ENUM migration issues on existing databases.
+                                                                       
     role: { type: DataTypes.STRING, defaultValue: "user" },
     is_super_user: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     password: { type: DataTypes.STRING, allowNull: false },
     password_plain: { type: DataTypes.STRING, allowNull: true, defaultValue: null },
-    // Allow existing rows to survive schema evolution when adding timestamps.
+                                                                              
     createdAt: { type: DataTypes.DATE, allowNull: true, defaultValue: DataTypes.NOW },
     updatedAt: { type: DataTypes.DATE, allowNull: true, defaultValue: DataTypes.NOW }
 },{tableName:"users",timestamps:true});

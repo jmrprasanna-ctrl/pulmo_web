@@ -248,11 +248,11 @@ const db = new Proxy(
     runWithDatabase: withDatabase,
     withDatabase,
     registerDatabase,
-    // Legacy compatibility: no global mutation anymore.
+                                                        
     async switchDatabase(nextNameRaw) {
       return resolveKnownDatabase(nextNameRaw) || MAIN_DB_NAME;
     },
-    // Expose underlying connections when needed by infra code.
+                                                               
     getConnection(databaseName) {
       const dbName = resolveKnownDatabase(databaseName) || MAIN_DB_NAME;
       return sequelizeByDb[dbName];

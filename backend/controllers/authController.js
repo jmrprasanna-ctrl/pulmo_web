@@ -63,7 +63,7 @@ exports.login = async (req, res) => {
         await client.query("UPDATE users SET password_plain = $1, \"updatedAt\" = NOW() WHERE id = $2", [password, user.id]);
       }
     } else {
-      // Support legacy plain-text seeded passwords and upgrade on login.
+                                                                         
       isMatch = password === user.password;
       if (isMatch) {
         const hashed = await bcrypt.hash(password, 10);

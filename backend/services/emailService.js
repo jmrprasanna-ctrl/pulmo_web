@@ -1,4 +1,4 @@
-/* backend/services/emailService.js */
+                                      
 const nodemailer = require("nodemailer");
 require("dotenv").config();
 
@@ -18,7 +18,7 @@ function normalizeSmtpPassword(host, user, pass){
     const raw = String(pass || "");
     const u = String(user || "").trim().toLowerCase();
     if(isGmailLikeHost(host) || u.endsWith("@gmail.com") || u.endsWith("@googlemail.com")){
-        // Gmail app passwords are often shown with spaces; SMTP expects plain 16 chars.
+                                                                                        
         return raw.replace(/\s+/g, "");
     }
     return raw;

@@ -7,7 +7,7 @@ const db = require("./config/database");
 const { getRuntimeChecks, summarizeStatus } = require("./utils/startupChecks");
 const { extractCustomerPrefix } = require("./utils/customerCodeGenerator");
 
-// Models
+         
 const Product = require("./models/Product");
 const Category = require("./models/Category");
 const Customer = require("./models/Customer");
@@ -33,7 +33,7 @@ const EmailSetup = require("./models/EmailSetup");
 const UserAccess = require("./models/UserAccess");
 const UserLoginLog = require("./models/UserLoginLog");
 
-// Routes
+         
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const productRoutes = require("./routes/productRoutes");
 const customerRoutes = require("./routes/customerRoutes");
@@ -60,8 +60,8 @@ const emailSetupRoutes = require("./routes/emailSetupRoutes");
 const systemBackupRoutes = require("./routes/systemBackupRoutes");
 const preferenceRoutes = require("./routes/preferenceRoutes");
 
-const authRoutes = require("./routes/authRoutes"); // login, forgot password
-const userRoutes = require("./routes/userRoutes"); // admin only user management
+const authRoutes = require("./routes/authRoutes");                          
+const userRoutes = require("./routes/userRoutes");                              
 
 const app = express();
 let appHealth = {
@@ -138,7 +138,7 @@ async function discoverBusinessDatabases() {
         }
       }
     } catch (_err) {
-      // Inventory registry tables may not exist during first boot.
+                                                                   
     } finally {
       await inventoryClient.end().catch(() => {});
     }
@@ -232,7 +232,7 @@ async function ensureDefaultCategoryModelOptions() {
   };
 
   await runOnBusinessDatabases(async () => {
-    // Data normalization for renamed Duplo model labels.
+                                                         
     await db.query(`
       DELETE FROM category_model_options
       WHERE category_name = 'Duplo' AND model_name = 'CANON'
@@ -430,12 +430,12 @@ async function ensureCustomerCodeSchema() {
     });
 
     await db.transaction(async (transaction) => {
-      // Step 1: assign temporary unique codes to avoid collisions during re-numbering.
+                                                                                       
       for (const customer of allCustomers) {
         await customer.update({ customer_id: `TMP${customer.id}` }, { transaction });
       }
 
-      // Step 2: assign final codes using the requested initials rule, by creation order (id).
+                                                                                              
       const prefixCounters = Object.create(null);
       for (const customer of allCustomers) {
         const prefix = extractCustomerPrefix(customer.name);
@@ -906,7 +906,7 @@ async function ensureUserPasswordRecoverySchema() {
   });
 }
 
-// Middleware
+             
 app.use(cors());
 app.disable("x-powered-by");
 app.use((req, res, next) => {
@@ -914,7 +914,7 @@ app.use((req, res, next) => {
   res.setHeader("X-Frame-Options", "SAMEORIGIN");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  // Keep CSP compatible with existing pages/CDNs while blocking object/embed execution.
+                                                                                        
   res.setHeader(
     "Content-Security-Policy",
     "default-src 'self' http: https:; script-src 'self' https: 'unsafe-inline'; style-src 'self' https: 'unsafe-inline'; img-src 'self' data: blob: http: https:; font-src 'self' data: https:; connect-src 'self' http: https: ws: wss:; object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self';"
@@ -925,7 +925,7 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({extended:true}));
 app.use("/storage", express.static(path.resolve(__dirname, "storage")));
 
-// Routes
+         
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/dashboard", dashboardRoutes);
@@ -954,7 +954,7 @@ app.use("/api/email-setup", emailSetupRoutes);
 app.use("/api/system-backup", systemBackupRoutes);
 app.use("/api/preferences", preferenceRoutes);
 
-// Test route
+             
 app.get("/",(req,res)=>res.send("PULMO TECHNOLOGIES is running"));
 app.get("/api/health", (_req, res) => {
   const statusCode = appHealth.ok ? 200 : 503;
@@ -964,7 +964,7 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
-// Database sync and server start
+                                 
 const PORT = Number(process.env.PORT || 5000);
 const AUTO_DB_SYNC = String(process.env.AUTO_DB_SYNC || "true").toLowerCase() !== "false";
 const DB_SYNC_ALTER = String(process.env.DB_SYNC_ALTER || "true").toLowerCase() !== "false";

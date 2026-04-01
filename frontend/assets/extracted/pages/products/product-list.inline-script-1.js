@@ -98,7 +98,7 @@ if(productSearchEl){
     productSearchEl.addEventListener("input", applyProductFilter);
 }
 
-// Export table as PDF
+                      
 function exportPDF(){
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ format: "a4" });

@@ -90,7 +90,7 @@ async function loadPhotocopierModels(){
             models = [];
         }
 
-        // Fallback: if category-model-options is empty, use existing product models.
+                                                                                     
         if(!models.length){
             const products = await request("/products", "GET");
             models = Array.from(new Set(

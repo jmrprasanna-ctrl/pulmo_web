@@ -1,6 +1,6 @@
-/* frontend/js/components.js */
+                               
 
-// Toggle sidebar on mobile
+                           
 const toggleSidebar = () => {
     const sidebar = document.querySelector('.sidebar');
     sidebar.classList.toggle('active');
@@ -8,7 +8,7 @@ const toggleSidebar = () => {
 
 window.toggleSidebar = toggleSidebar;
 
-// Logout button
+                
 const logout = () => {
     localStorage.removeItem('token');
     window.location.href = 'login.html';

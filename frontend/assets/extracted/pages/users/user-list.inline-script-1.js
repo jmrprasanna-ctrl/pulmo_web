@@ -187,7 +187,7 @@ function canShowAdminTool(path){
                 const fileNameMatch = disposition.match(/filename="([^"]+)"/i);
                 const fileName = (fileNameMatch && fileNameMatch[1]) ? fileNameMatch[1] : `inventory_backup_${Date.now()}.sql`;
 
-                // Prefer explicit Save As dialog on supported browsers (Chrome/Edge on localhost/https)
+                                                                                                        
                 if(window.showSaveFilePicker){
                     const handle = await window.showSaveFilePicker({
                         suggestedName: fileName,
@@ -204,7 +204,7 @@ function canShowAdminTool(path){
                     await writable.write(blob);
                     await writable.close();
                 }else{
-                    // Fallback: browser downloads to default downloads folder
+                                                                              
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement("a");
                     a.href = url;
@@ -217,7 +217,7 @@ function canShowAdminTool(path){
                 showMessageBox("Backup downloaded");
             }catch(err){
                 if(err && err.name === "AbortError"){
-                    return; // User canceled Save As dialog
+                    return;                                
                 }
                 alert(err.message || "Failed to create backup");
             }

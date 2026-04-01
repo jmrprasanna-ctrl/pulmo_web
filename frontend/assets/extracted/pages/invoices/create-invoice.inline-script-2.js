@@ -117,7 +117,7 @@ async function initSupportTechnicians(){
             select.appendChild(opt);
         });
     }catch(_err){
-        // optional default -if endpoint is unavailable for current role. Leave system only 
+                                                                                            
     }
 
     select.onchange = () => {
@@ -233,7 +233,7 @@ async function refreshInvoiceNoBySelectedDate(){
     }
 }
 
-// Fetch customers detail and invoice number
+                                            
 async function initInvoice(){
     try{
         const [customersData, rentalMachines, generalMachines] = await Promise.all([
@@ -271,7 +271,7 @@ async function initInvoice(){
     }
 }
 
-// Filling the Customer details
+                               
 async function fillCustomerDetails(){
     const custId = Number(document.getElementById("customer").value);
     if(!custId){
@@ -301,7 +301,7 @@ async function fillCustomerDetails(){
     }
 }
 
-// Add product row
+                  
 async function addProductRow(){
     try{
         const rowId = `row_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
@@ -362,7 +362,7 @@ async function searchProducts(query){
             return normalized;
         }
     }catch(_err){
-        // Fallback to 'client-side' filtering below value.
+                                                           
     }
 
     try{
@@ -599,7 +599,7 @@ function updateProductsTableTotal(){
     }
 }
 
-// Remove row
+             
 function removeRow(button){
     const row = button.closest(".invoice-product-row");
     if(row){
@@ -616,7 +616,7 @@ function clearAllFloatingProductResults(){
     document.querySelectorAll("body > .product-results").forEach((el) => el.remove());
 }
 
-// Save invoice & generate PDF
+                              
 document.getElementById("invoiceForm").addEventListener("submit", async function(e){
     e.preventDefault();
     const customerId = parseInt(document.getElementById("customer").value, 10);
@@ -653,7 +653,7 @@ document.getElementById("invoiceForm").addEventListener("submit", async function
     }
 
     try{
-        // Save invoice to pulmo backend
+                                        
         await request("/invoices","POST",{
             customer_id:customerId,
             invoice_no:invoiceNo,
@@ -707,7 +707,7 @@ document.getElementById("invoiceForm").addEventListener("submit", async function
                     return;
                 }
             }catch(_err){
-                // fall through to alert message print
+                                                      
             }
         }
         alert(msg);
@@ -722,7 +722,7 @@ async function generatePDF(invoiceNo, customerName, machineRef, items){
     const pageW = 210;
     const pageH = 297;
 
-    // Header
+             
     if(PULMO_LOGO_DATA_URL && PULMO_LOGO_DATA_URL.startsWith("data:image")){
         doc.addImage(PULMO_LOGO_DATA_URL, "JPEG", 15, 10, 60, 20);
     }
@@ -743,7 +743,7 @@ async function generatePDF(invoiceNo, customerName, machineRef, items){
     doc.text("ORIGINAL", 175, 66);
     doc.setTextColor(0, 0, 0);
 
-    // Customer block
+                     
     doc.setDrawColor(0);
     doc.rect(15, 62, 180, 40);
     doc.setFontSize(10);
@@ -767,7 +767,7 @@ async function generatePDF(invoiceNo, customerName, machineRef, items){
     doc.text(":", 145, 86);
     doc.text(machineRef || "", 148, 86);
 
-    // Payment method box
+                         
     doc.rect(125, 90, 70, 12);
     doc.text("Payment Method", 127, 94);
     doc.rect(125, 96, 23, 6);
@@ -777,12 +777,12 @@ async function generatePDF(invoiceNo, customerName, machineRef, items){
     doc.text("Cheque", 150, 100);
     doc.text("Credit", 173, 100);
 
-    // Table header
+                   
     const tableTop = 108;
     doc.rect(15, tableTop, 180, 120);
     doc.line(15, tableTop + 8, 195, tableTop + 8);
 
-    // Column lines
+                   
     const colX = [15, 30, 120, 135, 155, 170, 195];
     colX.forEach(x => doc.line(x, tableTop, x, tableTop + 120));
 
@@ -807,20 +807,20 @@ async function generatePDF(invoiceNo, customerName, machineRef, items){
         y += 6;
     });
 
-    // Amount in words + total
+                              
     doc.rect(15, 228, 180, 10);
     doc.text("AMOUNT IN WORD :", 18, 235);
     doc.text("TOTAL", 160, 235);
     const total = items.reduce((sum, i) => sum + (Number(i.gross) || 0), 0);
     doc.text(total.toFixed(2), 193, 235, { align: "right" });
 
-    // Important box
+                    
     doc.rect(15, 238, 180, 30);
     doc.text("IMPORTANT", 18, 244);
     doc.text("1", 18, 252);
     doc.text("2", 18, 260);
 
-    // Footer signature area
+                            
     doc.rect(15, 268, 180, 20);
     doc.text("For PULMO TECHNOLOGIES", 18, 274);
     doc.text("SEAL", 90, 274);
@@ -831,7 +831,7 @@ async function generatePDF(invoiceNo, customerName, machineRef, items){
     doc.save(`${invoiceNo}_${customerName}.pdf`);
 }
 
-// Initialize
+             
 const vatValueInput = document.getElementById("vatValue");
 if(vatValueInput){
     vatValueInput.addEventListener("input", () => {

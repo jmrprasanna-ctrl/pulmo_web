@@ -25,7 +25,7 @@ async function resolvePgTool(toolName, envOverrideName) {
   const exe = `${toolName}.exe`;
   const absoluteCandidates = [];
 
-  // Common PostgreSQL install directories on Windows.
+                                                      
   for (let version = 20; version >= 10; version -= 1) {
     absoluteCandidates.push(`C:\\Program Files\\PostgreSQL\\${version}\\bin\\${exe}`);
     absoluteCandidates.push(`C:\\Program Files (x86)\\PostgreSQL\\${version}\\bin\\${exe}`);
@@ -37,7 +37,7 @@ async function resolvePgTool(toolName, envOverrideName) {
     }
   }
 
-  // Fallback to PATH resolution.
+                                 
   return exe;
 }
 
@@ -229,9 +229,9 @@ exports.restoreBackup = async (req, res) => {
     const args = [...buildDbArgs({ host, port, user, database }), "-v", "ON_ERROR_STOP=1", "-f", tempFile];
     const env = { ...process.env, PGPASSWORD: password };
 
-    // Cross-version compatibility:
-    // dumps created by newer PostgreSQL versions may include config parameters
-    // unsupported by older servers (e.g. transaction_timeout).
+                                   
+                                                                               
+                                                               
     const sanitizedSql = sanitizeSqlForCompatibility(sqlText);
     const restoreSql = buildRestoreSql(sanitizedSql);
 

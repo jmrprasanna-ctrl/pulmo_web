@@ -250,7 +250,7 @@ function expandImplicitActionDependencies(actionKeys) {
   const set = new Set((Array.isArray(actionKeys) ? actionKeys : []).map((x) => String(x || "").trim().toLowerCase()).filter(Boolean));
   const add = (path, action) => set.add(toActionKey(path, action));
 
-  // If a list page has edit permission, allow opening its edit-form page too.
+                                                                              
   if (set.has(toActionKey("/products/product-list.html", "edit"))) {
     add("/products/edit-product.html", "view");
     add("/products/edit-product.html", "edit");
@@ -1002,7 +1002,7 @@ async function hasDbCreateActionPermission(req, action) {
     row = await findAccessFromMainDb(userId, INVENTORY_DB_NAME);
   }
 
-  // If admin has no explicit access row, keep legacy behavior: allow.
+                                                                      
   if (!row) return true;
   const allowedActions = parseAllowedActions(row);
   return allowedActions.includes(actionKey);
@@ -1022,7 +1022,7 @@ async function hasCompanyCreateActionPermission(req, action) {
     row = await findAccessFromMainDb(userId, INVENTORY_DB_NAME);
   }
 
-  // If admin has no explicit access row, keep legacy behavior: allow.
+                                                                      
   if (!row) return true;
   const allowedActions = parseAllowedActions(row);
   return allowedActions.includes(actionKey);
@@ -1065,7 +1065,7 @@ async function hasInvMapActionPermission(req, action) {
   const allowedActions = parseAllowedActions(row);
   if (allowedActions.includes(actionKey)) return true;
   if (String(action || "").toLowerCase() === "delete") {
-    // Backward compatibility: older access rows may have add/view for Inv Map but no explicit delete.
+                                                                                                      
     const addActionKey = toActionKey(INV_MAP_PATH, "add");
     if (allowedActions.includes(addActionKey)) return true;
   }
@@ -2749,8 +2749,8 @@ exports.getMyAccess = async (req, res) => {
 
   const userDatabase = normalizeUserDatabase(req.databaseName || req.user?.database_name || INVENTORY_DB_NAME);
 
-  // Access permissions are treated as global user settings stored in main DB.
-  // Data DB (inventory/demo) can switch per user, but access config must remain stable.
+                                                                              
+                                                                                        
   let row = await findAccessFromMainDb(userId, userDatabase);
   if (!row) {
     row = await UserAccess.findOne({

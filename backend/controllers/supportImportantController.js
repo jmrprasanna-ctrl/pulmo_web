@@ -4,7 +4,7 @@ const ALLOWED_WARRANTY_PERIODS = new Set(["3 month", "6 month", "1 year", "2 yea
 const normalizeTitle = (title, importantText) => {
   const cleanTitle = String(title || "").trim();
   if (cleanTitle) return cleanTitle;
-  // Keep DB compatibility for older schemas while UI uses only one input.
+                                                                          
   return String(importantText || "").trim().slice(0, 120) || "IMPORTANT";
 };
 

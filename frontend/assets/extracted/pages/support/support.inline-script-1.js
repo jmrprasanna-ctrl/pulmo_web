@@ -119,7 +119,7 @@ async function editImportant(id, encodedText, encodedWarranty){
         alert("Important text is required.");
         return;
     }
-    // Backward compatibility for older backend validation.
+                                                           
     payload.title = payload.important_text;
     try{
         await request(`/support-importants/${id}`,"PUT",payload);
@@ -153,7 +153,7 @@ window.addEventListener("DOMContentLoaded", async () => {
             important_text: document.getElementById("importantText").value.trim(),
             warranty_period: document.getElementById("warrantyPeriod").value
         };
-        // Backward compatibility for older backend validation.
+                                                               
         payload.title = payload.important_text;
         try{
             await request("/support-importants","POST",payload);

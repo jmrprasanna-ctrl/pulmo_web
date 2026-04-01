@@ -47,7 +47,7 @@ function expenseDateValue(exp){
 
 function getWeekRange(dateStr){
     const d = new Date(dateStr);
-    const day = d.getDay(); // 0=Sun
+    const day = d.getDay();         
     const diffToMonday = (day + 6) % 7;
     const start = new Date(d);
     start.setDate(d.getDate() - diffToMonday);

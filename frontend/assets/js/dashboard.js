@@ -1,4 +1,4 @@
-// Display user role + logged user
+                                  
 const storedRole = localStorage.getItem("role") || "";
 const storedEmail = localStorage.getItem("userEmail") || "";
 const storedName = localStorage.getItem("userName") || "";
@@ -138,7 +138,7 @@ function startDashboardSidebarGuard(){
     }
 }
 
-// Logout
+         
 function logout(){
     localStorage.removeItem("token");
     localStorage.removeItem("role");
@@ -175,7 +175,7 @@ function formatAmountWithSeparators(value){
     });
 }
 
-// Fetch summary data
+                     
 async function fetchSummary(){
     try{
         const periodEl = document.getElementById("summaryPeriod");
@@ -200,7 +200,7 @@ async function fetchSummary(){
         document.getElementById("totalProducts").querySelector("p").innerText = summary.totalProducts || 0;
         document.getElementById("totalCustomers").querySelector("p").innerText = summary.totalCustomers || 0;
         document.getElementById("totalVendors").querySelector("p").innerText = summary.totalVendors || 0;
-        // Total Sales: invoice totals only.
+                                            
         const salesVal = summary.totalSalesPeriod ?? summary.totalSales ?? 0;
         const receivedPaymentVal = summary.receivedPaymentPeriod ?? summary.receivedPayment ?? 0;
         const rentalMachinesCountsVal = summary.rentalMachinesCountsPricePeriod
@@ -356,7 +356,7 @@ function toggleSummaryExtraSelectors(){
     dateEl.style.display = period === "day" ? "" : "none";
 }
 
-// Initialize
+             
 const summaryDateEl = document.getElementById("summaryDate");
 if(summaryDateEl){
     summaryDateEl.value = new Date().toISOString().slice(0,10);

@@ -115,7 +115,7 @@ exports.getSummary = async (req,res)=>{
         let periodEnd = new Date(baseDate);
 
         if(period === "week"){
-            const day = periodStart.getDay(); // 0=Sun
+            const day = periodStart.getDay();         
             const diffToMonday = (day + 6) % 7;
             periodStart.setDate(periodStart.getDate() - diffToMonday);
             periodStart.setHours(0,0,0,0);
@@ -149,7 +149,7 @@ exports.getSummary = async (req,res)=>{
         const totalExpensesPeriod = await Expense.sum("amount",{
             where: buildDateOnlyRangeWhere("date", periodStartDate, periodEndDate)
         }) || 0;
-        // Match Finance > Payments source: only General customer invoices.
+                                                                           
         const receivedPaymentPeriod = await Invoice.sum("total_amount",{
             include: [getGeneralCustomerInclude()],
             where:{
@@ -310,13 +310,13 @@ exports.getSummary = async (req,res)=>{
         });
         const rentalConsumablesPriceAllTime = sumRentalConsumablesPrice(rentalConsumablesAllTimeRows);
 
-        // Low stock alerts (<5 items)
+                                      
         const lowStock = await Product.findAll({
             where:{ count:{ [Op.lt]:5 } },
             attributes:["product_id","description","count"]
         });
 
-        // Monthly sales & profit charts
+                                        
         const months = [];
         const monthlySales = [];
         const monthlyProfit = [];

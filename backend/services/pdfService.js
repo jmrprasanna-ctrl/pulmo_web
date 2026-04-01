@@ -1,4 +1,4 @@
-/* backend/services/pdfService.js */
+                                    
 import PDFDocument from 'pdfkit';
 import fs from 'fs';
 import path from 'path';
@@ -11,7 +11,7 @@ export const generateInvoicePDF = (invoice, invoiceItems, outputPath) => {
 
             doc.pipe(fs.createWriteStream(filePath));
 
-            // Header
+                     
             doc.fontSize(20).text('INVOICE', { align: 'center' });
             doc.moveDown();
             doc.fontSize(12).text(`Invoice No: ${invoice.invoice_no}`);
@@ -20,7 +20,7 @@ export const generateInvoicePDF = (invoice, invoiceItems, outputPath) => {
             doc.text(`Email: ${invoice.customer_email}`);
             doc.moveDown();
 
-            // Table Header
+                           
             doc.text('Items:', { underline: true });
             doc.moveDown(0.5);
 

@@ -233,8 +233,8 @@ exports.deleteRentalMachine = async (req, res) => {
     }
 
     await db.transaction(async (transaction) => {
-      // Some environments have non-cascading FK constraints in existing DBs.
-      // Delete child rows explicitly to keep delete reliable.
+                                                                             
+                                                              
       await RentalMachineCount.destroy({
         where: { rental_machine_id: row.id },
         transaction,

@@ -1,4 +1,4 @@
-/* frontend/js/components.js */
+                               
 
 const ensureMessageBoxStyles = () => {
     if (document.getElementById('message-box-styles')) return;
@@ -48,7 +48,7 @@ const showMessageBox = (message, type = 'success', duration = 2200) => {
 
 window.showMessageBox = showMessageBox;
 
-// Toggle sidebar on mobile
+                           
 const toggleSidebar = () => {
     const sidebar = document.querySelector('.sidebar');
     sidebar.classList.toggle('active');
@@ -56,7 +56,7 @@ const toggleSidebar = () => {
 
 window.toggleSidebar = toggleSidebar;
 
-// Logout button
+                
 const logout = () => {
     localStorage.removeItem('token');
     window.location.href = 'login.html';

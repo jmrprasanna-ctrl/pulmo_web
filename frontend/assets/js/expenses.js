@@ -1,4 +1,4 @@
-/* frontend/js/expenses.js */
+                             
 import { getData, postData, deleteData } from './api.js';
 
 const loadExpenses = async () => {

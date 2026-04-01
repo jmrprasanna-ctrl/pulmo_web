@@ -1,4 +1,4 @@
-/* frontend/js/invoice.js */
+                            
 import { getData, postData, deleteData } from './api.js';
 
 const loadInvoices = async () => {

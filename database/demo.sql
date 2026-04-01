@@ -1,8 +1,8 @@
--- ==========================
--- Database: it_inventory_db
--- ==========================
+                             
+                            
+                             
 
--- Drop tables if they exist
+                            
 DROP TABLE IF EXISTS invoice_items CASCADE;
 DROP TABLE IF EXISTS invoices CASCADE;
 DROP TABLE IF EXISTS rental_machine_consumables CASCADE;
@@ -18,9 +18,9 @@ DROP TABLE IF EXISTS category_model_options CASCADE;
 DROP TABLE IF EXISTS categories CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
--- ==========================
--- Users Table
--- ==========================
+                             
+              
+                             
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(100) NOT NULL,
@@ -36,9 +36,9 @@ CREATE TABLE users (
 );
 
 
--- ==========================
--- Categories Table
--- ==========================
+                             
+                   
+                             
 CREATE TABLE categories (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL
@@ -50,9 +50,9 @@ VALUES
 ('Laptop'),('Accessory'),('Consumable'),('Machine'),
 ('CCTV'),('Duplo'),('Other');
 
--- ==========================
--- Category Model Options
--- ==========================
+                             
+                         
+                             
 CREATE TABLE category_model_options (
     id SERIAL PRIMARY KEY,
     category_name VARCHAR(100) NOT NULL,
@@ -75,9 +75,9 @@ INSERT INTO category_model_options(category_name, model_name) VALUES
 ('Duplo', 'RONGDA'),('Duplo', 'RISO'),('Duplo', 'RECOH'),('Duplo', 'DUPLO'),
 ('Other', 'OTHER');
 
--- ==========================
--- Vendors Table
--- ==========================
+                             
+                
+                             
 CREATE TABLE vendors (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -86,9 +86,9 @@ CREATE TABLE vendors (
 );
 
 
--- ==========================
--- Products Table
--- ==========================
+                             
+                 
+                             
 CREATE TABLE products (
     id SERIAL PRIMARY KEY,
     product_id VARCHAR(20) UNIQUE,
@@ -105,9 +105,9 @@ CREATE TABLE products (
 );
 
 
--- ==========================
--- Customers Table
--- ==========================
+                             
+                  
+                             
 CREATE TABLE customers (
     id SERIAL PRIMARY KEY,
     customer_id VARCHAR(20) UNIQUE,
@@ -124,9 +124,9 @@ CREATE TABLE customers (
 );
 
 
--- ==========================
--- Rental Machines Table
--- ==========================
+                             
+                        
+                             
 CREATE TABLE rental_machines (
     id SERIAL PRIMARY KEY,
     machine_id VARCHAR(20) UNIQUE NOT NULL,
@@ -142,9 +142,9 @@ CREATE TABLE rental_machines (
     updatedAt TIMESTAMP DEFAULT NOW()
 );
 
--- ==========================
--- General Machines Table
--- ==========================
+                             
+                         
+                             
 CREATE TABLE general_machines (
     id SERIAL PRIMARY KEY,
     machine_id VARCHAR(20) UNIQUE NOT NULL,
@@ -160,9 +160,9 @@ CREATE TABLE general_machines (
     updatedAt TIMESTAMP DEFAULT NOW()
 );
 
--- ==========================
--- Rental Machine Consumables Table
--- ==========================
+                             
+                                   
+                             
 CREATE TABLE rental_machine_consumables (
     id SERIAL PRIMARY KEY,
     rental_machine_id INT REFERENCES rental_machines(id) ON DELETE CASCADE,
@@ -178,9 +178,9 @@ CREATE TABLE rental_machine_consumables (
     updatedAt TIMESTAMP DEFAULT NOW()
 );
 
--- ==========================
--- Invoices Table
--- ==========================
+                             
+                 
+                             
 CREATE TABLE invoices (
     id SERIAL PRIMARY KEY,
     invoice_no VARCHAR(20) UNIQUE,
@@ -215,9 +215,9 @@ ON rental_machine_consumables(customer_id, entry_date, id);
 CREATE INDEX IF NOT EXISTS invoices_invoice_date_no_idx ON invoices(invoice_date, invoice_no);
 CREATE INDEX IF NOT EXISTS invoices_pending_lookup_idx ON invoices(payment_status, invoice_date, id);
 
--- ==========================
--- Invoice Items Table
--- ==========================
+                             
+                      
+                             
 CREATE TABLE invoice_items (
     id SERIAL PRIMARY KEY,
     invoice_id INT REFERENCES invoices(id),
@@ -230,9 +230,9 @@ CREATE TABLE invoice_items (
     updatedAt TIMESTAMP DEFAULT NOW()
 );
 
--- ==========================
--- Expenses Table
--- ==========================
+                             
+                 
+                             
 CREATE TABLE expenses (
     id SERIAL PRIMARY KEY,
     title VARCHAR(100),
@@ -252,9 +252,9 @@ BEGIN
 END $$;
 
 
--- ==========================
--- Stocks Table
--- ==========================
+                             
+               
+                             
 CREATE TABLE stocks (
     id SERIAL PRIMARY KEY,
     product_id INT REFERENCES products(id),
@@ -265,9 +265,9 @@ CREATE TABLE stocks (
     updatedAt TIMESTAMP DEFAULT NOW()
 );
 
--- ==========================
--- Conditions Table
--- ==========================
+                             
+                   
+                             
 CREATE TABLE conditions (
     id SERIAL PRIMARY KEY,
     condition TEXT NOT NULL,
@@ -276,9 +276,9 @@ CREATE TABLE conditions (
 );
 
 
--- ==========================
--- UI Settings Table
--- ==========================
+                             
+                    
+                             
 CREATE TABLE IF NOT EXISTS ui_settings (
     id SERIAL PRIMARY KEY,
     app_name VARCHAR(120) NOT NULL DEFAULT 'PULMO TECHNOLOGIES',

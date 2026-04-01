@@ -5,7 +5,7 @@ const Customer = require("./Customer");
 const Invoice = db.define("Invoice",{
     id:{ type: DataTypes.INTEGER, primaryKey:true, autoIncrement:true },
     invoice_no:{ type: DataTypes.STRING, unique:true },
-    // Keep nullable at schema level for safe rollout on existing rows; controller enforces value on create.
+                                                                                                            
     invoice_date:{ type: DataTypes.DATEONLY, allowNull: true, defaultValue: DataTypes.NOW },
     quotation_date:{ type: DataTypes.DATEONLY, allowNull: true, defaultValue: DataTypes.NOW },
     quotation2_date:{ type: DataTypes.DATEONLY, allowNull: true, defaultValue: DataTypes.NOW },

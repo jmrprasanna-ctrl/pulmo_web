@@ -76,7 +76,7 @@ async function listTargetDatabases() {
         }
       }
     } catch (_err) {
-      // Inventory registry tables may not exist during initial setup.
+                                                                      
     } finally {
       await inventoryClient.end().catch(() => {});
     }

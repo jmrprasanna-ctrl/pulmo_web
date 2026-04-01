@@ -832,7 +832,7 @@ exports.createInvoice = async (req,res)=>{
                 vat: Number(item.vat) || 0,
                 gross: Number(item.gross) || 0
             });
-            // Reduce stock
+                           
             const product = await Product.findByPk(productId);
             if(product) {
                 product.count = product.count - (Number(item.qty) || 0);

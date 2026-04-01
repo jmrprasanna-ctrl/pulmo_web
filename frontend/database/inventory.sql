@@ -1,20 +1,20 @@
--- ==========================================================
--- pulmotech_inhouse - PostgreSQL Safe Sync Script
--- ==========================================================
--- This script is DATA-SAFE:
--- 1) No DROP TABLE statements
--- 2) No DELETE/TRUNCATE statements
--- 3) Uses CREATE TABLE IF NOT EXISTS and ALTER ... IF NOT EXISTS
---
--- Backend DB link (Sequelize): backend/config/database.js
--- Frontend API link: frontend/assets/js/api.js and frontend/js/api.js
--- ==========================================================
+                                                             
+                                                  
+                                                             
+                            
+                              
+                                   
+                                                                 
+  
+                                                          
+                                                                      
+                                                             
 
 BEGIN;
 
--- --------------------------
--- USERS
--- --------------------------
+                             
+        
+                             
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(100) NOT NULL,
@@ -47,9 +47,9 @@ BEGIN
     END IF;
 END $$;
 
--- --------------------------
--- CATEGORIES
--- --------------------------
+                             
+             
+                             
 CREATE TABLE IF NOT EXISTS categories (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL
@@ -65,9 +65,9 @@ BEGIN
     END IF;
 END $$;
 
--- --------------------------
--- CATEGORY MODEL OPTIONS
--- --------------------------
+                             
+                         
+                             
 CREATE TABLE IF NOT EXISTS category_model_options (
     id SERIAL PRIMARY KEY,
     category_name VARCHAR(100) NOT NULL,
@@ -90,9 +90,9 @@ BEGIN
     END IF;
 END $$;
 
--- --------------------------
--- VENDORS
--- --------------------------
+                             
+          
+                             
 CREATE TABLE IF NOT EXISTS vendors (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -105,9 +105,9 @@ CREATE TABLE IF NOT EXISTS vendors (
 ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP DEFAULT NOW();
 ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP DEFAULT NOW();
 
--- --------------------------
--- CUSTOMERS
--- --------------------------
+                             
+            
+                             
 CREATE TABLE IF NOT EXISTS customers (
     id SERIAL PRIMARY KEY,
     customer_id VARCHAR(20),
@@ -151,9 +151,9 @@ BEGIN
     END IF;
 END $$;
 
--- --------------------------
--- RENTAL MACHINES
--- --------------------------
+                             
+                  
+                             
 CREATE TABLE IF NOT EXISTS rental_machines (
     id SERIAL PRIMARY KEY,
     machine_id VARCHAR(20) NOT NULL,
@@ -208,9 +208,9 @@ BEGIN
     END IF;
 END $$;
 
--- --------------------------
--- GENERAL MACHINES
--- --------------------------
+                             
+                   
+                             
 CREATE TABLE IF NOT EXISTS general_machines (
     id SERIAL PRIMARY KEY,
     machine_id VARCHAR(20) NOT NULL,
@@ -261,9 +261,9 @@ BEGIN
     END IF;
 END $$;
 
--- --------------------------
--- RENTAL MACHINE CONSUMABLES
--- --------------------------
+                             
+                             
+                             
 CREATE TABLE IF NOT EXISTS rental_machine_consumables (
     id SERIAL PRIMARY KEY,
     rental_machine_id INT,
@@ -335,9 +335,9 @@ BEGIN
     END IF;
 END $$;
 
--- --------------------------
--- RENTAL MACHINE COUNTS
--- --------------------------
+                             
+                        
+                             
 CREATE TABLE IF NOT EXISTS rental_machine_counts (
     id SERIAL PRIMARY KEY,
     transaction_id VARCHAR(50) NOT NULL,
@@ -401,9 +401,9 @@ BEGIN
     END IF;
 END $$;
 
--- --------------------------
--- PRODUCTS
--- --------------------------
+                             
+           
+                             
 CREATE TABLE IF NOT EXISTS products (
     id SERIAL PRIMARY KEY,
     product_id VARCHAR(20),
@@ -456,9 +456,9 @@ BEGIN
     END IF;
 END $$;
 
--- --------------------------
--- INVOICES
--- --------------------------
+                             
+           
+                             
 CREATE TABLE IF NOT EXISTS invoices (
     id SERIAL PRIMARY KEY,
     invoice_no VARCHAR(30),
@@ -536,9 +536,9 @@ BEGIN
     END IF;
 END $$;
 
--- --------------------------
--- INVOICE ITEMS
--- --------------------------
+                             
+                
+                             
 CREATE TABLE IF NOT EXISTS invoice_items (
     id SERIAL PRIMARY KEY,
     invoice_id INT,
@@ -578,9 +578,9 @@ BEGIN
     END IF;
 END $$;
 
--- --------------------------
--- EXPENSES
--- --------------------------
+                             
+           
+                             
 CREATE TABLE IF NOT EXISTS expenses (
     id SERIAL PRIMARY KEY,
     title VARCHAR(150),
@@ -597,9 +597,9 @@ ALTER TABLE expenses ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP DEFAULT NOW(
 ALTER TABLE expenses ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP DEFAULT NOW();
 CREATE INDEX IF NOT EXISTS expenses_date_idx ON expenses(date);
 
--- --------------------------
--- STOCKS
--- --------------------------
+                             
+         
+                             
 CREATE TABLE IF NOT EXISTS stocks (
     id SERIAL PRIMARY KEY,
     product_id INT,
@@ -625,9 +625,9 @@ BEGIN
     END IF;
 END $$;
 
--- --------------------------
--- CONDITIONS
--- --------------------------
+                             
+             
+                             
 CREATE TABLE IF NOT EXISTS conditions (
     id SERIAL PRIMARY KEY,
     condition VARCHAR(255) NOT NULL,
@@ -638,9 +638,9 @@ CREATE TABLE IF NOT EXISTS conditions (
 ALTER TABLE conditions ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP DEFAULT NOW();
 ALTER TABLE conditions ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP DEFAULT NOW();
 
--- --------------------------
--- MESSAGES
--- --------------------------
+                             
+           
+                             
 CREATE TABLE IF NOT EXISTS messages (
     id SERIAL PRIMARY KEY,
     from_user_id INT,
@@ -654,9 +654,9 @@ CREATE TABLE IF NOT EXISTS messages (
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP DEFAULT NOW();
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP DEFAULT NOW();
 
--- --------------------------
--- NOTIFICATIONS
--- --------------------------
+                             
+                
+                             
 CREATE TABLE IF NOT EXISTS notifications (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
@@ -668,9 +668,9 @@ CREATE TABLE IF NOT EXISTS notifications (
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP DEFAULT NOW();
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP DEFAULT NOW();
 
--- --------------------------
--- TODOS
--- --------------------------
+                             
+        
+                             
 CREATE TABLE IF NOT EXISTS todos (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
@@ -689,9 +689,9 @@ ALTER TABLE todos ADD COLUMN IF NOT EXISTS done_by INT;
 ALTER TABLE todos ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP DEFAULT NOW();
 ALTER TABLE todos ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP DEFAULT NOW();
 
--- --------------------------
--- UI SETTINGS
--- --------------------------
+                             
+              
+                             
 CREATE TABLE IF NOT EXISTS ui_settings (
     id SERIAL PRIMARY KEY,
     app_name VARCHAR(120) NOT NULL DEFAULT 'pulmotech_inhouse',
@@ -795,9 +795,9 @@ CREATE TABLE IF NOT EXISTS user_quotation_render_settings (
     UNIQUE (user_id, database_name, quotation_type)
 );
 
--- --------------------------
--- SAFE DEFAULT SEED (NO DATA LOSS)
--- --------------------------
+                             
+                                   
+                             
 INSERT INTO categories(name)
 VALUES
 ('Photocopier'),
@@ -814,7 +814,7 @@ VALUES
 ('Service')
 ON CONFLICT DO NOTHING;
 
--- Normalize renamed Duplo models in existing data.
+                                                   
 DELETE FROM category_model_options
 WHERE category_name = 'Duplo' AND model_name = 'CANON'
   AND EXISTS (

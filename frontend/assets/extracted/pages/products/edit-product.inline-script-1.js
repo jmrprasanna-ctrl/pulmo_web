@@ -19,7 +19,7 @@ const urlParams = new URLSearchParams(window.location.search);
                     select.appendChild(opt);
                 });
             }catch(_err){
-                // ignore, category list will stay as-is
+                                                        
             }
         }
 
@@ -35,7 +35,7 @@ const urlParams = new URLSearchParams(window.location.search);
                     select.appendChild(opt);
                 });
             }catch(_err){
-                // ignore
+                         
             }
         }
 

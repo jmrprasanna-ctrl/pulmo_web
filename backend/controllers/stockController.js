@@ -30,8 +30,8 @@ const createStockLogWithFallback = async ({ product_id, change, date, action, tr
     }
   }
 
-  // If every candidate fails by the type check, skip logging and allow stock update.
-  // This keeps stock management functional across legacy DB constraints.
+                                                                                     
+                                                                         
   if (isTypeCheckViolation(lastErr)) {
     return null;
   }
@@ -64,7 +64,7 @@ exports.getProductStocks = async (_req, res) => {
 
 exports.adjustProductStock = async (req, res) => {
   const productId = Number(req.body.product_id);
-  const action = String(req.body.action || "").toLowerCase(); // add | remove | set
+  const action = String(req.body.action || "").toLowerCase();                      
   const qty = Number(req.body.quantity);
 
   if (!Number.isFinite(productId) || !Number.isFinite(qty) || qty < 0) {
