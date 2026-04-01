@@ -3,6 +3,15 @@
    ====================== */
 function resolveBaseUrl(){
     const isHttpUrl = (value) => /^https?:\/\//i.test(String(value || "").trim());
+    const normalizeApiBase = (value) => {
+        const raw = String(value || "").trim().replace(/\/+$/, "");
+        if(!raw) return "";
+        const lower = raw.toLowerCase();
+        if(lower.endsWith("/api")){
+            return raw;
+        }
+        return `${raw}/api`;
+    };
     const globalBaseUrl = typeof window !== "undefined" ? window.__API_BASE_URL__ : "";
     const storedBaseUrl = typeof window !== "undefined" ? localStorage.getItem("apiBaseUrl") : "";
     const globalOrigin = typeof window !== "undefined" ? window.__API_ORIGIN__ : "";
@@ -11,16 +20,16 @@ function resolveBaseUrl(){
 
     const candidateBase = String(globalBaseUrl || storedBaseUrl || "").trim();
     if(isHttpUrl(candidateBase)){
-        return candidateBase.replace(/\/+$/, "");
+        return normalizeApiBase(candidateBase);
     }
 
     const candidateOrigin = String(globalOrigin || storedOrigin || "").trim();
     if(isHttpUrl(candidateOrigin)){
-        return `${candidateOrigin.replace(/\/+$/, "")}/api`;
+        return normalizeApiBase(candidateOrigin);
     }
 
     if(isHttpUrl(browserOrigin)){
-        return `${browserOrigin.replace(/\/+$/, "")}/api`;
+        return normalizeApiBase(browserOrigin);
     }
 
     return "http://localhost:5000/api";
