@@ -879,6 +879,7 @@ async function request(endpoint, method="GET", data=null){
     if(data) options.body = JSON.stringify(data);
 
     const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+    const authFallbackUrl = `${window.location.origin.replace(/\/+$/, "")}/api${path}`;
     const apiOrigin = BASE_URL.replace(/\/api$/,"");
     const isLoginRequest = method.toUpperCase() === "POST" && path === "/auth/login";
     const retryableStatuses = [502, 503, 504];
@@ -926,6 +927,24 @@ async function request(endpoint, method="GET", data=null){
     }
 
     if(!res.ok){
+        if(res.status === 404 && isAuthEndpoint){
+            try{
+                const retryRes = await fetch(authFallbackUrl, options);
+                const retryRaw = await retryRes.text();
+                let retryResult = {};
+                if(retryRaw){
+                    try{
+                        retryResult = JSON.parse(retryRaw);
+                    }catch(_err){
+                        retryResult = { message: retryRaw };
+                    }
+                }
+                if(retryRes.ok){
+                    return retryResult;
+                }
+            }catch(_err){
+            }
+        }
         const isHtml = typeof result.message === "string" && /<\s*html|<!doctype/i.test(result.message);
         if(res.status === 404){
             throw new Error(`Endpoint not found: ${method} ${endpoint}`);
