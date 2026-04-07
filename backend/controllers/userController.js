@@ -3,6 +3,16 @@ const db = require("../config/database");
 const User = require("../models/User");
 const UserAccess = require("../models/UserAccess");
 const UserLoginLog = require("../models/UserLoginLog");
+const { Sequelize } = require("sequelize");
+
+const USER_LINKED_TABLES = [
+  "user_accesses",
+  "user_login_logs",
+  "user_preference_settings",
+  "user_invoice_mappings",
+  "user_quotation_render_settings",
+  "user_mappings",
+];
 
 async function ensureUserSuperColumn() {
   try {
@@ -33,6 +43,26 @@ function isTargetProtectedSuperAdmin(targetUser, requesterId, requesterIsSuper) 
   const isTargetAdmin = String(targetUser?.role || "").toLowerCase() === "admin";
   const isTargetSuper = Boolean(targetUser?.is_super_user);
   return isTargetAdmin && isTargetSuper && Number(targetUser?.id || 0) !== Number(requesterId || 0) && !requesterIsSuper;
+}
+
+async function deleteFromUserLinkedTables(userId, transaction) {
+  for (const tableName of USER_LINKED_TABLES) {
+    const existsResult = await db.query(
+      "SELECT to_regclass($1) AS table_name",
+      {
+        bind: [`public.${tableName}`],
+        transaction,
+      }
+    );
+    const rows = Array.isArray(existsResult?.[0]) ? existsResult[0] : [];
+    const exists = Boolean(rows[0]?.table_name);
+    if (!exists) continue;
+
+    await db.query(`DELETE FROM ${tableName} WHERE user_id = $1`, {
+      bind: [userId],
+      transaction,
+    });
+  }
 }
 
 exports.getUsers = async (req, res) => {
@@ -180,12 +210,13 @@ exports.deleteUser = async (req, res) => {
         throw Object.assign(new Error("Forbidden: Super admin user is protected."), { statusCode: 403 });
       }
 
+      await deleteFromUserLinkedTables(userId, t);
       await UserLoginLog.destroy({ where: { user_id: userId }, transaction: t });
       await UserAccess.destroy({ where: { user_id: userId }, transaction: t });
       await User.destroy({ where: { id: userId }, transaction: t });
     });
 
-    res.json({ message: "User deleted with linked access/log records" });
+    res.json({ message: "User deleted successfully" });
   } catch (err) {
     if (err && err.statusCode === 404) {
       return res.status(404).json({ message: "User not found" });
@@ -193,7 +224,15 @@ exports.deleteUser = async (req, res) => {
     if (err && err.statusCode === 403) {
       return res.status(403).json({ message: err.message || "Forbidden" });
     }
+    if (err instanceof Sequelize.ForeignKeyConstraintError) {
+      const detail = String(err?.original?.detail || "").trim();
+      return res.status(409).json({
+        message: detail
+          ? `Cannot delete user because linked records still exist: ${detail}`
+          : "Cannot delete user because linked records still exist.",
+      });
+    }
     console.error(err);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: err?.message || "Server error" });
   }
 };
