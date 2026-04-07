@@ -782,7 +782,7 @@ async function ensureUserMappingSchema() {
 }
 
 async function ensureUserInvoiceMappingSchema() {
-  await db.withDatabase("inventory", async () => {
+  await runOnBusinessDatabases(async () => {
     await db.query(`
       CREATE TABLE IF NOT EXISTS user_invoice_mappings (
         id SERIAL PRIMARY KEY,
