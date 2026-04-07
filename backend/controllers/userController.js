@@ -47,21 +47,19 @@ function isTargetProtectedSuperAdmin(targetUser, requesterId, requesterIsSuper) 
 
 async function deleteFromUserLinkedTables(userId, transaction) {
   for (const tableName of USER_LINKED_TABLES) {
-    const existsResult = await db.query(
-      "SELECT to_regclass($1) AS table_name",
-      {
-        bind: [`public.${tableName}`],
+    try {
+      await db.query(`DELETE FROM ${tableName} WHERE user_id = $1`, {
+        bind: [userId],
         transaction,
+      });
+    } catch (err) {
+      const code = String(err?.original?.code || err?.parent?.code || "");
+      // Ignore "relation does not exist" to support partially provisioned DBs.
+      if (code === "42P01") {
+        continue;
       }
-    );
-    const rows = Array.isArray(existsResult?.[0]) ? existsResult[0] : [];
-    const exists = Boolean(rows[0]?.table_name);
-    if (!exists) continue;
-
-    await db.query(`DELETE FROM ${tableName} WHERE user_id = $1`, {
-      bind: [userId],
-      transaction,
-    });
+      throw err;
+    }
   }
 }
 
@@ -199,31 +197,25 @@ exports.deleteUser = async (req, res) => {
 
   try {
     await ensureUserSuperColumn();
-    await db.transaction(async (t) => {
-      const user = await User.findByPk(userId, { transaction: t });
-      if (!user) {
-        throw Object.assign(new Error("User not found"), { statusCode: 404 });
-      }
-      const requesterId = Number(req?.user?.id || req?.user?.userId || 0);
-      const requesterIsSuper = await isRequesterSuperAdmin(req);
-      if (isTargetProtectedSuperAdmin(user, requesterId, requesterIsSuper)) {
-        throw Object.assign(new Error("Forbidden: Super admin user is protected."), { statusCode: 403 });
-      }
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const requesterId = Number(req?.user?.id || req?.user?.userId || 0);
+    const requesterIsSuper = await isRequesterSuperAdmin(req);
+    if (isTargetProtectedSuperAdmin(user, requesterId, requesterIsSuper)) {
+      return res.status(403).json({ message: "Forbidden: Super admin user is protected." });
+    }
 
-      await deleteFromUserLinkedTables(userId, t);
-      await UserLoginLog.destroy({ where: { user_id: userId }, transaction: t });
-      await UserAccess.destroy({ where: { user_id: userId }, transaction: t });
-      await User.destroy({ where: { id: userId }, transaction: t });
-    });
+    await deleteFromUserLinkedTables(userId, null);
+    // Keep model-level cleanup as a fallback for environments where tables exist
+    // and are managed via Sequelize model metadata.
+    await UserLoginLog.destroy({ where: { user_id: userId } });
+    await UserAccess.destroy({ where: { user_id: userId } });
+    await User.destroy({ where: { id: userId } });
 
     res.json({ message: "User deleted successfully" });
   } catch (err) {
-    if (err && err.statusCode === 404) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    if (err && err.statusCode === 403) {
-      return res.status(403).json({ message: err.message || "Forbidden" });
-    }
     if (err instanceof Sequelize.ForeignKeyConstraintError) {
       const detail = String(err?.original?.detail || "").trim();
       return res.status(409).json({
