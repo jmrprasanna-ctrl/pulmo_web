@@ -434,11 +434,12 @@ body.app-has-sidebar-footer .app-global-footer {
   }
 
   .app-global-footer {
-    font-size: 0.74rem;
+    font-size: 0.6rem;
+    line-height: 1.1;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
-    padding: 8px 10px;
+    text-overflow: clip;
+    padding: 4px 6px;
   }
 }
 
