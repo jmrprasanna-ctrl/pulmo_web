@@ -11,10 +11,9 @@
 }
 
 .add-product-header {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    justify-content: space-between;
-    flex-wrap: nowrap;
     gap: 16px;
     margin-bottom: 14px;
 }
@@ -23,7 +22,7 @@
     margin: 0;
     font-size: 24px;
     color: #13304f;
-    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .add-product-subtitle {
@@ -116,7 +115,7 @@
     }
 
     .add-product-header {
-        flex-direction: row;
+        grid-template-columns: minmax(0, 1fr) auto;
         align-items: center;
     }
 }
