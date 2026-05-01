@@ -40,8 +40,18 @@
     </header>
 
     <div class="form-container">
-        <a class="btn" href="add-product.html" id="addProductBtn">Add</a>
-        <button id="exportPdfBtn" type="button">Export as PDF</button>
+        <a class="icon-btn" href="add-product.html" id="addProductBtn" aria-label="Add product" title="Add product">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+        </a>
+        <button class="icon-btn" id="exportPdfBtn" type="button" aria-label="Export as PDF" title="Export as PDF">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5A1.5 1.5 0 0 1 7.5 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                <path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                <path d="M12 10.5v6M9.5 14l2.5 2.5L14.5 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
         <input type="text" id="productSearch" class="search-inline" placeholder="Search Product ID, Description, Category, Model, Serial No">
         <div class="card card-mt-12">
             <table id="productTable">
