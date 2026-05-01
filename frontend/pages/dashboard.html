@@ -72,7 +72,13 @@
                     </svg>
                     <span class="badge-count hidden" id="todoBadgeCount" aria-hidden="true">0</span>
                 </a>
-                <a class="btn btn-secondary" href="#" onclick="logout()">Logout</a>
+                <button class="icon-btn" id="logoutBtn" type="button" onclick="logout()" aria-label="Logout" title="Logout">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M9 4.5h-2A2.5 2.5 0 0 0 4.5 7v10A2.5 2.5 0 0 0 7 19.5h2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M13 8.5 18 12l-5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M18 12H9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                </button>
             </div>
         </div>
     </header>
