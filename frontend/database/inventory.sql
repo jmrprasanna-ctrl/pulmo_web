@@ -695,7 +695,7 @@ ALTER TABLE todos ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP DEFAULT NOW();
 CREATE TABLE IF NOT EXISTS ui_settings (
     id SERIAL PRIMARY KEY,
     app_name VARCHAR(120) NOT NULL DEFAULT 'pulmotech_inhouse',
-    footer_text VARCHAR(255) NOT NULL DEFAULT '© All Right Recieved with CRONIT SOLLUTIONS - JMR Prasanna.',
+    footer_text VARCHAR(255) NOT NULL DEFAULT 'Copyright © 2025 Powered by CRONIT SOLLUTIONS, All Right Received.',
     primary_color VARCHAR(24) NOT NULL DEFAULT '#0f6abf',
     accent_color VARCHAR(24) NOT NULL DEFAULT '#11a36f',
     "createdAt" TIMESTAMP DEFAULT NOW(),
@@ -703,7 +703,7 @@ CREATE TABLE IF NOT EXISTS ui_settings (
 );
 
 ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS app_name VARCHAR(120) NOT NULL DEFAULT 'pulmotech_inhouse';
-ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS footer_text VARCHAR(255) NOT NULL DEFAULT '© All Right Recieved with CRONIT SOLLUTIONS - JMR Prasanna.';
+ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS footer_text VARCHAR(255) NOT NULL DEFAULT 'Copyright © 2025 Powered by CRONIT SOLLUTIONS, All Right Received.';
 ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS primary_color VARCHAR(24) NOT NULL DEFAULT '#0f6abf';
 ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS accent_color VARCHAR(24) NOT NULL DEFAULT '#11a36f';
 ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS background_color VARCHAR(24) NOT NULL DEFAULT '#edf3fb';
@@ -917,7 +917,7 @@ ON CONFLICT (category_name, model_name) DO NOTHING;
 INSERT INTO ui_settings(app_name, footer_text, primary_color, accent_color)
 SELECT
     'pulmotech_inhouse',
-    '© All Right Recieved with CRONIT SOLLUTIONS - JMR Prasanna.',
+    'Copyright © 2025 Powered by CRONIT SOLLUTIONS, All Right Received.',
     '#0f6abf',
     '#11a36f'
 WHERE NOT EXISTS (SELECT 1 FROM ui_settings);

@@ -9,7 +9,7 @@ const UiSetting = db.define(
     footer_text: {
       type: DataTypes.STRING(255),
       allowNull: false,
-      defaultValue: "\u00A9 All Right Recieved with CRONIT SOLLUTIONS - JMR Prasanna.",
+      defaultValue: "Copyright \u00A9 2025 Powered by CRONIT SOLLUTIONS, All Right Received.",
     },
     primary_color: { type: DataTypes.STRING(24), allowNull: false, defaultValue: "#0f6abf" },
     accent_color: { type: DataTypes.STRING(24), allowNull: false, defaultValue: "#11a36f" },

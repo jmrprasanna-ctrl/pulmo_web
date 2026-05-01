@@ -1,5 +1,5 @@
 const UiSetting = require("../models/UiSetting");
-const FIXED_FOOTER_TEXT = "\u00A9 All Right Recieved with CRONIT SOLLUTIONS - JMRP.";
+const FIXED_FOOTER_TEXT = "Copyright \u00A9 2025 Powered by CRONIT SOLLUTIONS, All Right Received.";
 
 async function getOrCreateSettings() {
   let row = await UiSetting.findOne({ order: [["id", "ASC"]] });

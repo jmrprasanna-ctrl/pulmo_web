@@ -37,7 +37,7 @@ function resolveBaseUrl(){
 
 const BASE_URL = resolveBaseUrl();
 window.BASE_URL = BASE_URL;
-const GLOBAL_FOOTER_TEXT = "\u00A9 All Right Recieved with CRONIT SOLLUTIONS - JMRP.";
+const GLOBAL_FOOTER_TEXT = "Copyright \u00A9 2025 Powered by CRONIT SOLLUTIONS, All Right Received.";
 const UI_SETTINGS_CACHE_KEY = "publicUiSettingsCache";
 const USER_UI_SETTINGS_CACHE_KEY = "userUiSettingsCache";
 const ENABLE_PUBLIC_UI_SETTINGS_RUNTIME = typeof window !== "undefined" && window.__ENABLE_PUBLIC_UI_SETTINGS__ === true;
