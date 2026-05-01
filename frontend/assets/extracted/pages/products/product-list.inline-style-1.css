@@ -49,6 +49,9 @@
     .card-mt-12{
         margin-top: 12px;
     }
+    #productTable tbody tr.product-row-clickable{
+        cursor:pointer;
+    }
     @media (max-width: 900px){
         .page-head h2{
             padding-left: 0 !important;

@@ -63,6 +63,15 @@ function renderProducts(products){
                 </td>
             `;
         }
+
+        if(canEditProduct){
+            tr.classList.add("product-row-clickable");
+            tr.addEventListener("click", (event) => {
+                const target = event.target;
+                if(target && target.closest("a, button, input, select, textarea, .product-action-row")) return;
+                window.location.href = `edit-product.html?id=${p.id}`;
+            });
+        }
         tbody.appendChild(tr);
     });
 }
