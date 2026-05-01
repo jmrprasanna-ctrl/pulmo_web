@@ -21,9 +21,18 @@
             flex-wrap:nowrap;
             margin-top:12px;
             align-items:center;
+            justify-content:flex-start;
+            overflow-x:auto;
+            overflow-y:hidden;
         }
         .form-actions .icon-btn{
             margin-top:0;
+            width:44px;
+            min-width:44px;
+            height:44px;
+            min-height:44px;
+            padding:0;
+            flex:0 0 auto;
         }
         .form-actions .btn-danger{
             background:#fff2f4;
@@ -34,4 +43,17 @@
             background:#ffe8ec;
             box-shadow:0 10px 20px rgba(180,35,47,0.14);
             border-color:#e8aab5;
+        }
+        @media (max-width: 900px){
+            .form-actions{
+                flex-direction:row !important;
+                align-items:center !important;
+                justify-content:flex-start !important;
+                flex-wrap:nowrap !important;
+            }
+            .form-actions > *{
+                width:auto !important;
+                max-width:none !important;
+                margin-left:0 !important;
+            }
         }
