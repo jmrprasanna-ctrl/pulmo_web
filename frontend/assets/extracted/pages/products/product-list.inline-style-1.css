@@ -4,6 +4,15 @@
         margin-left: 8px;
         margin-top: 0;
     }
+    .page-head{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+    }
+    .page-head h2{
+        margin:0;
+    }
     .action-btn{
         width: 84px;
         min-width: 84px;
@@ -33,6 +42,9 @@
         margin-top: 12px;
     }
     @media (max-width: 900px){
+        .page-head{
+            margin-right: 0;
+        }
         .product-action-row{
             flex-direction: row !important;
             align-items: center !important;
