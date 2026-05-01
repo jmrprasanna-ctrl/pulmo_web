@@ -1,5 +1,10 @@
 const urlParams = new URLSearchParams(window.location.search);
         const productId = urlParams.get('id');
+        const role = (localStorage.getItem("role") || "").toLowerCase();
+        const selectedDb = (localStorage.getItem("selectedDatabaseName") || "").toLowerCase();
+        const isTrainingUser = role === "user" && selectedDb === "demo";
+        const canManage = role === "admin" || role === "manager" || isTrainingUser;
+        const canDeleteProduct = canManage || (role === "user" && typeof hasUserActionPermission === "function" && hasUserActionPermission("/products/product-list.html", "delete"));
 
         if(!productId){
             alert("Missing product id.");
@@ -60,6 +65,10 @@ const urlParams = new URLSearchParams(window.location.search);
             await loadCategories();
             await loadVendors();
             await loadProduct();
+            const deleteBtn = document.getElementById("deleteProductBtn");
+            if(deleteBtn && !canDeleteProduct){
+                deleteBtn.style.display = "none";
+            }
         });
 
         const form = document.getElementById('editProductForm');
@@ -80,6 +89,29 @@ const urlParams = new URLSearchParams(window.location.search);
             await request(`/products/${productId}`,"PUT",updatedProduct);
             showMessageBox('Product updated successfully!');
         });
+
+        const deleteBtn = document.getElementById("deleteProductBtn");
+        if(deleteBtn){
+            deleteBtn.addEventListener("click", async () => {
+                if(!canDeleteProduct){
+                    alert("You don't have permission to delete products.");
+                    return;
+                }
+                const count = Number(document.getElementById("count").value || 0);
+                if(count !== 0){
+                    alert("Only products with quantity 0 can be deleted.");
+                    return;
+                }
+                if(!confirm("Delete this product?")) return;
+                try{
+                    await request(`/products/${productId}`,"DELETE");
+                    showMessageBox("Product deleted");
+                    window.location.href = "product-list.html";
+                }catch(err){
+                    alert(err.message || "Failed to delete product");
+                }
+            });
+        }
 
         function logout(){
             localStorage.removeItem("token");

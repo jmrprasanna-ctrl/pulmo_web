@@ -15,7 +15,6 @@ const canAccessPath = (path) => canManage
     : (role === "user" && allowedPaths.has(String(path || "").trim().toLowerCase()));
 const canAddProduct = canAccessPath("/products/add-product.html");
 const canEditProduct = canManage || (role === "user" && typeof hasUserActionPermission === "function" && hasUserActionPermission("/products/product-list.html", "edit"));
-const canDeleteProduct = canManage || (role === "user" && typeof hasUserActionPermission === "function" && hasUserActionPermission("/products/product-list.html", "delete"));
 const productSearchEl = document.getElementById("productSearch");
 let allProducts = [];
 
@@ -26,13 +25,6 @@ if(addProductBtn && !canAddProduct){
 }
 if(exportPdfBtn){
     exportPdfBtn.addEventListener("click", exportPDF);
-}
-
-if(!canEditProduct && !canDeleteProduct){
-    const actionHeader = document.querySelector("#productTable thead th:last-child");
-    if(actionHeader && actionHeader.innerText.toLowerCase().includes("action")){
-        actionHeader.remove();
-    }
 }
 
 function renderProducts(products){
@@ -47,22 +39,9 @@ function renderProducts(products){
             <td>${p.description}</td>
             <td>${categoryName}</td>
             <td>${p.model}</td>
-            <td>${p.serial_no}</td>
-            <td>${p.count}</td>
             <td>${p.selling_price}</td>
             <td>${vendorName}</td>
         `;
-        if(canEditProduct || canDeleteProduct){
-            const count = Number(p.count || 0);
-            tr.innerHTML += `
-                <td>
-                    <div class="product-action-row">
-                        ${canEditProduct ? `<a class="btn action-btn" href="edit-product.html?id=${p.id}">Edit</a>` : ""}
-                        ${canDeleteProduct ? `<button class="btn btn-danger btn-inline action-btn" type="button" onclick="deleteProduct(${p.id}, ${count})">Delete</button>` : ""}
-                    </div>
-                </td>
-            `;
-        }
 
         if(canEditProduct){
             tr.classList.add("product-row-clickable");
@@ -116,26 +95,11 @@ function exportPDF(){
     let y = 30;
     const rows = document.querySelectorAll("#productTable tbody tr");
     rows.forEach(r=>{
-        const cells = Array.from(r.children).slice(0, 8).map(td=>td.innerText);
+        const cells = Array.from(r.children).slice(0, 6).map(td=>td.innerText);
         doc.text(cells.join(" | "),14,y);
         y+=8;
     });
     doc.save("Products_List.pdf");
-}
-
-async function deleteProduct(id, count){
-    if(Number(count) !== 0){
-        alert("Only products with quantity 0 can be deleted.");
-        return;
-    }
-    if(!confirm("Delete this product?")) return;
-    try{
-        await request(`/products/${id}`,"DELETE");
-        showMessageBox("Product deleted");
-        loadProducts();
-    }catch(err){
-        alert(err.message || "Failed to delete product");
-    }
 }
 
 function logout(){
