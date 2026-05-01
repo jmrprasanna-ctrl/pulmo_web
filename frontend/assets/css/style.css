@@ -432,6 +432,14 @@ body.app-has-sidebar-footer .app-global-footer {
     padding: 9px 10px;
     font-size: 0.88rem;
   }
+
+  .app-global-footer {
+    font-size: 0.74rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 8px 10px;
+  }
 }
 
 body.theme-dark {
