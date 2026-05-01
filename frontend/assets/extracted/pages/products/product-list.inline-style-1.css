@@ -8,10 +8,18 @@
         display:flex;
         align-items:center;
         justify-content:space-between;
+        flex-wrap:nowrap;
         gap:10px;
+        width:100%;
     }
     .page-head h2{
         margin:0;
+        flex:1 1 auto;
+        min-width:0;
+    }
+    .page-head .icon-btn{
+        margin-left:auto;
+        flex:0 0 auto;
     }
     .action-btn{
         width: 84px;
@@ -42,6 +50,9 @@
         margin-top: 12px;
     }
     @media (max-width: 900px){
+        .page-head h2{
+            padding-left: 0 !important;
+        }
         .page-head{
             margin-right: 0;
         }
