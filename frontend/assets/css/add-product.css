@@ -109,6 +109,14 @@
     flex: 0 0 auto;
 }
 
+.add-product-actions .icon-btn {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+}
+
 @media (max-width: 900px) {
     .add-product-grid {
         grid-template-columns: 1fr;
