@@ -502,15 +502,21 @@ body {
 
 @media (max-width: 640px) {
   .dashboard-topbar {
-    flex-direction: row;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .topbar-left {
+    width: 100%;
   }
 
   .topbar-right {
     width: 100%;
     justify-content: flex-start;
     flex-wrap: nowrap;
-    overflow: visible;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
     gap: 6px;
   }
 
