@@ -153,11 +153,16 @@ body{
     bottom:0;
     width:100%;
     text-align:center;
-    padding:10px 14px;
+    padding:4px 6px;
     border-top:1px solid rgba(255,255,255,0.28);
     background:rgba(255,255,255,0.72);
     color:#1d3855;
-    font-size:15px;
+    font-size:10px;
+    line-height:1.1;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:clip;
+    word-break:keep-all;
     z-index:99;
     backdrop-filter:blur(5px);
 }
@@ -188,5 +193,11 @@ body{
 
     .forgot-password{
         font-size:16px;
+    }
+
+    .app-global-footer{
+        padding:3px 5px;
+        font-size:9px;
+        white-space:nowrap;
     }
 }
