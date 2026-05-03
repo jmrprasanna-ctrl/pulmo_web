@@ -14,7 +14,6 @@ const canAccessPath = (path) => canManage
     ? true
     : (role === "user" && allowedPaths.has(String(path || "").trim().toLowerCase()));
 const canAddCustomer = canAccessPath("/customers/add-customer.html");
-const canEditCustomer = canManage || (role === "user" && typeof hasUserActionPermission === "function" && hasUserActionPermission("/customers/customer-list.html", "edit"));
 const customerSearchEl = document.getElementById("customerSearch");
 const customerModeFilterEl = document.getElementById("customerModeFilter");
 let allCustomers = [];
@@ -22,13 +21,6 @@ let allCustomers = [];
 const addCustomerBtn = document.getElementById("addCustomerBtn");
 if(addCustomerBtn && !canAddCustomer){
     addCustomerBtn.style.display = "none";
-}
-
-if(!canEditCustomer){
-    const actionHeader = document.querySelector("#customerTable thead th:last-child");
-    if(actionHeader && actionHeader.innerText.toLowerCase().includes("action")){
-        actionHeader.remove();
-    }
 }
 
 function renderCustomers(customers){
@@ -44,15 +36,6 @@ function renderCustomers(customers){
             <td>${c.email}</td>
             <td>${String(c.vat_number || "").trim() ? "Yes" : "No"}</td>
         `;
-        if(canEditCustomer){
-            tr.innerHTML += `
-                <td>
-                    <div class="customer-action-row">
-                        ${canEditCustomer ? `<a class="btn customer-action-btn" href="edit-customer.html?id=${c.id}">Edit</a>` : ""}
-                    </div>
-                </td>
-            `;
-        }
         tbody.appendChild(tr);
     });
 }
