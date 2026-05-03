@@ -41,19 +41,6 @@
 
     <div class="form-container">
         <div class="form-actions">
-            <div class="date-filter">
-                <label for="filterDate">Date</label>
-                <input type="date" id="filterDate">
-            </div>
-            <div class="date-filter">
-                <label for="filterPeriod">Period</label>
-                <select id="filterPeriod">
-                    <option value="date">Date</option>
-                    <option value="week">Week</option>
-                    <option value="month" selected>Month</option>
-                    <option value="year">Annual</option>
-                </select>
-            </div>
             <div class="action-row">
                 <a class="icon-btn" href="add-expense.html" id="addExpenseBtn" aria-label="Add expense" title="Add expense">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -67,6 +54,19 @@
                         <path d="M12 10.5v6M9.5 14l2.5 2.5L14.5 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </button>
+            </div>
+            <div class="date-filter">
+                <label for="filterDate">Date</label>
+                <input type="date" id="filterDate">
+            </div>
+            <div class="date-filter">
+                <label for="filterPeriod">Period</label>
+                <select id="filterPeriod">
+                    <option value="date">Date</option>
+                    <option value="week">Week</option>
+                    <option value="month" selected>Month</option>
+                    <option value="year">Annual</option>
+                </select>
             </div>
             <input type="text" id="expenseSearch" class="search-inline" placeholder="Search Title, Customer, Category">
         </div>
