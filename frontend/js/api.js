@@ -352,8 +352,7 @@ function renderSidebarMenuByAccess(){
             children: [
                 { path: "/invoices/invoice-list.html", label: "Invoices" },
                 { path: "/products/add-rental-count.html", label: "Rental Count" },
-                { path: "/products/add-rental-consumable.html", label: "Consumables" },
-                { path: "/support/warrenty.html", label: "Warrenty" }
+                { path: "/products/add-rental-consumable.html", label: "Consumables" }
             ]
         },
         { path: "/vendors/list-vendor.html", label: "Vendors" },
@@ -366,7 +365,8 @@ function renderSidebarMenuByAccess(){
             children: [
                 { path: "/finance/finance.html", label: "Finance" },
                 { path: "/finance/payments.html", label: "Payments" },
-                { path: "/finance/pendings.html", label: "Pendings" }
+                { path: "/finance/pendings.html", label: "Pendings" },
+                { path: "/support/warrenty.html", label: "Warrenty" }
             ]
         },
         { path: "/support/support.html", label: "Support" },
@@ -1255,6 +1255,7 @@ function hasUserActionPermission(path, action){
     return USER_ALLOWED_ACTIONS_RUNTIME.includes(actionKey);
 }
 window.hasUserActionPermission = hasUserActionPermission;
+
 
 
 
