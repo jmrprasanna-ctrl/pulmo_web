@@ -35,6 +35,11 @@
             <div>
                 <h2 class="add-product-title">Add Rental Consumables</h2>
             </div>
+            <a class="icon-btn" href="../dashboard.html" aria-label="Back to dashboard" title="Back to dashboard">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </a>
         </div>
 
         <form id="consumableForm">
@@ -72,7 +77,11 @@
             </div>
 
             <div class="add-product-actions">
-                <button type="button" id="addItemBtn">Add Consumable</button>
+                <button type="button" id="addItemBtn" class="icon-btn" aria-label="Add consumable" title="Add consumable">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                </button>
             </div>
         </form>
 
@@ -92,15 +101,26 @@
             </table>
         </div>
         <div class="controls-row pending-actions">
-            <button type="button" id="saveEntryBtn">Save</button>
-            <button class="btn btn-secondary" type="button" onclick="window.location.href='machine.html'">Back</button>
+            <button type="button" id="saveEntryBtn" class="icon-btn" aria-label="Save entry" title="Save entry">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5.5 3.5h11l2 2V20.5H5.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                    <path d="M8 3.5v5h7v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                    <path d="M8 14h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+            </button>
         </div>
     </div>
 
     <div class="add-product-shell consumables-shell">
         <div class="controls-row">
             <h3 class="section-title" style="margin: 0;">Added Consumables</h3>
-            <button type="button" class="btn-inline" onclick="saveAddedConsumablesPDF()">Save as PDF</button>
+            <button type="button" class="icon-btn" onclick="saveAddedConsumablesPDF()" aria-label="Export as PDF" title="Export as PDF">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5A1.5 1.5 0 0 1 7.5 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                    <path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                    <path d="M12 10.5v6M9.5 14l2.5 2.5L14.5 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
         </div>
         <div class="consumable-table-wrap">
             <table id="consumableTable">

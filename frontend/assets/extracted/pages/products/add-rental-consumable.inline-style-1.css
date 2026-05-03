@@ -3,6 +3,19 @@
         padding: 0 12px;
         margin-top: 0;
     }
+    .add-product-header .icon-btn,
+    .add-product-actions .icon-btn,
+    .pending-actions .icon-btn,
+    .controls-row .icon-btn,
+    .consumable-action-row .icon-btn{
+        width:44px;
+        min-width:44px;
+        height:44px;
+        min-height:44px;
+        padding:0;
+        margin-top:0;
+        flex:0 0 auto;
+    }
     .controls-row{
         display:flex;
         gap:8px;
@@ -38,6 +51,18 @@
         min-width:84px;
         margin-top:0;
         margin-left:0;
+    }
+    .consumable-delete-btn{
+        border:1px solid #f0c2ca;
+        background:#fff2f4;
+        color:#b4232f;
+    }
+    .consumable-delete-btn:hover{
+        background:#ffe8ec;
+        border-color:#e8aab5;
+    }
+    #consumableTable tbody tr.added-entry-clickable{
+        cursor:pointer;
     }
     .product-search-wrap{
         position: relative;

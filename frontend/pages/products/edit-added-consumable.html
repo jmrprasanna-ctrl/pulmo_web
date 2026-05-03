@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edit Added Consumables - PULMO TECHNOLOGIES</title>
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="../../assets/css/dashboard.css">
+<style>
+    .page-head{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+        flex-wrap:nowrap;
+        width:100%;
+    }
+    .page-head h2{
+        margin:0;
+        flex:1 1 auto;
+        min-width:0;
+    }
+    .page-head .icon-btn{
+        margin-left:auto;
+        flex:0 0 auto;
+    }
+    .entry-meta{
+        display:grid;
+        grid-template-columns:repeat(3,minmax(160px,1fr));
+        gap:10px;
+        margin-bottom:12px;
+    }
+    .meta-box{
+        border:1px solid #d9e4f0;
+        border-radius:10px;
+        padding:10px 12px;
+        background:#fff;
+    }
+    .meta-label{
+        font-size:12px;
+        color:#556b84;
+        margin-bottom:4px;
+    }
+    .meta-value{
+        font-weight:700;
+        color:#0f6abf;
+        word-break:break-word;
+    }
+    .table-wrap{
+        width:100%;
+        overflow-x:auto;
+    }
+    @media (max-width: 900px){
+        .entry-meta{
+            grid-template-columns:1fr;
+        }
+    }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="logo">
+        <img src="../../assets/images/logo.png" alt="Logo">
+        <span>PULMO TECHNOLOGIES</span>
+    </div>
+    <ul class="nav-links">
+        <li><a href="../dashboard.html">Dashboard</a></li>
+        <li><a href="../products/product-list.html">Products</a></li>
+        <li><a href="../products/general-machine.html">Machines</a></li>
+        <li><a href="../customers/customer-list.html">Customers</a></li>
+        <li><a href="../invoices/invoice-list.html">Invoices</a></li>
+        <li><a href="../vendors/list-vendor.html">Vendors</a></li>
+        <li><a href="../expenses/expense-list.html">Expenses</a></li>
+        <li><a href="../reports/sales-report.html">Reports</a></li>
+        <li><a href="../analytics/sales-chart.html">Analytics</a></li>
+    </ul>
+</div>
+
+<div class="main-content">
+    <header class="page-head">
+        <h2>Edit Added Consumables</h2>
+        <a class="icon-btn" href="add-rental-consumable.html" aria-label="Back to add rental consumables" title="Back to add rental consumables">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+    </header>
+
+    <div class="form-container">
+        <div class="entry-meta">
+            <div class="meta-box">
+                <div class="meta-label">Entry</div>
+                <div class="meta-value" id="entryValue">-</div>
+            </div>
+            <div class="meta-box">
+                <div class="meta-label">Machine ID</div>
+                <div class="meta-value" id="machineValue">-</div>
+            </div>
+            <div class="meta-box">
+                <div class="meta-label">Rental Customer</div>
+                <div class="meta-value" id="customerValue">-</div>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table id="entryItemsTable">
+                <thead>
+                    <tr>
+                        <th>Consumable</th>
+                        <th>Quantity</th>
+                        <th>Price</th>
+                        <th>Count</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="../../assets/js/api.js"></script>
+<script src="../../assets/extracted/pages/products/edit-added-consumable.inline-script-1.js"></script>
+</body>
+</html>
