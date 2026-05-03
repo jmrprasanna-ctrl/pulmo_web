@@ -3,6 +3,12 @@ function getUserId(){
             return params.get("id");
         }
 
+        function isCurrentLoggedInUser(targetUserId){
+            const currentUserId = String(localStorage.getItem("userId") || "").trim();
+            const targetId = String(targetUserId || "").trim();
+            return !!currentUserId && !!targetId && currentUserId === targetId;
+        }
+
         async function loadUser(){
             const id = getUserId();
             if(!id){
@@ -85,6 +91,10 @@ function getUserId(){
                     deleteUserBtn.addEventListener("click", async () => {
                         const id = getUserId();
                         if(!id) return;
+                        if(isCurrentLoggedInUser(id)){
+                            showMessageBox("You cannot delete your own account.", "error");
+                            return;
+                        }
                         if(!confirm("Delete this user?")) return;
                         try{
                             await request(`/users/${id}`,"DELETE");
@@ -98,4 +108,8 @@ function getUserId(){
             }
 
             loadUser();
+            const id = getUserId();
+            if(deleteUserBtn && canDeleteUser && isCurrentLoggedInUser(id)){
+                deleteUserBtn.style.display = "none";
+            }
         });
