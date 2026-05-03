@@ -32,10 +32,14 @@ async function loadEntry(){
 
         const first = matched[0];
         const machineId = first.RentalMachine ? (first.RentalMachine.machine_id || "") : "";
+        const machineTitle = first.RentalMachine
+            ? (first.RentalMachine.machine_title || first.RentalMachine.machine_name || first.RentalMachine.title || "")
+            : "";
         const customer = first.Customer ? (first.Customer.name || "") : "";
 
         document.getElementById("entryValue").innerText = entryId;
         document.getElementById("machineValue").innerText = machineId || "-";
+        document.getElementById("machineTitleValue").innerText = machineTitle || "-";
         document.getElementById("customerValue").innerText = customer || "-";
 
         const tbody = document.querySelector("#entryItemsTable tbody");
