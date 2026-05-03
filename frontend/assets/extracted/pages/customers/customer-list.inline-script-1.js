@@ -28,6 +28,8 @@ function renderCustomers(customers){
     tbody.innerHTML = "";
     customers.forEach(c=>{
         const tr = document.createElement("tr");
+        tr.classList.add("customer-row-clickable");
+        tr.style.cursor = "pointer";
         tr.innerHTML = `
             <td>${c.customer_id || ""}</td>
             <td>${c.name}</td>
@@ -36,6 +38,9 @@ function renderCustomers(customers){
             <td>${c.email}</td>
             <td>${String(c.vat_number || "").trim() ? "Yes" : "No"}</td>
         `;
+        tr.addEventListener("click", () => {
+            window.location.href = `edit-customer.html?id=${c.id}`;
+        });
         tbody.appendChild(tr);
     });
 }
