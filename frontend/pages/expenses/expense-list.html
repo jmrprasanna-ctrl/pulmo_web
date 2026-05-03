@@ -30,7 +30,14 @@
 </div>
 
 <div class="main-content">
-    <header><h2>Expenses List</h2></header>
+    <header class="page-head">
+        <h2>Expenses List</h2>
+        <a class="icon-btn" href="../dashboard.html" aria-label="Back to dashboard" title="Back to dashboard">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+    </header>
 
     <div class="form-container">
         <div class="form-actions">
@@ -50,7 +57,6 @@
             <div class="action-row">
                 <a class="btn" href="add-expense.html" id="addExpenseBtn">Add</a>
                 <button class="btn" type="button" onclick="exportPDF()">Save PDF</button>
-                <a class="btn btn-secondary" href="../dashboard.html">Back</a>
             </div>
             <input type="text" id="expenseSearch" class="search-inline" placeholder="Search Title, Customer, Category">
         </div>

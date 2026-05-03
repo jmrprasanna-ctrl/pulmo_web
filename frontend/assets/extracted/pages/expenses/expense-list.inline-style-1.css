@@ -1,3 +1,21 @@
+.page-head{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+        flex-wrap:nowrap;
+        width:100%;
+    }
+    .page-head h2{
+        margin:0;
+        flex:1 1 auto;
+        min-width:0;
+    }
+    .page-head .icon-btn{
+        margin-left:auto;
+        flex:0 0 auto;
+    }
+
 .form-actions{
         display: flex;
         align-items: flex-end;
