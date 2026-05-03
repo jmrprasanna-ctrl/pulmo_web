@@ -41,7 +41,7 @@ let selectedYear = String(new Date().getFullYear());
             tbody.innerHTML = '';
             if(!invoices || invoices.length === 0){
                 const row = document.createElement('tr');
-                row.innerHTML = `<td colspan="6">No invoices found.</td>`;
+                row.innerHTML = `<td colspan="5">No invoices found.</td>`;
                 tbody.appendChild(row);
                 return;
             }
@@ -52,12 +52,10 @@ let selectedYear = String(new Date().getFullYear());
                 row.innerHTML = `
                     <td>${inv.invoice_no}</td>
                     <td>${inv.customer_name || ""}</td>
-                    <td>${Number(inv.count ?? inv.machine_count ?? 0)}</td>
                     <td>${dateText}</td>
                     <td>${inv.total}</td>
                     <td>
                         <div class="invoice-action-row">
-                            <button class="btn btn-success invoice-action-btn" onclick="viewInvoice(${inv.id})">INV 1</button>
                             ${isAdmin() ? `<button class="btn btn-danger btn-inline invoice-action-btn" onclick="deleteInvoice(${inv.id})">Delete</button>` : ""}
                         </div>
                     </td>
@@ -80,7 +78,6 @@ let selectedYear = String(new Date().getFullYear());
                 return [
                     inv.invoice_no,
                     inv.customer_name,
-                    inv.count ?? inv.machine_count ?? 0,
                     dateText,
                     inv.total
                 ].some(v => String(v || "").toLowerCase().includes(query));
@@ -98,25 +95,13 @@ let selectedYear = String(new Date().getFullYear());
                 if(!tbody) return;
                 tbody.innerHTML = '';
                 const row = document.createElement('tr');
-                row.innerHTML = `<td colspan="6">${err.message || "Failed to load invoices"}</td>`;
+                row.innerHTML = `<td colspan="5">${err.message || "Failed to load invoices"}</td>`;
                 tbody.appendChild(row);
             }
         }
 
         function viewInvoice(id){
             window.location.href = `view-invoice.html?id=${id}`;
-        }
-
-        function viewQuatation(id){
-            window.location.href = `view-quotation.html?id=${id}`;
-        }
-
-        function viewQuatation2(id){
-            window.location.href = `view-quotation-2.html?id=${id}`;
-        }
-
-        function viewQuatation3(id){
-            window.location.href = `view-quotation-3.html?id=${id}`;
         }
 
         async function deleteInvoice(id){
