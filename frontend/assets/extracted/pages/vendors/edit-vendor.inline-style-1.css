@@ -47,6 +47,14 @@
         flex-wrap: wrap;
         margin-top: 12px;
     }
+    .form-actions .icon-btn{
+        width:44px;
+        min-width:44px;
+        height:44px;
+        min-height:44px;
+        padding:0;
+        flex:0 0 auto;
+    }
     .btn-secondary{
         background: #e9f3fc;
         color: #0b4f93;
