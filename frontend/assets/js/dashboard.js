@@ -122,7 +122,17 @@ const DASHBOARD_MENU_ENTRIES = [
     },
     { path: "/support/support.html", label: "Support" },
     { path: "/stock/stock.html", label: "Stock" },
-    { path: "/users/user-list.html", label: "Users" }
+    {
+        path: "/users/user-list.html",
+        label: "Users",
+        children: [
+            { path: "/users/user-list.html", label: "User List" },
+            { path: "/users/preference.html", label: "Preference" },
+            { path: "/users/user-access.html", label: "Access" },
+            { path: "/users/user-logged.html", label: "Logged" },
+            { path: "/support/email-setup.html", label: "Email" }
+        ]
+    }
 ];
 let dashboardAllowedMenuEntries = null;
 let lastDashboardMenuSignature = "";
