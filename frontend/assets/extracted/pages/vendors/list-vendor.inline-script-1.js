@@ -19,7 +19,6 @@ const canAccessPath = (path) => canManage
     : (role === "user" && allowedPaths.has(String(path || "").trim().toLowerCase()));
 const canAddVendor = canAccessPath("/vendors/add-vendor.html");
 const canEditVendor = canManage || (role === "user" && typeof hasUserActionPermission === "function" && hasUserActionPermission("/vendors/list-vendor.html", "edit"));
-const canDeleteVendor = canManage || (role === "user" && typeof hasUserActionPermission === "function" && hasUserActionPermission("/vendors/list-vendor.html", "delete"));
 const vendorSearchEl = document.getElementById("vendorSearch");
 let allVendors = [];
 
@@ -28,7 +27,7 @@ if(addVendorBtn && !canAddVendor){
     addVendorBtn.style.display = "none";
 }
 
-if(!canEditVendor && !canDeleteVendor){
+if(!canEditVendor){
     const actionHeader = document.querySelector("#vendorTable thead th:last-child");
     if(actionHeader && actionHeader.innerText.toLowerCase().includes("action")){
         actionHeader.remove();
@@ -45,12 +44,11 @@ function renderVendors(vendors){
             <td>${v.address}</td>
             <td>${v.category || ""}</td>
         `;
-        if(canEditVendor || canDeleteVendor){
+        if(canEditVendor){
             tr.innerHTML += `
                 <td>
                     <div class="vendor-action-row">
                         ${canEditVendor ? `<a class="btn vendor-action-btn" href="edit-vendor.html?id=${v.id}">Edit</a>` : ""}
-                        ${canDeleteVendor ? `<button class="btn btn-danger btn-inline vendor-action-btn" type="button" onclick="deleteVendor(${v.id})">Delete</button>` : ""}
                     </div>
                 </td>
             `;
@@ -100,32 +98,6 @@ function exportPDF(){
         y+=8;
     });
     doc.save("Vendors_List.pdf");
-}
-
-async function deleteVendor(id){
-    if(!confirm("Delete this vendor?")) return;
-    try{
-        await request(`/vendors/${id}`,"DELETE");
-        showMessageBox("Vendor deleted");
-        loadVendors();
-    }catch(err){
-        const msg = err.message || "Failed to delete vendor";
-        if(msg.toLowerCase().includes("products are linked")){
-            try{
-                const products = await request(`/vendors/${id}/products`,"GET");
-                if(products.length){
-                    const lines = products.slice(0, 10).map(p => `${p.product_id} - ${p.description || p.model || ""}`.trim());
-                    alert(`Cannot delete vendor. Linked products:\n${lines.join("\n")}`);
-                }else{
-                    alert(msg);
-                }
-            }catch(_err){
-                alert(msg);
-            }
-        }else{
-            alert(msg);
-        }
-    }
 }
 
 function logout(){
