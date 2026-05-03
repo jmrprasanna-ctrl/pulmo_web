@@ -88,7 +88,7 @@ const userSelectEl = document.getElementById("userSelect");
                     const row = document.createElement("tr");
                     const userLabel = `${entry.username || "User"}${entry.email ? ` (${entry.email})` : ""}`;
                     const actionHtml = (canDeleteInvMap || canAddInvMap)
-                        ? `<button class="btn btn-secondary" type="button" onclick="deleteInvMapEntry(${Number(entry.id)})">Delete</button>`
+                        ? `<button class="icon-btn btn-danger" type="button" aria-label="Delete inv map entry" title="Delete inv map entry" onclick="deleteInvMapEntry(${Number(entry.id)})"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M9.5 7V5.5h5V7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7.5 7.5l.8 11a1 1 0 0 0 1 .9h5.4a1 1 0 0 0 1-.9l.8-11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 10.5v6M14 10.5v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>`
                         : "-";
                     row.innerHTML = `
                         <td>${userLabel}</td>
