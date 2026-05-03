@@ -348,7 +348,13 @@ function renderSidebarMenuByAccess(){
             ]
         },
         { path: "/customers/customer-list.html", label: "Customers" },
-        { path: "/invoices/invoice-list.html", label: "Invoices" },
+        {
+            path: "/invoices/invoice-list.html",
+            label: "Payment",
+            children: [
+                { path: "/invoices/invoice-list.html", label: "Invoices" }
+            ]
+        },
         { path: "/vendors/list-vendor.html", label: "Vendors" },
         { path: "/expenses/expense-list.html", label: "Expenses" },
         { path: "/reports/sales-report.html", label: "Reports" },
