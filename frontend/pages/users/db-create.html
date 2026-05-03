@@ -51,7 +51,13 @@
             </div>
 
             <div class="access-actions" style="margin-top: 16px; display:flex; gap:10px; flex-wrap:wrap;">
-                <button id="saveDbBtn" class="btn btn-primary" type="button" onclick="saveDatabase()">Save</button>
+                <button id="saveDbBtn" class="icon-btn" type="button" onclick="saveDatabase()" aria-label="Save database" title="Save database">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5.5 3.5h11l2 2V20.5H5.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M8 3.5v5h7v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M8 14h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                </button>
             </div>
 
             <div class="db-table-wrap">
