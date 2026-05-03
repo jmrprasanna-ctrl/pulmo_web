@@ -29,10 +29,23 @@
     </div>
 
     <div class="main-content">
-        <header><h2>Invoice List</h2></header>
-        <button class="btn btn-primary" id="addInvoiceBtn" type="button">Add Invoice</button>
-        <input type="text" id="invoiceSearch" class="search-inline" placeholder="Search Invoice No, Customer, Count, Date, Total">
-        <select id="invoiceYearFilter" class="year-inline"></select>
+        <header class="page-head">
+            <h2>Invoice List</h2>
+            <a class="icon-btn" href="../dashboard.html" aria-label="Back to dashboard" title="Back to dashboard">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </a>
+        </header>
+        <div class="toolbar">
+            <button class="icon-btn" id="addInvoiceBtn" type="button" aria-label="Add invoice" title="Add invoice">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <input type="text" id="invoiceSearch" class="search-inline" placeholder="Search Invoice No, Customer, Count, Date, Total">
+            <select id="invoiceYearFilter" class="year-inline"></select>
+        </div>
         <div class="card">
             <table class="table">
                 <thead>

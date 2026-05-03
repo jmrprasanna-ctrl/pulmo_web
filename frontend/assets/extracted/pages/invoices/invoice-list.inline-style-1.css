@@ -1,8 +1,35 @@
-.search-inline{
+.page-head{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:10px;
+            flex-wrap:nowrap;
+            width:100%;
+        }
+        .page-head h2{
+            margin:0;
+            flex:1 1 auto;
+            min-width:0;
+        }
+        .page-head .icon-btn{
+            margin-left:auto;
+            flex:0 0 auto;
+        }
+        .toolbar{
+            display:flex;
+            gap:8px;
+            align-items:center;
+            flex-wrap:wrap;
+            margin-bottom:12px;
+        }
+        .toolbar .icon-btn{
+            margin-top:0;
+        }
+        .search-inline{
             width: 280px;
             max-width: 100%;
             margin-top: 0;
-            margin-left: 8px;
+            margin-left: 0;
             display: inline-block;
             vertical-align: middle;
         }
@@ -10,10 +37,16 @@
             width: 140px;
             max-width: 100%;
             margin-top: 0;
-            margin-left: 8px;
+            margin-left: 0;
             display: inline-block;
             vertical-align: middle;
             height: 40px;
+        }
+        #invoice-table-body tr.invoice-row-clickable{
+            cursor:pointer;
+        }
+        #invoice-table-body tr.invoice-row-clickable:hover{
+            background:#f7fbff;
         }
         .invoice-action-row{
             display:flex;

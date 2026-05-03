@@ -47,6 +47,7 @@ let selectedYear = String(new Date().getFullYear());
             }
             invoices.forEach(inv => {
                 const row = document.createElement('tr');
+                row.className = "invoice-row-clickable";
                 const dateText = inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString() : "";
                 row.innerHTML = `
                     <td>${inv.invoice_no}</td>
@@ -64,6 +65,10 @@ let selectedYear = String(new Date().getFullYear());
                         </div>
                     </td>
                 `;
+                row.addEventListener("click", (event) => {
+                    if(event.target && event.target.closest(".invoice-action-row")) return;
+                    viewInvoice(inv.id);
+                });
                 tbody.appendChild(row);
             });
         }
