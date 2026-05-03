@@ -12,6 +12,15 @@
             margin-left:auto;
             flex:0 0 auto;
         }
+        .access-top-actions{
+            display:flex;
+            gap:10px;
+            align-items:center;
+            margin-bottom:12px;
+        }
+        .access-top-actions .icon-btn{
+            margin-top:0;
+        }
 
 .access-shell{
             overflow: visible !important;
@@ -113,6 +122,11 @@
         @media (max-width: 900px){
             .access-grid{
                 grid-template-columns: 1fr;
+            }
+            .access-top-actions{
+                width:100%;
+                justify-content:flex-start;
+                flex-wrap:wrap;
             }
             .access-actions{
                 width:100%;
