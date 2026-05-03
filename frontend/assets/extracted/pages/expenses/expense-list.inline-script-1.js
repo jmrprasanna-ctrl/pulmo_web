@@ -109,6 +109,8 @@ function renderExpenses(expenses){
     }
     expenses.forEach(exp=>{
         const tr = document.createElement("tr");
+        tr.classList.add("expense-row-clickable");
+        tr.style.cursor = "pointer";
         const dateText = expenseDateValue(exp) ? new Date(expenseDateValue(exp)).toLocaleDateString() : "";
         tr.innerHTML = `
             <td>${exp.title}</td>
@@ -125,6 +127,11 @@ function renderExpenses(expenses){
                 </td>
             `;
         }
+        tr.addEventListener("click", (event) => {
+            const target = event.target;
+            if(target && target.closest("a, button, input, select, textarea")) return;
+            window.location.href = `edit-expense.html?id=${exp.id}`;
+        });
         tbody.appendChild(tr);
     });
 }
