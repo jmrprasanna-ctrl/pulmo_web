@@ -18,6 +18,14 @@ const customerSearchEl = document.getElementById("customerSearch");
 const customerModeFilterEl = document.getElementById("customerModeFilter");
 let allCustomers = [];
 
+function sortCustomersByIdAsc(customers){
+    return [...customers].sort((a, b) => {
+        const idA = String(a?.customer_id || "").trim();
+        const idB = String(b?.customer_id || "").trim();
+        return idA.localeCompare(idB, undefined, { sensitivity: "base", numeric: true });
+    });
+}
+
 const addCustomerBtn = document.getElementById("addCustomerBtn");
 if(addCustomerBtn && !canAddCustomer){
     addCustomerBtn.style.display = "none";
@@ -49,7 +57,7 @@ function applyCustomerFilter(){
     const query = (customerSearchEl?.value || "").trim().toLowerCase();
     const mode = (customerModeFilterEl?.value || "").trim().toLowerCase();
     if(!query && !mode){
-        renderCustomers(allCustomers);
+        renderCustomers(sortCustomersByIdAsc(allCustomers));
         return;
     }
     const filtered = allCustomers.filter(c => {
@@ -57,7 +65,7 @@ function applyCustomerFilter(){
         if(!modeMatch) return false;
         return [c.customer_id, c.name, c.tel, c.email].some(v => String(v || "").toLowerCase().includes(query));
     });
-    renderCustomers(filtered);
+    renderCustomers(sortCustomersByIdAsc(filtered));
 }
 
 async function loadCustomers(){
