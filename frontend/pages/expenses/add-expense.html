@@ -32,7 +32,7 @@
 <div class="main-content">
     <header class="page-head">
         <h2>Add Expense</h2>
-        <a class="icon-btn" href="expense-list.html" aria-label="Back to expenses list" title="Back to expenses list">
+        <a class="icon-btn" id="backToExpenseListBtn" href="expense-list.html" aria-label="Back to expenses list" title="Back to expenses list">
             <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
@@ -80,6 +80,15 @@
 
 <script src="../../assets/js/api.js"></script>
 <script src="../../assets/extracted/pages/expenses/add-expense.inline-script-1.js"></script>
+<script>
+    const backToExpenseListBtn = document.getElementById("backToExpenseListBtn");
+    if(backToExpenseListBtn){
+        backToExpenseListBtn.addEventListener("click", function(e){
+            e.preventDefault();
+            window.location.href = "expense-list.html";
+        });
+    }
+</script>
 </body>
 </html>
 
