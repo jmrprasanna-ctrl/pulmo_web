@@ -43,6 +43,15 @@
     width:auto;
     min-width:120px;
 }
+.report-controls .icon-btn{
+    width:44px;
+    min-width:44px;
+    height:44px;
+    min-height:44px;
+    padding:0;
+    margin-top:0;
+    flex:0 0 auto;
+}
 .stock-level-input{
     width: 78px !important;
     min-width: 78px !important;

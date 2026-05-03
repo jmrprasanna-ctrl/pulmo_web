@@ -48,8 +48,18 @@
                     <select id="reportExpenseYear"></select>
                     <label for="reportExpenseMonth">Month</label>
                     <select id="reportExpenseMonth"></select>
-                    <button type="button" onclick="loadReportExpenses()">Load</button>
-                    <button type="button" onclick="exportReportExpensesPDF()">Export PDF</button>
+                    <button class="icon-btn" type="button" onclick="loadReportExpenses()" aria-label="Load" title="Load">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6 12h12M12 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" type="button" onclick="exportReportExpensesPDF()" aria-label="Export as PDF" title="Export as PDF">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5A1.5 1.5 0 0 1 7.5 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M12 10.5v6M9.5 14l2.5 2.5L14.5 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
             <div class="table-scroll-wrap">
@@ -81,8 +91,18 @@
                     <select id="salesYearSelect" style="display:none;"></select>
                     <select id="salesMonthSelect" style="display:none;"></select>
                     <input type="date" id="salesDate">
-                    <button type="button" onclick="loadSales()">Load</button>
-                    <button type="button" onclick="exportSalesPDF()">Export PDF</button>
+                    <button class="icon-btn" type="button" onclick="loadSales()" aria-label="Load" title="Load">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6 12h12M12 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" type="button" onclick="exportSalesPDF()" aria-label="Export as PDF" title="Export as PDF">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5A1.5 1.5 0 0 1 7.5 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M12 10.5v6M9.5 14l2.5 2.5L14.5 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
             <p class="mini-note" id="salesSummary"></p>
@@ -110,8 +130,18 @@
                     </select>
                     <select id="techYear"></select>
                     <select id="techMonth"></select>
-                    <button type="button" onclick="loadTechnicianReport()">Load</button>
-                    <button type="button" onclick="exportTechnicianPDF()">Export PDF</button>
+                    <button class="icon-btn" type="button" onclick="loadTechnicianReport()" aria-label="Load" title="Load">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6 12h12M12 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" type="button" onclick="exportTechnicianPDF()" aria-label="Export as PDF" title="Export as PDF">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5A1.5 1.5 0 0 1 7.5 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M12 10.5v6M9.5 14l2.5 2.5L14.5 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
             <div class="table-scroll-wrap">
@@ -144,8 +174,18 @@
                     </select>
                     <label for="minStockLevel">Low Stock Level</label>
                     <input type="number" id="minStockLevel" class="stock-level-input" min="1" value="2">
-                    <button type="button" onclick="loadStockReports()">Load</button>
-                    <button type="button" onclick="exportStockReportsPDF()">Export PDF</button>
+                    <button class="icon-btn" type="button" onclick="loadStockReports()" aria-label="Load" title="Load">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6 12h12M12 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" type="button" onclick="exportStockReportsPDF()" aria-label="Export as PDF" title="Export as PDF">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5A1.5 1.5 0 0 1 7.5 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M12 10.5v6M9.5 14l2.5 2.5L14.5 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
             <h4>Low Stock Products</h4>
@@ -178,8 +218,18 @@
                     <select id="rentalConsumablesYearFilter"></select>
                     <label for="rentalConsumablesMonthFilter">Month</label>
                     <select id="rentalConsumablesMonthFilter"></select>
-                    <button type="button" onclick="loadRentalConsumablesReport()">Load</button>
-                    <button type="button" onclick="exportRentalConsumablesPDF()">Export PDF</button>
+                    <button class="icon-btn" type="button" onclick="loadRentalConsumablesReport()" aria-label="Load" title="Load">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6 12h12M12 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" type="button" onclick="exportRentalConsumablesPDF()" aria-label="Export as PDF" title="Export as PDF">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5A1.5 1.5 0 0 1 7.5 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M12 10.5v6M9.5 14l2.5 2.5L14.5 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
             <div class="table-scroll-wrap">
@@ -217,8 +267,18 @@
                     <select id="rentalMachineFilter">
                         <option value="">All Rental Machines</option>
                     </select>
-                    <button type="button" onclick="loadRentalCountReport()">Load</button>
-                    <button type="button" onclick="exportRentalCountPDF()">Export PDF</button>
+                    <button class="icon-btn" type="button" onclick="loadRentalCountReport()" aria-label="Load" title="Load">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6 12h12M12 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" type="button" onclick="exportRentalCountPDF()" aria-label="Export as PDF" title="Export as PDF">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5A1.5 1.5 0 0 1 7.5 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M12 10.5v6M9.5 14l2.5 2.5L14.5 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
             <div class="table-scroll-wrap">
