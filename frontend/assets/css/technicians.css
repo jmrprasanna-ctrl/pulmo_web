@@ -21,6 +21,14 @@
   margin: 12px 0;
 }
 
+.technician-row-clickable {
+  cursor: pointer;
+}
+
+.technician-row-clickable:hover {
+  background: #f7fbff;
+}
+
 .btn-secondary {
   background: #e9f3fc;
   color: #0b4f93;

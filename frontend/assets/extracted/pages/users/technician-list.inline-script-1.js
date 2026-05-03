@@ -59,30 +59,18 @@ const TECHNICIAN_ACCESS_PATH = "/users/technician-list.html";
             return true;
         }
 
-        function canDeleteTechnician(){
-            const role = getRole();
-            if(role !== "admin" && role !== "manager" && role !== "user") return false;
-            if(typeof hasAccessConfigRestrictions === "function" && hasAccessConfigRestrictions()){
-                return typeof hasUserActionPermission === "function"
-                    ? hasUserActionPermission(TECHNICIAN_ACCESS_PATH, "delete")
-                    : false;
-            }
-            if(role === "user"){
-                return typeof hasUserActionPermission === "function"
-                    ? hasUserActionPermission(TECHNICIAN_ACCESS_PATH, "delete")
-                    : false;
-            }
-            return true;
-        }
-
         async function loadTechnicians(){
             try{
                 const rows = await request("/technicians","GET");
                 const tbody = document.getElementById("technician-table-body");
                 tbody.innerHTML = "";
+                const canEdit = canEditTechnician();
 
                 rows.forEach((t) => {
                     const tr = document.createElement("tr");
+                    if(canEdit){
+                        tr.classList.add("technician-row-clickable");
+                    }
                     tr.innerHTML = `
                         <td>${t.id}</td>
                         <td>${t.technician_name || ""}</td>
@@ -90,31 +78,18 @@ const TECHNICIAN_ACCESS_PATH = "/users/technician-list.html";
                         <td>${t.department || ""}</td>
                         <td>${t.telephone || ""}</td>
                         <td>${t.email || ""}</td>
-                        <td>
-                            ${canEditTechnician() ? `<a class="btn btn-inline" href="edit-technician.html?id=${t.id}">Edit</a>` : ""}
-                            ${canDeleteTechnician() ? `<button class="btn btn-danger btn-inline" type="button" onclick="deleteTechnician(${t.id})">Delete</button>` : ""}
-                            ${!canEditTechnician() && !canDeleteTechnician() ? "<span>-</span>" : ""}
-                        </td>
                     `;
+                    if(canEdit){
+                        tr.addEventListener("click", (event) => {
+                            const target = event.target;
+                            if(target && target.closest("a, button, input, select, textarea")) return;
+                            window.location.href = `edit-technician.html?id=${t.id}`;
+                        });
+                    }
                     tbody.appendChild(tr);
                 });
             }catch(err){
                 alert(err.message || "Failed to load technicians");
-            }
-        }
-
-        async function deleteTechnician(id){
-            if(!canDeleteTechnician()){
-                alert("You don't have permission to delete technicians.");
-                return;
-            }
-            if(!confirm("Delete this technician?")) return;
-            try{
-                await request(`/technicians/${id}`,"DELETE");
-                showMessageBox("Technician deleted");
-                loadTechnicians();
-            }catch(err){
-                alert(err.message || "Failed to delete technician");
             }
         }
 

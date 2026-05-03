@@ -15,14 +15,18 @@
     <div class="main-content">
         <header class="page-head">
             <h2>Technician List</h2>
-            <a class="icon-btn" href="../support/support.html" aria-label="Back to support" title="Back to support">
+            <a class="icon-btn" href="../dashboard.html" aria-label="Back to dashboard" title="Back to dashboard">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
             </a>
         </header>
         <div class="form-actions">
-            <button id="addTechnicianBtn" class="btn btn-primary" onclick="window.location.href='add-technician.html'">Add Technician</button>
+            <button id="addTechnicianBtn" class="icon-btn" type="button" onclick="window.location.href='add-technician.html'" aria-label="Add technician" title="Add technician">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+            </button>
         </div>
         <div class="card">
             <table class="table">
@@ -34,7 +38,6 @@
                         <th>Department</th>
                         <th>Telephone</th>
                         <th>Email</th>
-                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="technician-table-body"></tbody>
