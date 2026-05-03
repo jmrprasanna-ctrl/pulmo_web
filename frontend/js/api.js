@@ -384,7 +384,7 @@ function renderSidebarMenuByAccess(){
                     .map((child) => `<li><a href="${toMenuHref(child.path)}">${child.label}</a></li>`)
                     .join("");
                 return `
-                    <li class="nav-group">
+                    <li class="nav-group nav-group-machines" data-nav-group-machines="1">
                         <a href="#" class="nav-group-toggle" data-sidebar-machines-toggle="1" aria-expanded="false">${entry.label}</a>
                         <ul class="nav-submenu" data-sidebar-machines-menu="1">
                             ${childLinks}
@@ -401,7 +401,7 @@ function renderSidebarMenuByAccess(){
 function bindMachinesSidebarMenu(){
     const pagePath = window.location.pathname.replace(/\\/g, "/").toLowerCase();
     const isMachinesPage = pagePath.endsWith("/products/general-machine.html") || pagePath.endsWith("/products/machine.html");
-    document.querySelectorAll("[data-sidebar-machines-toggle='1']").forEach((toggle) => {
+    document.querySelectorAll(".nav-group-machines > [data-sidebar-machines-toggle='1']").forEach((toggle) => {
         const parent = toggle.closest(".nav-group");
         const submenu = parent ? parent.querySelector("[data-sidebar-machines-menu='1']") : null;
         if(!parent || !submenu) return;
@@ -420,15 +420,18 @@ function bindMachinesSidebarMenu(){
 
 function upgradeMachinesSidebarInPlace(){
     document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach((nav) => {
-        const machineLink = Array.from(nav.querySelectorAll(":scope > li > a"))
-            .find((a) => {
-                const label = String(a.textContent || "").trim().toLowerCase();
-                const href = String(a.getAttribute("href") || "").trim().replace(/\\/g, "/").toLowerCase();
-                return label === "machines" || href.endsWith("/products/general-machine.html") || href.endsWith("products/general-machine.html");
-            });
-        if(!machineLink) return;
-        const machineLi = machineLink.closest("li");
-        if(!machineLi || machineLi.classList.contains("nav-group")) return;
+        const topLevelItems = Array.from(nav.children).filter((el) => el && el.tagName && el.tagName.toLowerCase() === "li");
+        const machineLis = topLevelItems.filter((li) => {
+            const directAnchor = Array.from(li.children).find((el) => el.tagName && el.tagName.toLowerCase() === "a");
+            if(!directAnchor) return false;
+            const label = String(directAnchor.textContent || "").trim().toLowerCase();
+            const href = String(directAnchor.getAttribute("href") || "").trim().replace(/\\/g, "/").toLowerCase();
+            if(li.classList.contains("nav-group-machines")) return true;
+            return label === "machines" || href.endsWith("/products/general-machine.html") || href.endsWith("products/general-machine.html");
+        });
+        if(!machineLis.length) return;
+        const machineLi = machineLis[0];
+        machineLis.slice(1).forEach((li) => li.remove());
 
         const generalAllowed = hasUserGrantedPath("/products/general-machine.html");
         const rentalAllowed = hasUserGrantedPath("/products/machine.html");
@@ -443,7 +446,8 @@ function upgradeMachinesSidebarInPlace(){
             return;
         }
 
-        machineLi.classList.add("nav-group");
+        machineLi.classList.add("nav-group", "nav-group-machines");
+        machineLi.setAttribute("data-nav-group-machines", "1");
         machineLi.innerHTML = `
             <a href="#" class="nav-group-toggle" data-sidebar-machines-toggle="1" aria-expanded="false">Machines</a>
             <ul class="nav-submenu" data-sidebar-machines-menu="1">
