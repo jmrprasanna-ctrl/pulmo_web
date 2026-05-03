@@ -147,7 +147,9 @@ window.addEventListener("DOMContentLoaded", async () => {
         addTechnicianBtn.style.display = "none";
     }
     if(warrentyBtn){
-        warrentyBtn.style.display = canViewWarrenty() ? "" : "none";
+        const allowWarrenty = canViewWarrenty();
+        warrentyBtn.classList.toggle("is-hidden", !allowWarrenty);
+        warrentyBtn.style.display = allowWarrenty ? "" : "none";
     }
     if(!canManage()){
         form.style.display = "none";
