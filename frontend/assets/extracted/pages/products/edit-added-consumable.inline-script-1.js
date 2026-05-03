@@ -45,13 +45,20 @@ async function loadEntry(){
         const tbody = document.querySelector("#entryItemsTable tbody");
         tbody.innerHTML = "";
         matched.forEach((r) => {
-            const unitPrice = Number(r.Product ? (r.Product.dealer_price || 0) : 0);
             const qty = Number(r.quantity || 0);
+            const hasExplicitTotal = r.total_price !== undefined && r.total_price !== null;
+            const explicitTotal = Number(r.total_price);
+            const hasExplicitUnit = r.unit_price !== undefined && r.unit_price !== null;
+            const explicitUnit = Number(r.unit_price);
+            const productUnit = Number(r.Product ? (r.Product.dealer_price || 0) : 0);
+            const lineTotal = hasExplicitTotal
+                ? explicitTotal
+                : (hasExplicitUnit ? explicitUnit * qty : productUnit * qty);
             const tr = document.createElement("tr");
             tr.innerHTML = `
                 <td>${r.consumable_name || ""}</td>
                 <td>${qty}</td>
-                <td>${money(unitPrice * qty)}</td>
+                <td>${money(lineTotal)}</td>
                 <td>${Number(r.count || 0) || "-"}</td>
             `;
             tbody.appendChild(tr);
