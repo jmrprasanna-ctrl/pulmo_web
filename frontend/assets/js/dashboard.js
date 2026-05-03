@@ -104,7 +104,8 @@ const DASHBOARD_MENU_ENTRIES = [
         children: [
             { path: "/invoices/invoice-list.html", label: "Invoices" },
             { path: "/products/add-rental-count.html", label: "Rental Count" },
-            { path: "/products/add-rental-consumable.html", label: "Consumables" }
+            { path: "/products/add-rental-consumable.html", label: "Consumables" },
+            { path: "/support/warrenty.html", label: "Warrenty" }
         ]
     },
     { path: "/vendors/list-vendor.html", label: "Vendors" },
@@ -778,5 +779,6 @@ if(todoForm){
 
 loadTodoAssignees();
 loadTodos();
+
 
 

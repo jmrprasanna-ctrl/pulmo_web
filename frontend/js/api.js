@@ -352,7 +352,8 @@ function renderSidebarMenuByAccess(){
             children: [
                 { path: "/invoices/invoice-list.html", label: "Invoices" },
                 { path: "/products/add-rental-count.html", label: "Rental Count" },
-                { path: "/products/add-rental-consumable.html", label: "Consumables" }
+                { path: "/products/add-rental-consumable.html", label: "Consumables" },
+                { path: "/support/warrenty.html", label: "Warrenty" }
             ]
         },
         { path: "/vendors/list-vendor.html", label: "Vendors" },
@@ -1254,5 +1255,6 @@ function hasUserActionPermission(path, action){
     return USER_ALLOWED_ACTIONS_RUNTIME.includes(actionKey);
 }
 window.hasUserActionPermission = hasUserActionPermission;
+
 
 
