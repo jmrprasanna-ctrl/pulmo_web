@@ -73,3 +73,8 @@
         background:#ffe8ec;
         border-color:#e8aab5;
     }
+    @media (min-width: 1101px){
+        .form-container form{
+            max-width: 980px;
+        }
+    }

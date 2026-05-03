@@ -39,3 +39,9 @@
 .btn-secondary:hover {
   filter: brightness(0.98);
 }
+
+@media (min-width: 1101px) {
+  .form-container #editTechnicianForm {
+    max-width: 980px;
+  }
+}

@@ -44,6 +44,11 @@
             box-shadow:0 10px 20px rgba(180,35,47,0.14);
             border-color:#e8aab5;
         }
+        @media (min-width: 1101px){
+            .form-container form{
+                max-width: 980px;
+            }
+        }
         @media (max-width: 900px){
             .form-actions{
                 flex-direction:row !important;
