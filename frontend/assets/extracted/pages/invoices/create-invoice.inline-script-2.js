@@ -14,6 +14,13 @@ const DEFAULT_IMPORTANT_NOTES = selectedDb === "demo"
 let importantNotes = [...DEFAULT_IMPORTANT_NOTES];
 let supportImportantLibrary = [];
 let productSearchCache = null;
+const DELETE_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M9.5 7V5.5h5V7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7.5 7.5l.8 11a1 1 0 0 0 1 .9h5.4a1 1 0 0 0 1-.9l.8-11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 10.5v6M14 10.5v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
+
+function getBackToInvoiceDetailsUrl(){
+    const params = new URLSearchParams(window.location.search);
+    const invoiceId = String(params.get("id") || params.get("invoiceId") || "").trim();
+    return invoiceId ? `view-invoice.html?id=${encodeURIComponent(invoiceId)}` : "invoice-list.html";
+}
 
 function renderImportantTable(){
     const tbody = document.getElementById("important-table-body");
@@ -31,7 +38,7 @@ function renderImportantTable(){
         tr.innerHTML = `
             <td>${idx + 1}</td>
             <td>${note}</td>
-            <td><button type="button" class="btn btn-danger btn-inline remove-important-btn" data-index="${idx}">Remove</button></td>
+            <td><button type="button" class="icon-btn btn-danger remove-important-btn" data-index="${idx}" aria-label="Remove important note" title="Remove important note">${DELETE_ICON_SVG}</button></td>
         `;
         tbody.appendChild(tr);
     });
@@ -322,7 +329,7 @@ async function addProductRow(){
             <td><input type="number" class="rate compact-input" readonly title="Rate"></td>
             <td><input type="number" class="vat compact-input" value="0" title="VAT"></td>
             <td><input type="number" class="gross compact-input" readonly title="Gross"></td>
-            <td><button class="btn btn-danger btn-inline remove-product-row-btn" type="button">Remove</button></td>
+            <td><button class="icon-btn btn-danger remove-product-row-btn" type="button" aria-label="Remove product row" title="Remove product row">${DELETE_ICON_SVG}</button></td>
         `;
 
         document.getElementById("productRows").appendChild(row);
@@ -869,11 +876,9 @@ if(importantTableBody){
         }
     });
 }
-const backToInvoiceListBtn = document.getElementById("backToInvoiceListBtn");
-if(backToInvoiceListBtn){
-    backToInvoiceListBtn.addEventListener("click", () => {
-        window.location.href = "invoice-list.html";
-    });
+const backToInvoiceDetailsBtn = document.getElementById("backToInvoiceDetailsBtn");
+if(backToInvoiceDetailsBtn){
+    backToInvoiceDetailsBtn.href = getBackToInvoiceDetailsUrl();
 }
 const invoiceDateInput = document.getElementById("invoiceDate");
 const quotationDateInput = document.getElementById("quotationDate");

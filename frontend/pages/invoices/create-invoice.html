@@ -38,7 +38,11 @@
             <div>
                 <h2 class="add-product-title">Create Invoice</h2>
             </div>
-            <div class="add-product-badge">Billing</div>
+            <a class="icon-btn" id="backToInvoiceDetailsBtn" href="invoice-list.html" aria-label="Back to invoice details" title="Back to invoice details">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </a>
         </div>
 
         <form id="invoiceForm">
@@ -128,7 +132,11 @@
 
                 <div class="card product-card field-span-full">
                     <div class="product-toolbar">
-                        <button class="btn btn-inline-add" id="addProductRowBtn" type="button">Add Product</button>
+                        <button class="icon-btn" id="addProductRowBtn" type="button" aria-label="Add product row" title="Add product row">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            </svg>
+                        </button>
                         <span class="product-hint">Search by Product ID or Description</span>
                     </div>
                         <div class="table-scroll">
@@ -159,7 +167,11 @@
                         <select id="supportImportantSelect" class="support-important-select">
                             <option value="">Select Support Important</option>
                         </select>
-                        <button class="btn btn-inline" id="addImportantFromSupportBtn" type="button">Add important</button>
+                        <button class="icon-btn" id="addImportantFromSupportBtn" type="button" aria-label="Add important note" title="Add important note">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            </svg>
+                        </button>
                     </div>
                     <div class="card card-mt-12">
                         <div class="table-scroll">
@@ -178,8 +190,13 @@
                 </div>
             </div>
             <div class="add-product-actions">
-                <button type="submit">Save</button>
-                <button class="btn btn-secondary" id="backToInvoiceListBtn" type="button">Back</button>
+                <button type="submit" class="icon-btn" aria-label="Save invoice" title="Save invoice">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5.5 3.5h11l2 2V20.5H5.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M8 3.5v5h7v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M8 14h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                </button>
             </div>
         </form>
     </div>

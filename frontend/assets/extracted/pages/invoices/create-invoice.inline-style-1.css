@@ -35,7 +35,23 @@ html, body { overflow-x: hidden; }
     padding: 12px 14px 0 14px;
 }
 .product-toolbar .product-hint { font-size: 12px; color: #556b84; }
-.product-toolbar .btn-inline-add { margin: 0; height: 38px; padding: 0 14px; }
+.product-toolbar .icon-btn {
+    margin: 0;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    flex: 0 0 auto;
+}
+.product-toolbar .icon-btn svg,
+.important-actions .icon-btn svg,
+.add-product-actions .icon-btn svg,
+.table.product-table .invoice-product-row .icon-btn svg,
+#important-table-body .icon-btn svg {
+    width: 20px;
+    height: 20px;
+}
 .table-scroll {
     display: block;
     width: 100%;
@@ -74,13 +90,16 @@ html, body { overflow-x: hidden; }
 .table.product-table .invoice-product-row .compact-input {
     height: 40px;
 }
-.table.product-table .invoice-product-row .btn.btn-inline {
+.table.product-table .invoice-product-row .icon-btn {
+    width: 40px;
+    min-width: 40px;
     height: 40px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    white-space: nowrap;
+    min-height: 40px;
+    padding: 0;
+    display: inline-grid;
+    place-items: center;
     margin-top: 0;
+    vertical-align: middle;
 }
 .product-picker-wrap { position: relative; min-width: 0; }
 .product-results {
@@ -157,10 +176,18 @@ html, body { overflow-x: hidden; }
 .important-actions .btn,
 .add-product-actions .btn,
 .add-product-actions button { margin-top: 0; }
+.important-actions .icon-btn,
+.add-product-actions .icon-btn {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    flex: 0 0 auto;
+}
 
 @media (max-width: 1100px) {
     .add-product-grid { grid-template-columns: 1fr; }
-    .add-product-header { flex-direction: column; align-items: flex-start; }
 }
 
 @media (max-width: 900px) {
@@ -201,11 +228,21 @@ html, body { overflow-x: hidden; }
         width: 100%;
         white-space: normal;
     }
-    .product-toolbar .btn-inline-add { width: auto; min-width: 140px; }
+    .product-toolbar .icon-btn { width: 44px; min-width: 44px; }
     .important-actions { flex-direction: column; align-items: stretch; }
     .important-actions > * { width: 100%; min-width: 0; }
+    .important-actions > .icon-btn {
+        width: 44px;
+        min-width: 44px;
+        align-self: flex-start;
+    }
     #supportImportantSelect { min-width: 0 !important; width: 100% !important; }
     .add-product-actions { flex-direction: row; flex-wrap: wrap; gap: 8px; }
     .add-product-actions > * { flex: 1 1 140px; max-width: 100%; }
+    .add-product-actions > .icon-btn {
+        flex: 0 0 auto;
+        width: 44px;
+        min-width: 44px;
+    }
     body.app-has-sidebar-footer #app-global-footer { left: 0 !important; width: 100% !important; }
 }
