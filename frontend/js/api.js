@@ -373,7 +373,7 @@ function renderSidebarMenuByAccess(){
         { path: "/stock/stock.html", label: "Stock" },
         {
             path: "/users/user-list.html",
-            label: "Users",
+            label: "System",
             children: [
                 { path: "/users/user-list.html", label: "User List" },
                 { path: "/users/preference.html", label: "Preference" },
