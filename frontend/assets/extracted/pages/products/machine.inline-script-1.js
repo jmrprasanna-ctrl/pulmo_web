@@ -14,14 +14,7 @@ const canAccessPath = (path) => (canManage)
     ? true
     : (role === "user" && allowedPaths.has(String(path || "").trim().toLowerCase()));
 const canAddMachine = canAccessPath("/products/add-rental-machine.html");
-const canEditRentalMachine = canManage || (role === "user" && typeof hasUserActionPermission === "function" && hasUserActionPermission("/products/machine.html", "edit"));
-const canDeleteRentalMachine = canManage || (role === "user" && typeof hasUserActionPermission === "function" && hasUserActionPermission("/products/machine.html", "delete"));
-const canAddRentalCount = canAccessPath("/products/add-rental-count.html");
-const canAddConsumables = canAccessPath("/products/add-rental-consumable.html");
-const isReadOnlyUser = !canEditRentalMachine && !canDeleteRentalMachine;
 const addMachineBtn = document.getElementById("addMachineBtn");
-const rentalCountBtn = document.getElementById("rentalCountBtn");
-const consumablesBtn = document.getElementById("consumablesBtn");
 const savePdfBtn = document.getElementById("savePdfBtn");
 const machineSearchEl = document.getElementById("machineSearch");
 let allMachines = [];
@@ -29,21 +22,8 @@ let allMachines = [];
 if(addMachineBtn && !canAddMachine){
     addMachineBtn.style.display = "none";
 }
-if(consumablesBtn && !canAddConsumables){
-    consumablesBtn.style.display = "none";
-}
-if(rentalCountBtn && !canAddRentalCount){
-    rentalCountBtn.style.display = "none";
-}
 if(savePdfBtn){
     savePdfBtn.addEventListener("click", savePDF);
-}
-
-if(isReadOnlyUser){
-    const actionHeader = document.querySelector("#machineTable thead th:last-child");
-    if(actionHeader && actionHeader.innerText.toLowerCase().includes("action")){
-        actionHeader.remove();
-    }
 }
 
 function renderMachines(machines){
@@ -52,6 +32,8 @@ function renderMachines(machines){
 
     machines.forEach(m => {
         const tr = document.createElement("tr");
+        tr.classList.add("machine-row-clickable");
+        tr.style.cursor = "pointer";
         tr.innerHTML = `
             <td>${m.machine_id || ""}</td>
             <td>${m.customer_name || (m.Customer ? m.Customer.name : "")}</td>
@@ -61,17 +43,11 @@ function renderMachines(machines){
             <td>${m.serial_no || ""}</td>
             <td>${m.start_count ?? 0}</td>
         `;
-
-        if(!isReadOnlyUser){
-            tr.innerHTML += `
-                <td>
-                    <div class="machine-action-row">
-                        ${canEditRentalMachine ? `<a class="btn machine-action-btn" href="edit-rental-machine.html?id=${m.id}">Edit</a>` : ""}
-                        ${canDeleteRentalMachine ? `<button class="btn btn-danger btn-inline machine-action-btn" type="button" onclick="deleteMachine(${m.id})">Delete</button>` : ""}
-                    </div>
-                </td>
-            `;
-        }
+        tr.addEventListener("click", (event) => {
+            const target = event.target;
+            if(target && target.closest("a, button, input, select, textarea")) return;
+            window.location.href = `edit-rental-machine.html?id=${m.id}`;
+        });
 
         tbody.appendChild(tr);
     });
@@ -103,17 +79,6 @@ async function loadMachines(){
 
 if(machineSearchEl){
     machineSearchEl.addEventListener("input", applyMachineFilter);
-}
-
-async function deleteMachine(id){
-    if(!confirm("Delete this rental machine?")) return;
-    try{
-        await request(`/rental-machines/${id}`, "DELETE");
-        showMessageBox("Rental machine deleted");
-        await loadMachines();
-    }catch(err){
-        alert(err.message || "Failed to delete rental machine");
-    }
 }
 
 function savePDF(){
