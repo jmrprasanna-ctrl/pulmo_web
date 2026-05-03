@@ -1,3 +1,14 @@
+.page-head{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:12px;
+            margin-bottom:16px;
+        }
+        .page-head h2{
+            margin:0;
+        }
+
 .mapped-wrap{max-width:900px}
         .mapped-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
         .mapped-info{background:#f7fbff;border:1px solid #d8e8f8;border-radius:10px;padding:10px 12px;margin-top:12px}
