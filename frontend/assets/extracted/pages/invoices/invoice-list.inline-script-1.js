@@ -4,10 +4,6 @@ const addInvoiceBtn = document.getElementById("addInvoiceBtn");
 let allInvoices = [];
 let selectedYear = String(new Date().getFullYear());
 
-        function isAdmin(){
-            return (localStorage.getItem("role") || "").toLowerCase() === "admin";
-        }
-
         function getInvoiceYear(inv){
             const raw = String(inv?.invoice_date || "").trim();
             if(!raw) return "";
@@ -54,11 +50,7 @@ let selectedYear = String(new Date().getFullYear());
                     <td>${inv.customer_name || ""}</td>
                     <td>${dateText}</td>
                     <td>${inv.total}</td>
-                    <td>
-                        <div class="invoice-action-row">
-                            ${isAdmin() ? `<button class="btn btn-danger btn-inline invoice-action-btn" onclick="deleteInvoice(${inv.id})">Delete</button>` : ""}
-                        </div>
-                    </td>
+                    <td></td>
                 `;
                 row.addEventListener("click", (event) => {
                     if(event.target && event.target.closest(".invoice-action-row")) return;
