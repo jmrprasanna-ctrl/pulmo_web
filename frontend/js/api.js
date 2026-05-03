@@ -58,6 +58,8 @@ let USER_ACCESS_CONFIG_APPLIES_RUNTIME = false;
 const USER_ACCESS_CONFIG_ENABLED_CACHE_KEY = "userAccessConfigEnabledRuntime";
 const MAPPED_COMPANY_NAME_KEY = "mappedCompanyName";
 const MAPPED_COMPANY_LOGO_URL_KEY = "mappedCompanyLogoUrl";
+const MAPPED_COMPANY_CODE_KEY = "mappedCompanyCode";
+const MAPPED_COMPANY_EMAIL_KEY = "mappedCompanyEmail";
 window.__userAccessPermissionsLoaded = false;
 window.__waitForUserAccessPermissions = function __waitForUserAccessPermissions(){
     if(window.__userAccessPermissionsLoaded){
@@ -140,6 +142,8 @@ function logoutForInactivity(){
     localStorage.removeItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY);
     localStorage.removeItem(MAPPED_COMPANY_NAME_KEY);
     localStorage.removeItem(MAPPED_COMPANY_LOGO_URL_KEY);
+    localStorage.removeItem(MAPPED_COMPANY_CODE_KEY);
+    localStorage.removeItem(MAPPED_COMPANY_EMAIL_KEY);
     window.location.replace(buildPagesPath("login.html"));
 }
 
@@ -326,7 +330,14 @@ function renderSidebarMenuByAccess(){
     const menuEntries = [
         { path: "/dashboard.html", label: "Dashboard" },
         { path: "/products/product-list.html", label: "Products" },
-        { path: "/products/general-machine.html", label: "Machines" },
+        {
+            path: "/products/general-machine.html",
+            label: "Machines",
+            children: [
+                { path: "/products/general-machine.html", label: "General" },
+                { path: "/products/machine.html", label: "Rental" }
+            ]
+        },
         { path: "/customers/customer-list.html", label: "Customers" },
         { path: "/invoices/invoice-list.html", label: "Invoices" },
         { path: "/vendors/list-vendor.html", label: "Vendors" },
@@ -338,9 +349,25 @@ function renderSidebarMenuByAccess(){
         { path: "/stock/stock.html", label: "Stock" },
         { path: "/users/user-list.html", label: "Users" }
     ];
-    const granted = menuEntries.filter((entry) => hasUserGrantedPath(entry.path));
+    const granted = menuEntries
+        .map((entry) => {
+            if(!Array.isArray(entry.children) || !entry.children.length){
+                return hasUserGrantedPath(entry.path) ? entry : null;
+            }
+            const grantedChildren = entry.children.filter((child) => hasUserGrantedPath(child.path));
+            if(!grantedChildren.length) return null;
+            return { ...entry, children: grantedChildren };
+        })
+        .filter(Boolean);
     const finalMenu = granted.length ? granted : [{ path: "/dashboard.html", label: "Dashboard" }];
-    const signature = finalMenu.map((entry) => String(entry.path || "").trim().toLowerCase()).join("|");
+    const signature = finalMenu
+        .map((entry) => {
+            const base = String(entry.path || "").trim().toLowerCase();
+            if(!entry.children || !entry.children.length) return base;
+            const childSig = entry.children.map((child) => String(child.path || "").trim().toLowerCase()).join(",");
+            return `${base}[${childSig}]`;
+        })
+        .join("|");
     if(window.__lastAccessMenuSignature === signature){
         return;
     }
@@ -349,10 +376,46 @@ function renderSidebarMenuByAccess(){
     window.__accessMenuRenderLock = true;
     document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach((nav) => {
         nav.innerHTML = finalMenu
-            .map((entry) => `<li><a href="${toMenuHref(entry.path)}">${entry.label}</a></li>`)
+            .map((entry) => {
+                if(!entry.children || !entry.children.length){
+                    return `<li><a href="${toMenuHref(entry.path)}">${entry.label}</a></li>`;
+                }
+                const childLinks = entry.children
+                    .map((child) => `<li><a href="${toMenuHref(child.path)}">${child.label}</a></li>`)
+                    .join("");
+                return `
+                    <li class="nav-group">
+                        <a href="#" class="nav-group-toggle" data-sidebar-machines-toggle="1" aria-expanded="false">${entry.label}</a>
+                        <ul class="nav-submenu" data-sidebar-machines-menu="1">
+                            ${childLinks}
+                        </ul>
+                    </li>
+                `;
+            })
             .join("");
     });
+    bindMachinesSidebarMenu();
     window.__accessMenuRenderLock = false;
+}
+
+function bindMachinesSidebarMenu(){
+    const pagePath = window.location.pathname.replace(/\\/g, "/").toLowerCase();
+    const isMachinesPage = pagePath.endsWith("/products/general-machine.html") || pagePath.endsWith("/products/machine.html");
+    document.querySelectorAll("[data-sidebar-machines-toggle='1']").forEach((toggle) => {
+        const parent = toggle.closest(".nav-group");
+        const submenu = parent ? parent.querySelector("[data-sidebar-machines-menu='1']") : null;
+        if(!parent || !submenu) return;
+
+        parent.classList.toggle("is-open", isMachinesPage);
+        toggle.setAttribute("aria-expanded", parent.classList.contains("is-open") ? "true" : "false");
+
+        toggle.addEventListener("click", (event) => {
+            event.preventDefault();
+            const willOpen = !parent.classList.contains("is-open");
+            parent.classList.toggle("is-open", willOpen);
+            toggle.setAttribute("aria-expanded", willOpen ? "true" : "false");
+        });
+    });
 }
 
 function setSidebarReadyState(isReady){
@@ -997,6 +1060,16 @@ async function login(){
             localStorage.setItem(MAPPED_COMPANY_NAME_KEY, String(res.user.mapped_company_name).trim());
         }else{
             localStorage.removeItem(MAPPED_COMPANY_NAME_KEY);
+        }
+        if(res.user && res.user.mapped_company_code){
+            localStorage.setItem(MAPPED_COMPANY_CODE_KEY, String(res.user.mapped_company_code).trim().toUpperCase());
+        }else{
+            localStorage.removeItem(MAPPED_COMPANY_CODE_KEY);
+        }
+        if(res.user && res.user.mapped_company_email){
+            localStorage.setItem(MAPPED_COMPANY_EMAIL_KEY, String(res.user.mapped_company_email).trim().toLowerCase());
+        }else{
+            localStorage.removeItem(MAPPED_COMPANY_EMAIL_KEY);
         }
         if(res.user && res.user.mapped_company_logo_url){
             localStorage.setItem(MAPPED_COMPANY_LOGO_URL_KEY, String(res.user.mapped_company_logo_url).trim());

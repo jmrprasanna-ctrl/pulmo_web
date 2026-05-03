@@ -77,6 +77,41 @@ body {
   transform: translateX(2px);
 }
 
+.sidebar .nav-links .nav-group > .nav-group-toggle::after {
+  content: "▸";
+  margin-left: auto;
+  font-size: 0.82rem;
+  opacity: 0.9;
+  transform: rotate(0deg);
+  transition: transform 0.18s ease;
+}
+
+.sidebar .nav-links .nav-group.is-open > .nav-group-toggle::after {
+  transform: rotate(90deg);
+}
+
+.sidebar .nav-links .nav-submenu {
+  list-style: none;
+  margin: 2px 0 4px;
+  padding: 0 0 0 18px;
+  display: none;
+}
+
+.sidebar .nav-links .nav-group.is-open > .nav-submenu {
+  display: block;
+}
+
+.sidebar .nav-links .nav-submenu li {
+  margin-bottom: 2px;
+}
+
+.sidebar .nav-links .nav-submenu li a {
+  font-weight: 560;
+  font-size: 0.94rem;
+  padding: 9px 12px;
+  border-radius: 10px;
+}
+
 .main-content {
   margin-left: 264px;
   width: calc(100% - 264px);

@@ -83,7 +83,14 @@ function toDashboardMenuHref(canonicalPath){
 const DASHBOARD_MENU_ENTRIES = [
     { path: "/dashboard.html", label: "Dashboard" },
     { path: "/products/product-list.html", label: "Products" },
-    { path: "/products/general-machine.html", label: "Machines" },
+    {
+        path: "/products/general-machine.html",
+        label: "Machines",
+        children: [
+            { path: "/products/general-machine.html", label: "General" },
+            { path: "/products/machine.html", label: "Rental" }
+        ]
+    },
     { path: "/customers/customer-list.html", label: "Customers" },
     { path: "/invoices/invoice-list.html", label: "Invoices" },
     { path: "/vendors/list-vendor.html", label: "Vendors" },
@@ -104,23 +111,74 @@ function renderDashboardSidebarMenu(entries){
     const safeEntries = Array.isArray(entries) && entries.length
         ? entries
         : [{ path: "/dashboard.html", label: "Dashboard" }];
-    const signature = safeEntries.map((e) => normalizeAccessPath(e.path)).join("|");
+    const signature = safeEntries
+        .map((e) => {
+            const base = normalizeAccessPath(e.path);
+            if(!e.children || !e.children.length) return base;
+            const childSig = e.children.map((child) => normalizeAccessPath(child.path)).join(",");
+            return `${base}[${childSig}]`;
+        })
+        .join("|");
     if(signature === lastDashboardMenuSignature) return;
     lastDashboardMenuSignature = signature;
     nav.innerHTML = safeEntries
-        .map((e) => `<li><a href="${toDashboardMenuHref(e.path)}">${e.label}</a></li>`)
+        .map((e) => {
+            if(!e.children || !e.children.length){
+                return `<li><a href="${toDashboardMenuHref(e.path)}">${e.label}</a></li>`;
+            }
+            const childLinks = e.children
+                .map((child) => `<li><a href="${toDashboardMenuHref(child.path)}">${child.label}</a></li>`)
+                .join("");
+            return `
+                <li class="nav-group">
+                    <a href="#" class="nav-group-toggle" data-sidebar-machines-toggle="1" aria-expanded="false">${e.label}</a>
+                    <ul class="nav-submenu" data-sidebar-machines-menu="1">
+                        ${childLinks}
+                    </ul>
+                </li>
+            `;
+        })
         .join("");
+    bindDashboardMachinesSubmenu();
+}
+
+function bindDashboardMachinesSubmenu(){
+    const pagePath = window.location.pathname.replace(/\\/g, "/").toLowerCase();
+    const isMachinesPage = pagePath.endsWith("/products/general-machine.html") || pagePath.endsWith("/products/machine.html");
+    document.querySelectorAll("[data-sidebar-machines-toggle='1']").forEach((toggle) => {
+        const parent = toggle.closest(".nav-group");
+        const submenu = parent ? parent.querySelector("[data-sidebar-machines-menu='1']") : null;
+        if(!parent || !submenu) return;
+
+        parent.classList.toggle("is-open", isMachinesPage);
+        toggle.setAttribute("aria-expanded", parent.classList.contains("is-open") ? "true" : "false");
+
+        toggle.addEventListener("click", (event) => {
+            event.preventDefault();
+            const willOpen = !parent.classList.contains("is-open");
+            parent.classList.toggle("is-open", willOpen);
+            toggle.setAttribute("aria-expanded", willOpen ? "true" : "false");
+        });
+    });
 }
 
 function enforceDashboardSidebarAccess(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
     if(role !== "admin" && role !== "manager" && role !== "user") return;
-    const granted = DASHBOARD_MENU_ENTRIES.filter((entry) => {
-        if(typeof hasUserGrantedPath !== "function"){
-            return true;
-        }
-        return hasUserGrantedPath(entry.path);
-    });
+    const granted = DASHBOARD_MENU_ENTRIES
+        .map((entry) => {
+            if(!entry.children || !entry.children.length){
+                if(typeof hasUserGrantedPath !== "function") return entry;
+                return hasUserGrantedPath(entry.path) ? entry : null;
+            }
+            const children = entry.children.filter((child) => {
+                if(typeof hasUserGrantedPath !== "function") return true;
+                return hasUserGrantedPath(child.path);
+            });
+            if(!children.length) return null;
+            return { ...entry, children };
+        })
+        .filter(Boolean);
     dashboardAllowedMenuEntries = granted.length
         ? granted
         : [{ path: "/dashboard.html", label: "Dashboard" }];
