@@ -37,7 +37,7 @@ let selectedYear = String(new Date().getFullYear());
             tbody.innerHTML = '';
             if(!invoices || invoices.length === 0){
                 const row = document.createElement('tr');
-                row.innerHTML = `<td colspan="5">No invoices found.</td>`;
+                row.innerHTML = `<td colspan="4">No invoices found.</td>`;
                 tbody.appendChild(row);
                 return;
             }
@@ -50,10 +50,8 @@ let selectedYear = String(new Date().getFullYear());
                     <td>${inv.customer_name || ""}</td>
                     <td>${dateText}</td>
                     <td>${inv.total}</td>
-                    <td></td>
                 `;
-                row.addEventListener("click", (event) => {
-                    if(event.target && event.target.closest(".invoice-action-row")) return;
+                row.addEventListener("click", () => {
                     viewInvoice(inv.id);
                 });
                 tbody.appendChild(row);
@@ -87,7 +85,7 @@ let selectedYear = String(new Date().getFullYear());
                 if(!tbody) return;
                 tbody.innerHTML = '';
                 const row = document.createElement('tr');
-                row.innerHTML = `<td colspan="5">${err.message || "Failed to load invoices"}</td>`;
+                row.innerHTML = `<td colspan="4">${err.message || "Failed to load invoices"}</td>`;
                 tbody.appendChild(row);
             }
         }
