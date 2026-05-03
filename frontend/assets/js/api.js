@@ -1,4 +1,4 @@
-                         
+﻿                         
                       
                             
 function resolveBaseUrl(){
@@ -359,7 +359,15 @@ function renderSidebarMenuByAccess(){
         { path: "/expenses/expense-list.html", label: "Expenses" },
         { path: "/reports/sales-report.html", label: "Reports" },
         { path: "/analytics/sales-chart.html", label: "Analytics" },
-        { path: "/finance/finance.html", label: "Finance" },
+        {
+            path: "/finance/finance.html",
+            label: "Finance",
+            children: [
+                { path: "/finance/finance.html", label: "Finance" },
+                { path: "/finance/payments.html", label: "Payments" },
+                { path: "/finance/pendings.html", label: "Pendings" }
+            ]
+        },
         { path: "/support/support.html", label: "Support" },
         { path: "/stock/stock.html", label: "Stock" },
         { path: "/users/user-list.html", label: "Users" }
@@ -1244,3 +1252,4 @@ function hasUserActionPermission(path, action){
     return USER_ALLOWED_ACTIONS_RUNTIME.includes(actionKey);
 }
 window.hasUserActionPermission = hasUserActionPermission;
+
