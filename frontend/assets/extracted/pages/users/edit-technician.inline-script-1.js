@@ -16,6 +16,22 @@ const TECHNICIAN_ACCESS_PATH = "/users/technician-list.html";
             return true;
         }
 
+        function canDeleteTechnician(){
+            const role = (localStorage.getItem("role") || "").toLowerCase();
+            if(role !== "admin" && role !== "manager" && role !== "user") return false;
+            if(typeof hasAccessConfigRestrictions === "function" && hasAccessConfigRestrictions()){
+                return typeof hasUserActionPermission === "function"
+                    ? hasUserActionPermission(TECHNICIAN_ACCESS_PATH, "delete")
+                    : false;
+            }
+            if(role === "user"){
+                return typeof hasUserActionPermission === "function"
+                    ? hasUserActionPermission(TECHNICIAN_ACCESS_PATH, "delete")
+                    : false;
+            }
+            return true;
+        }
+
         function getTechnicianId(){
             const params = new URLSearchParams(window.location.search);
             return params.get("id");
@@ -46,13 +62,24 @@ const TECHNICIAN_ACCESS_PATH = "/users/technician-list.html";
             if(typeof window.__waitForUserAccessPermissions === "function"){
                 await window.__waitForUserAccessPermissions();
             }
-            if(!canEditTechnician()){
-                alert("You don't have permission to edit technicians.");
+            const canEdit = canEditTechnician();
+            const canDelete = canDeleteTechnician();
+            if(!canEdit && !canDelete){
+                alert("You don't have permission to access technicians.");
                 window.location.href = "technician-list.html";
                 return;
             }
             const form = document.getElementById("editTechnicianForm");
             const companyInput = document.getElementById("company");
+            const saveBtn = document.getElementById("saveTechnicianBtn");
+            const deleteBtn = document.getElementById("deleteTechnicianBtn");
+
+            if(saveBtn && !canEdit){
+                saveBtn.style.display = "none";
+            }
+            if(deleteBtn && !canDelete){
+                deleteBtn.style.display = "none";
+            }
 
             companyInput.style.textTransform = "uppercase";
             companyInput.addEventListener("input", () => {
@@ -63,6 +90,10 @@ const TECHNICIAN_ACCESS_PATH = "/users/technician-list.html";
 
             form.addEventListener("submit", async (e) => {
                 e.preventDefault();
+                if(!canEdit){
+                    alert("You don't have permission to edit technicians.");
+                    return;
+                }
                 const id = getTechnicianId();
                 const payload = {
                     technician_name: document.getElementById("technicianName").value.trim(),
@@ -80,6 +111,25 @@ const TECHNICIAN_ACCESS_PATH = "/users/technician-list.html";
                     alert(err.message || "Failed to update technician");
                 }
             });
+
+            if(deleteBtn){
+                deleteBtn.addEventListener("click", async () => {
+                    if(!canDelete){
+                        alert("You don't have permission to delete technicians.");
+                        return;
+                    }
+                    const id = getTechnicianId();
+                    if(!id) return;
+                    if(!confirm("Delete this technician?")) return;
+                    try{
+                        await request(`/technicians/${id}`,"DELETE");
+                        showMessageBox("Technician deleted");
+                        window.location.href = "technician-list.html";
+                    }catch(err){
+                        alert(err.message || "Failed to delete technician");
+                    }
+                });
+            }
 
             loadTechnician();
         });
