@@ -30,7 +30,14 @@
 </div>
 
 <div class="main-content">
-    <header><h2>Add Expense</h2></header>
+    <header class="page-head">
+        <h2>Add Expense</h2>
+        <a class="icon-btn" href="expense-list.html" aria-label="Back to expenses list" title="Back to expenses list">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+    </header>
 
     <div class="form-container">
         <form id="expenseForm">
@@ -60,7 +67,6 @@
 
             <div class="form-actions">
                 <button type="submit">Save Expense</button>
-                <a class="btn btn-secondary" href="expense-list.html">Back</a>
             </div>
         </form>
     </div>
