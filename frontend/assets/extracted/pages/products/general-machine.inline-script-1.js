@@ -42,6 +42,10 @@ function renderMachines(machines){
 
     machines.forEach(m => {
         const tr = document.createElement("tr");
+        if(canEditGeneralMachine){
+            tr.classList.add("machine-row-clickable");
+            tr.style.cursor = "pointer";
+        }
         tr.innerHTML = `
             <td>${m.machine_id || ""}</td>
             <td>${m.customer_name || (m.Customer ? m.Customer.name : "")}</td>
@@ -61,6 +65,14 @@ function renderMachines(machines){
                     </div>
                 </td>
             `;
+        }
+
+        if(canEditGeneralMachine){
+            tr.addEventListener("click", (event) => {
+                const target = event.target;
+                if(target && target.closest("a, button, input, select, textarea")) return;
+                window.location.href = `edit-general-machine.html?id=${m.id}`;
+            });
         }
 
         tbody.appendChild(tr);
