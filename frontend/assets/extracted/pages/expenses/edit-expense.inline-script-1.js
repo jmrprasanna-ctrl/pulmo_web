@@ -1,5 +1,6 @@
 const params = new URLSearchParams(window.location.search);
 const expenseId = params.get("id");
+const deleteExpenseBtn = document.getElementById("deleteExpenseBtn");
 
 if(!expenseId){
     alert("Missing expense id.");
@@ -40,6 +41,19 @@ document.getElementById("expenseForm").addEventListener("submit", async function
         alert(err.message || "Failed to update expense");
     }
 });
+
+if(deleteExpenseBtn){
+    deleteExpenseBtn.addEventListener("click", async function(){
+        if(!confirm("Delete this expense?")) return;
+        try{
+            await request(`/expenses/${expenseId}`,"DELETE");
+            showMessageBox("Expense deleted");
+            window.location.href = "expense-list.html";
+        }catch(err){
+            alert(err.message || "Failed to delete expense");
+        }
+    });
+}
 
 function logout(){
     localStorage.removeItem("token");
