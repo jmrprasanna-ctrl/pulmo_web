@@ -13,7 +13,14 @@
     <div id="navbar-container"></div>
 
     <div class="main-content">
-        <header><h2>Edit User</h2></header>
+        <header class="page-head">
+            <h2>Edit User</h2>
+            <a class="icon-btn" href="user-list.html" aria-label="Back to user list" title="Back to user list">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </a>
+        </header>
         <div class="form-container">
             <form id="editUserForm">
                 <label for="username">Username</label>
@@ -52,8 +59,13 @@
                 <p class="hint">Leave password blank to keep the current password.</p>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
-                    <a class="btn btn-secondary" href="user-list.html">Back</a>
+                    <button type="submit" class="icon-btn" aria-label="Save changes" title="Save changes">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M5.5 3.5h11l2 2V20.5H5.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M8 3.5v5h7v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M8 14h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                        </svg>
+                    </button>
                 </div>
             </form>
         </div>

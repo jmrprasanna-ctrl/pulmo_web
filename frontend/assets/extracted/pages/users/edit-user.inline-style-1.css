@@ -1,8 +1,33 @@
-.form-actions{
+.page-head{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:10px;
+            flex-wrap:nowrap;
+            width:100%;
+        }
+        .page-head h2{
+            margin:0;
+            flex:1 1 auto;
+            min-width:0;
+        }
+        .page-head .icon-btn{
+            margin-left:auto;
+            flex:0 0 auto;
+        }
+        .form-actions{
             display: flex;
             gap: 12px;
             flex-wrap: wrap;
             margin-top: 12px;
+        }
+        .form-actions .icon-btn{
+            width:44px;
+            min-width:44px;
+            height:44px;
+            min-height:44px;
+            padding:0;
+            flex:0 0 auto;
         }
         .btn-secondary{
             background: #e9f3fc;
@@ -55,4 +80,9 @@
             margin: 4px 0 12px;
             color: #5d7082;
             font-size: 14px;
+        }
+        @media (min-width: 1101px){
+            .form-container form{
+                max-width: 980px;
+            }
         }
