@@ -1171,9 +1171,52 @@ async function printPDF(){
     }
 }
 
-async function emailInvoice(){
+function blobToDataUrl(blob){
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error("Failed to read generated PDF."));
+        reader.readAsDataURL(blob);
+    });
+}
+
+async function buildRenderedQuotationPdf(){
     if(!latestInvoiceData){
-        alert("Invoice details are not ready yet.");
+        throw new Error("Invoice details are not ready yet.");
+    }
+
+    const image = await drawInvoice(latestInvoiceData, "image/jpeg", { width: BASE_W, height: BASE_H });
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: "p", unit: "pt", format: "a4", compress: true });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const margin = 18;
+    const maxW = pageW - margin * 2;
+    const maxH = pageH - margin * 2;
+    const ratio = 1754 / 1240;
+
+    let imgW = maxW;
+    let imgH = imgW * ratio;
+    if(imgH > maxH){
+        imgH = maxH;
+        imgW = imgH / ratio;
+    }
+    const x = (pageW - imgW) / 2;
+    const y = (pageH - imgH) / 2;
+    doc.addImage(image, "JPEG", x, y, imgW, imgH, undefined, "MEDIUM");
+
+    const invoiceNo = String(latestInvoiceData.invoice.invoice_no || "Details").trim();
+    const customerName = String((latestInvoiceData.customer && latestInvoiceData.customer.name) || "Customer").trim();
+    const safeCustomer = customerName.replace(/[\\/:*?"<>|]/g, "_");
+    const safeInvoiceNo = invoiceNo.replace(/[\\/:*?"<>|]/g, "_");
+    const fileName = `Quatation_${safeInvoiceNo}_${safeCustomer}.pdf`;
+    const pdfBlob = doc.output("blob");
+    return { pdfBlob, fileName };
+}
+
+async function emailQuotation(){
+    if(!latestInvoiceData){
+        alert("Quotation details are not ready yet.");
         return;
     }
 
@@ -1184,14 +1227,21 @@ async function emailInvoice(){
     }
 
     try{
-        const res = await request(`/invoices/${invoiceId}/send-email`, "POST");
+        const rendered = await buildRenderedQuotationPdf();
+        const attachmentDataUrl = await blobToDataUrl(rendered.pdfBlob);
+        const res = await request(`/invoices/${invoiceId}/send-email`, "POST", {
+            attachment_pdf_base64: attachmentDataUrl,
+            attachment_file_name: rendered.fileName,
+            email_type: "quotation",
+            require_rendered_attachment: true
+        });
         if(typeof showMessageBox === "function"){
-            showMessageBox(res.message || "Invoice email sent");
+            showMessageBox(res.message || "Quotation email sent");
         }else{
-            alert(res.message || "Invoice email sent");
+            alert(res.message || "Quotation email sent");
         }
     }catch(err){
-        alert(err.message || "Failed to send invoice email");
+        alert(err.message || "Failed to send Quotation email");
     }
 }
 
