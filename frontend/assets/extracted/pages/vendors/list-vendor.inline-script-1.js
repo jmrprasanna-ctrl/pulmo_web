@@ -31,11 +31,16 @@ function renderVendors(vendors){
     tbody.innerHTML = "";
     vendors.forEach(v=>{
         const tr = document.createElement("tr");
+        tr.classList.add("vendor-row-clickable");
+        tr.style.cursor = "pointer";
         tr.innerHTML = `
             <td>${v.name}</td>
             <td>${v.address}</td>
             <td>${v.category || ""}</td>
         `;
+        tr.addEventListener("click", () => {
+            window.location.href = `edit-vendor.html?id=${v.id}`;
+        });
         tbody.appendChild(tr);
     });
 }
