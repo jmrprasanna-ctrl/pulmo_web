@@ -113,6 +113,20 @@ document.getElementById("generalMachineForm").addEventListener("submit", async (
     }
 });
 
+const deleteGeneralMachineBtn = document.getElementById("deleteGeneralMachineBtn");
+if(deleteGeneralMachineBtn){
+    deleteGeneralMachineBtn.addEventListener("click", async () => {
+        if(!confirm("Delete this general machine?")) return;
+        try{
+            await request(`/general-machines/${machineIdParam}`, "DELETE");
+            showMessageBox("General machine deleted");
+            window.location.href = "general-machine.html";
+        }catch(err){
+            alert(err.message || "Failed to delete general machine");
+        }
+    });
+}
+
 function logout(){
     localStorage.removeItem("token");
     localStorage.removeItem("role");
