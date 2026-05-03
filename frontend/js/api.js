@@ -340,6 +340,7 @@ function renderSidebarMenuByAccess(){
                     path: "/products/machine.html",
                     label: "Rental",
                     children: [
+                        { path: "/products/machine.html", label: "Rental Mchine" },
                         { path: "/products/add-rental-count.html", label: "Rental Count" },
                         { path: "/products/add-rental-consumable.html", label: "Consumables" }
                     ]
@@ -479,6 +480,9 @@ function upgradeMachinesSidebarInPlace(){
             machinesChildren.push(`<li><a href="${toMenuHref("/products/general-machine.html")}">General</a></li>`);
         }
         const rentalChildren = [];
+        if(rentalAllowed){
+            rentalChildren.push(`<li><a href="${toMenuHref("/products/machine.html")}">Rental Mchine</a></li>`);
+        }
         if(rentalCountAllowed){
             rentalChildren.push(`<li><a href="${toMenuHref("/products/add-rental-count.html")}">Rental Count</a></li>`);
         }
