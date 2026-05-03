@@ -6,6 +6,18 @@
 <title>Email Setup - PULMO TECHNOLOGIES</title>
 <link rel="stylesheet" href="../../assets/css/style.css">
 <link rel="stylesheet" href="../../assets/css/dashboard.css">
+<style>
+    .page-head{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:12px;
+        margin-bottom:16px;
+    }
+    .page-head h2{
+        margin:0;
+    }
+</style>
 </head>
 <body>
 <div class="sidebar">
@@ -28,7 +40,14 @@
 </div>
 
 <div class="main-content">
-    <header><h2>Email Setup</h2></header>
+    <header class="page-head">
+        <h2>Email Setup</h2>
+        <a class="icon-btn" href="../users/user-list.html" aria-label="Back to user list" title="Back to user list">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+    </header>
     <div class="card">
         <form id="emailSetupForm">
             <div id="mappedDefaultsHint" class="path-hint" style="margin-bottom:10px;"></div>
@@ -78,8 +97,13 @@
             <small>Available placeholders: <code>{{invoice_no}}</code>, <code>{{customer_name}}</code>, <code>{{total_amount}}</code>, <code>{{invoice_date}}</code></small>
 
             <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;">
-                <button class="btn btn-primary" type="submit">Save Setup</button>
-                <a class="btn btn-secondary" href="../users/user-list.html">Back</a>
+                <button class="icon-btn" type="submit" aria-label="Save setup" title="Save setup">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5.5 3.5h11l2 2V20.5H5.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M8 3.5v5h7v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M8 14h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                </button>
             </div>
         </form>
     </div>
