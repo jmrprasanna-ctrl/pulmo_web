@@ -1250,6 +1250,26 @@ async function emailInvoice(){
     }
 }
 
+async function deleteInvoiceWithRenderCleanup(){
+    const invoiceId = new URLSearchParams(window.location.search).get("id");
+    if(!invoiceId){
+        alert("Invoice id is missing.");
+        return;
+    }
+
+    if(!confirm("Delete this invoice and related quotation render data?")) return;
+
+    try{
+        await request(`/invoices/${invoiceId}`, "DELETE");
+        if(typeof showMessageBox === "function"){
+            showMessageBox("Invoice deleted");
+        }
+        window.location.href = "invoice-list.html";
+    }catch(err){
+        alert(err.message || "Failed to delete invoice");
+    }
+}
+
 async function emailQuotation(){
     if(!latestInvoiceData){
         alert("Invoice details are not ready yet.");
@@ -1421,6 +1441,10 @@ window.addEventListener("DOMContentLoaded", async () => {
         initSealVControl();
         initLogoWithNameControl();
         initLayoutEditor();
+    }
+    const deleteBtn = document.getElementById("deleteInvoiceBtn");
+    if(deleteBtn){
+        deleteBtn.style.display = currentRole === "admin" ? "inline-grid" : "none";
     }
     renderInvoice();
 });

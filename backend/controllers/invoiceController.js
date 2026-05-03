@@ -13,6 +13,7 @@ const { sendEmail } = require("../services/emailService");
 const Op = Sequelize.Op;
 const ALLOWED_WARRANTY_PERIODS = new Set(["3 month", "6 month", "1 year", "2 year"]);
 const USER_PREF_TABLE = "user_preference_settings";
+const USER_QUOTATION_RENDER_TABLE = "user_quotation_render_settings";
 const ensuredUserPrefTableByDb = new Set();
 const INVENTORY_DB_NAME = "inventory";
 
@@ -172,6 +173,75 @@ function normalizePaymentStatus(value){
     const raw = String(value || "").trim().toLowerCase();
     if(raw === "received" || raw === "recieved") return "Received";
     return "Pending";
+}
+
+async function cleanupQuotationRenderOverridesForInvoice(invoiceId, databaseName){
+    const numericInvoiceId = Number(invoiceId);
+    if(!Number.isFinite(numericInvoiceId) || numericInvoiceId <= 0) return;
+
+    const invoiceKey = String(Math.trunc(numericInvoiceId));
+    const normalizedDatabaseName = db.normalizeDatabaseName(databaseName) || INVENTORY_DB_NAME;
+    const mainDb = db.getConnection(INVENTORY_DB_NAME);
+    if(!mainDb) return;
+
+    try{
+        const rows = await mainDb.query(
+            `SELECT user_id, database_name, quotation_type, render_overrides_json
+             FROM ${USER_QUOTATION_RENDER_TABLE}
+             WHERE LOWER(database_name) = LOWER(:databaseName)
+               AND quotation_type IN ('quotation2', 'quotation3')`,
+            {
+                replacements: { databaseName: normalizedDatabaseName },
+                type: Sequelize.QueryTypes.SELECT
+            }
+        );
+
+        for(const row of rows || []){
+            const raw = String(row?.render_overrides_json || "{}").trim() || "{}";
+            let parsed;
+            try{
+                parsed = JSON.parse(raw);
+            }catch(_err){
+                continue;
+            }
+            if(!parsed || typeof parsed !== "object") continue;
+
+            let changed = false;
+            const namesByInvoice = parsed.item_names_by_invoice;
+            if(namesByInvoice && typeof namesByInvoice === "object" && Object.prototype.hasOwnProperty.call(namesByInvoice, invoiceKey)){
+                delete namesByInvoice[invoiceKey];
+                changed = true;
+            }
+
+            const ratesByInvoice = parsed.item_rates_by_invoice;
+            if(ratesByInvoice && typeof ratesByInvoice === "object" && Object.prototype.hasOwnProperty.call(ratesByInvoice, invoiceKey)){
+                delete ratesByInvoice[invoiceKey];
+                changed = true;
+            }
+
+            if(!changed) continue;
+
+            await mainDb.query(
+                `UPDATE ${USER_QUOTATION_RENDER_TABLE}
+                 SET render_overrides_json = :renderOverridesJson,
+                     "updatedAt" = NOW()
+                 WHERE user_id = :userId
+                   AND LOWER(database_name) = LOWER(:databaseName)
+                   AND quotation_type = :quotationType`,
+                {
+                    replacements: {
+                        renderOverridesJson: JSON.stringify(parsed),
+                        userId: Number(row?.user_id || 0),
+                        databaseName: normalizedDatabaseName,
+                        quotationType: String(row?.quotation_type || "")
+                    },
+                    type: Sequelize.QueryTypes.UPDATE
+                }
+            );
+        }
+    }catch(err){
+        console.error("Failed to cleanup quotation render overrides for deleted invoice:", err?.message || err);
+    }
 }
 
 function parseBase64Payload(rawValue){
@@ -489,6 +559,9 @@ exports.deleteInvoice = async (req,res)=>{
     try{
         const invoice = await Invoice.findByPk(id, { include:[{ model: InvoiceItem }, { model: InvoiceImportant }] });
         if(!invoice) return res.status(404).json({ message: "Invoice not found" });
+
+        const targetDbName = db.normalizeDatabaseName(req.databaseName || req.user?.database_name || req.headers["x-database-name"]) || INVENTORY_DB_NAME;
+        await cleanupQuotationRenderOverridesForInvoice(invoice.id, targetDbName);
 
         for(const item of invoice.InvoiceItems || []){
             const product = await Product.findByPk(item.product_id);
