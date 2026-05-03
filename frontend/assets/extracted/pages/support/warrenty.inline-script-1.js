@@ -5,11 +5,17 @@ function getRole(){
 function canViewWarrentyPage(){
     const role = getRole();
     const hasPermission = () => {
-        if(typeof hasUserGrantedPath === "function" && hasUserGrantedPath("/support/warrenty.html")){
-            return true;
+        if(typeof hasUserGrantedPath === "function"){
+            if(
+                hasUserGrantedPath("/support/warrenty.html")
+                || hasUserGrantedPath("/support/warranty.html")
+            ){
+                return true;
+            }
         }
         if(typeof hasUserActionPermission === "function"){
-            return hasUserActionPermission("/support/warrenty.html", "view");
+            return hasUserActionPermission("/support/warrenty.html", "view")
+                || hasUserActionPermission("/support/warranty.html", "view");
         }
         return false;
     };
