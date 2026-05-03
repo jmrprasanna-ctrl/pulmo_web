@@ -1,4 +1,5 @@
-const role = (localStorage.getItem("role") || "").toLowerCase();
+const rawRole = (localStorage.getItem("role") || "").toLowerCase();
+const role = ["coordinator", "cordinator", "co-ordinator", "co ordinator", "co_ordinator"].includes(rawRole) ? "user" : rawRole;
 const selectedDb = (localStorage.getItem("selectedDatabaseName") || "").toLowerCase();
 const isTrainingUser = role === "user" && selectedDb === "demo";
 const allowedPaths = (() => {
@@ -13,7 +14,13 @@ const canManage = role === "admin" || role === "manager" || isTrainingUser;
 const canAccessPath = (path) => (canManage)
     ? true
     : (role === "user" && allowedPaths.has(String(path || "").trim().toLowerCase()));
-const canAddMachine = canAccessPath("/products/add-rental-machine.html");
+const canAddMachine = canManage
+    ? true
+    : (role === "user"
+        ? (typeof hasUserActionPermission === "function"
+            ? (hasUserActionPermission("/products/machine.html", "add") || hasUserActionPermission("/products/add-rental-machine.html", "add"))
+            : canAccessPath("/products/add-rental-machine.html"))
+        : false);
 const addMachineBtn = document.getElementById("addMachineBtn");
 const savePdfBtn = document.getElementById("savePdfBtn");
 const machineSearchEl = document.getElementById("machineSearch");

@@ -2,7 +2,8 @@ if(!localStorage.getItem("token")){
     window.location.href = "../login.html";
 }
 
-const role = (localStorage.getItem("role") || "").toLowerCase();
+const rawRole = (localStorage.getItem("role") || "").toLowerCase();
+const role = ["coordinator", "cordinator", "co-ordinator", "co ordinator", "co_ordinator"].includes(rawRole) ? "user" : rawRole;
 const selectedDb = (localStorage.getItem("selectedDatabaseName") || "").toLowerCase();
 const isTrainingUser = role === "user" && selectedDb === "demo";
 const canManage = role === "admin" || role === "manager" || isTrainingUser;
@@ -17,7 +18,13 @@ const allowedPaths = (() => {
 const canAccessPath = (path) => canManage
     ? true
     : (role === "user" && allowedPaths.has(String(path || "").trim().toLowerCase()));
-const canAddVendor = canAccessPath("/vendors/add-vendor.html");
+const canAddVendor = canManage
+    ? true
+    : (role === "user"
+        ? (typeof hasUserActionPermission === "function"
+            ? (hasUserActionPermission("/vendors/list-vendor.html", "add") || hasUserActionPermission("/vendors/add-vendor.html", "add"))
+            : canAccessPath("/vendors/add-vendor.html"))
+        : false);
 const vendorSearchEl = document.getElementById("vendorSearch");
 let allVendors = [];
 

@@ -1,4 +1,5 @@
-const role = (localStorage.getItem("role") || "").toLowerCase();
+const rawRole = (localStorage.getItem("role") || "").toLowerCase();
+const role = ["coordinator", "cordinator", "co-ordinator", "co ordinator", "co_ordinator"].includes(rawRole) ? "user" : rawRole;
 const selectedDb = (localStorage.getItem("selectedDatabaseName") || "").toLowerCase();
 const isTrainingUser = role === "user" && selectedDb === "demo";
 const canManage = role === "admin" || role === "manager" || isTrainingUser;
@@ -13,7 +14,13 @@ const allowedPaths = (() => {
 const canAccessPath = (path) => canManage
     ? true
     : (role === "user" && allowedPaths.has(String(path || "").trim().toLowerCase()));
-const canAddProduct = canAccessPath("/products/add-product.html");
+const canAddProduct = canManage
+    ? true
+    : (role === "user"
+        ? (typeof hasUserActionPermission === "function"
+            ? (hasUserActionPermission("/products/product-list.html", "add") || hasUserActionPermission("/products/add-product.html", "add"))
+            : canAccessPath("/products/add-product.html"))
+        : false);
 const canEditProduct = canManage || (role === "user" && typeof hasUserActionPermission === "function" && hasUserActionPermission("/products/product-list.html", "edit"));
 const productSearchEl = document.getElementById("productSearch");
 let allProducts = [];

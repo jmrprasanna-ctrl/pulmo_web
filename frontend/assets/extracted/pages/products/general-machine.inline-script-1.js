@@ -1,4 +1,5 @@
-const role = (localStorage.getItem("role") || "").toLowerCase();
+const rawRole = (localStorage.getItem("role") || "").toLowerCase();
+const role = ["coordinator", "cordinator", "co-ordinator", "co ordinator", "co_ordinator"].includes(rawRole) ? "user" : rawRole;
 const selectedDb = (localStorage.getItem("selectedDatabaseName") || "").toLowerCase();
 const isTrainingUser = role === "user" && selectedDb === "demo";
 const allowedPaths = (() => {
@@ -13,7 +14,13 @@ const canManage = role === "admin" || role === "manager" || isTrainingUser;
 const canAccessPath = (path) => (canManage)
     ? true
     : (role === "user" && allowedPaths.has(String(path || "").trim().toLowerCase()));
-const canAddGeneralMachine = canAccessPath("/products/add-general-machine.html");
+const canAddGeneralMachine = canManage
+    ? true
+    : (role === "user"
+        ? (typeof hasUserActionPermission === "function"
+            ? (hasUserActionPermission("/products/general-machine.html", "add") || hasUserActionPermission("/products/add-general-machine.html", "add"))
+            : canAccessPath("/products/add-general-machine.html"))
+        : false);
 const canEditGeneralMachine = canManage || (role === "user" && typeof hasUserActionPermission === "function" && hasUserActionPermission("/products/general-machine.html", "edit"));
 const addMachineBtn = document.getElementById("addMachineBtn");
 const savePdfBtn = document.getElementById("savePdfBtn");

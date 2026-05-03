@@ -2,7 +2,8 @@ const filterDateEl = document.getElementById("filterDate");
 const filterPeriodEl = document.getElementById("filterPeriod");
 const expenseSearchEl = document.getElementById("expenseSearch");
 filterDateEl.value = new Date().toISOString().slice(0,10);
-const role = (localStorage.getItem("role") || "").toLowerCase();
+const rawRole = (localStorage.getItem("role") || "").toLowerCase();
+const role = ["coordinator", "cordinator", "co-ordinator", "co ordinator", "co_ordinator"].includes(rawRole) ? "user" : rawRole;
 const selectedDb = (localStorage.getItem("selectedDatabaseName") || "").toLowerCase();
 const isTrainingUser = role === "user" && selectedDb === "demo";
 const allowedPaths = (() => {
@@ -17,7 +18,13 @@ const canManage = role === "admin" || role === "manager" || isTrainingUser;
 const canAccessPath = (path) => (canManage)
     ? true
     : (role === "user" && allowedPaths.has(String(path || "").trim().toLowerCase()));
-const canAddExpense = canAccessPath("/expenses/add-expense.html");
+const canAddExpense = canManage
+    ? true
+    : (role === "user"
+        ? (typeof hasUserActionPermission === "function"
+            ? (hasUserActionPermission("/expenses/expense-list.html", "add") || hasUserActionPermission("/expenses/add-expense.html", "add"))
+            : canAccessPath("/expenses/add-expense.html"))
+        : false);
 let allExpenses = [];
 
 const addExpenseBtn = document.getElementById("addExpenseBtn");

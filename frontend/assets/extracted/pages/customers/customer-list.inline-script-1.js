@@ -1,4 +1,5 @@
-const role = (localStorage.getItem("role") || "").toLowerCase();
+const rawRole = (localStorage.getItem("role") || "").toLowerCase();
+const role = ["coordinator", "cordinator", "co-ordinator", "co ordinator", "co_ordinator"].includes(rawRole) ? "user" : rawRole;
 const selectedDb = (localStorage.getItem("selectedDatabaseName") || "").toLowerCase();
 const isTrainingUser = role === "user" && selectedDb === "demo";
 const canManage = role === "admin" || role === "manager" || isTrainingUser;
@@ -13,7 +14,13 @@ const allowedPaths = (() => {
 const canAccessPath = (path) => canManage
     ? true
     : (role === "user" && allowedPaths.has(String(path || "").trim().toLowerCase()));
-const canAddCustomer = canAccessPath("/customers/add-customer.html");
+const canAddCustomer = canManage
+    ? true
+    : (role === "user"
+        ? (typeof hasUserActionPermission === "function"
+            ? (hasUserActionPermission("/customers/customer-list.html", "add") || hasUserActionPermission("/customers/add-customer.html", "add"))
+            : canAccessPath("/customers/add-customer.html"))
+        : false);
 const customerSearchEl = document.getElementById("customerSearch");
 const customerModeFilterEl = document.getElementById("customerModeFilter");
 let allCustomers = [];
