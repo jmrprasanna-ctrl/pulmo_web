@@ -330,7 +330,16 @@ function renderSidebarMenuByAccess(){
     const normalizePath = (value) => `/${String(value || "").trim().toLowerCase().replace(/\\/g, "/").replace(/^\/+/, "")}`;
     const menuEntries = [
         { path: "/dashboard.html", label: "Dashboard" },
-        { path: "/products/product-list.html", label: "Products" },
+        {
+            path: "/products/product-list.html",
+            label: "Administration",
+            children: [
+                { path: "/products/product-list.html", label: "Products" },
+                { path: "/customers/customer-list.html", label: "Customers" },
+                { path: "/vendors/list-vendor.html", label: "Vendors" },
+                { path: "/users/technician-list.html", label: "Support Technician" }
+            ]
+        },
         {
             path: "/products/general-machine.html",
             label: "Machines",
@@ -345,7 +354,6 @@ function renderSidebarMenuByAccess(){
                 }
             ]
         },
-        { path: "/customers/customer-list.html", label: "Customers" },
         {
             path: "/invoices/invoice-list.html",
             label: "Payment",
@@ -355,7 +363,6 @@ function renderSidebarMenuByAccess(){
                 { path: "/products/add-rental-consumable.html", label: "Consumables" }
             ]
         },
-        { path: "/vendors/list-vendor.html", label: "Vendors" },
         { path: "/expenses/expense-list.html", label: "Expenses" },
         { path: "/reports/sales-report.html", label: "Reports" },
         { path: "/analytics/sales-chart.html", label: "Analytics" },
