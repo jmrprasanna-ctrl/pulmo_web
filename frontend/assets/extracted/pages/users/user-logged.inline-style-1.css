@@ -64,4 +64,10 @@
                 width:100%;
                 margin-left:0 !important;
             }
+            .log-actions > .icon-btn{
+                width:40px;
+                min-width:40px;
+                max-width:40px;
+                align-self:flex-start;
+            }
         }

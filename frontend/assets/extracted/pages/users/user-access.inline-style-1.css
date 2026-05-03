@@ -137,6 +137,12 @@
                 width:100% !important;
                 margin-left:0 !important;
             }
+            .access-actions > .icon-btn{
+                width:40px !important;
+                min-width:40px !important;
+                max-width:40px !important;
+                align-self:flex-start;
+            }
             .module-card{
                 overflow-x:auto;
             }

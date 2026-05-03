@@ -415,6 +415,22 @@ body.app-has-sidebar-footer .app-global-footer {
     margin-left: 0 !important;
   }
 
+  .toolbar > .icon-btn,
+  .filters-inline > .icon-btn,
+  .controls-row > .icon-btn,
+  .button-row > .icon-btn,
+  .report-controls > .icon-btn,
+  .section-actions > .icon-btn,
+  .stock-actions > .icon-btn,
+  .invoice-action-row > .icon-btn,
+  .form-actions > .icon-btn {
+    width: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    margin-left: 0 !important;
+    align-self: flex-start;
+  }
+
   .stock-qty,
   .model-filter {
     width: 100% !important;
