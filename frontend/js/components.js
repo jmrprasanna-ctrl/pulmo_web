@@ -27,6 +27,20 @@ const ensureMessageBoxStyles = () => {
         }
         .app-message-box.success { background: #198754; }
         .app-message-box.error { background: #dc3545; }
+        @media (max-width: 900px) {
+            .app-message-box {
+                top: 50%;
+                left: 50%;
+                right: auto;
+                width: min(88vw, 420px);
+                min-width: 0;
+                text-align: center;
+                transform: translate(-50%, calc(-50% - 8px));
+            }
+            .app-message-box.show {
+                transform: translate(-50%, -50%);
+            }
+        }
     `;
     document.head.appendChild(style);
 };
