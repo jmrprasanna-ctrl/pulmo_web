@@ -29,6 +29,15 @@
             padding:0;
             flex:0 0 auto;
         }
+        .form-actions .icon-btn.btn-danger{
+            background:#fff2f4;
+            color:#b4232f;
+            border:1px solid #f0c2ca;
+        }
+        .form-actions .icon-btn.btn-danger:hover{
+            background:#ffe8ec;
+            border-color:#e8aab5;
+        }
         .btn-secondary{
             background: #e9f3fc;
             color: #0b4f93;
