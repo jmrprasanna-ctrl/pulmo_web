@@ -7,6 +7,25 @@
 <link rel="stylesheet" href="../../assets/css/style.css">
 <link rel="stylesheet" href="../../assets/css/dashboard.css">
 <link rel="stylesheet" href="../../assets/css/general-machine.css">
+<style>
+    .page-head{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+        flex-wrap:nowrap;
+        width:100%;
+    }
+    .page-head h2{
+        margin:0;
+        flex:1 1 auto;
+        min-width:0;
+    }
+    .page-head .icon-btn{
+        margin-left:auto;
+        flex:0 0 auto;
+    }
+</style>
 </head>
 <body>
 
@@ -29,7 +48,14 @@
 </div>
 
 <div class="main-content">
-    <header><h2>Edit General Machine</h2></header>
+    <header class="page-head">
+        <h2>Edit General Machine</h2>
+        <a class="icon-btn" href="general-machine.html" aria-label="Back to general machines" title="Back to general machines">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+    </header>
 
     <div class="form-container">
         <form id="generalMachineForm">
@@ -61,7 +87,6 @@
 
             <div class="button-row">
                 <button type="submit">Update General Machine</button>
-                <a class="btn btn-secondary" href="general-machine.html">Back</a>
             </div>
         </form>
     </div>
