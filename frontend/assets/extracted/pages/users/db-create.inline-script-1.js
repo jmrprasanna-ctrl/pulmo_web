@@ -78,7 +78,7 @@ const databaseNameEl = document.getElementById("databaseName");
                 rows.forEach((row) => {
                     const tr = document.createElement("tr");
                     const deleteAction = canDeleteDb
-                        ? `<button class="btn btn-secondary" type="button" data-delete-db="${String(row.name || "")}" style="min-width:90px;">Delete</button>`
+                        ? `<button class="icon-btn btn-danger" type="button" data-delete-db="${String(row.name || "")}" aria-label="Delete database" title="Delete database"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M9.5 7V5.5h5V7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7.5 7.5l.8 11a1 1 0 0 0 1 .9h5.4a1 1 0 0 0 1-.9l.8-11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 10.5v6M14 10.5v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>`
                         : `<span>-</span>`;
                     tr.innerHTML = `
                         <td>${String(row.name || "")}</td>
