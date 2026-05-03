@@ -31,7 +31,14 @@
 </div>
 
 <div class="main-content">
-    <header><h2>Payments</h2></header>
+    <header class="page-head">
+        <h2>Payments</h2>
+        <a class="icon-btn" href="finance.html" aria-label="Back to Finance" title="Back to Finance">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+    </header>
 
     <div class="form-container">
         <form id="paymentForm">
@@ -70,8 +77,13 @@
                     </select>
                 </div>
 
-                <button type="submit">Save Payment</button>
-                <a class="btn btn-secondary" href="finance.html">Back</a>
+                <button type="submit" class="icon-btn" aria-label="Save payment" title="Save payment">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5.5 3.5h11l2 2V20.5H5.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M8 3.5v5h7v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M8 14h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                </button>
             </div>
         </form>
 
@@ -107,8 +119,19 @@
                 <label for="customerSearch">Customer Search</label>
                 <input type="text" id="customerSearch" placeholder="Search invoice id/no, customer, amount">
             </div>
-            <button type="button" onclick="loadInvoices()">Refresh List</button>
-            <button type="button" onclick="exportPaymentsPDF()">Save PDF</button>
+            <button type="button" class="icon-btn" onclick="loadInvoices()" aria-label="Refresh list" title="Refresh list">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <button type="button" class="icon-btn" onclick="exportPaymentsPDF()" aria-label="Save PDF" title="Save PDF">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M7 3.5h7l4 4V20.5H7z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                    <path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                    <path d="M9 12.5h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                </svg>
+            </button>
         </div>
 
         <table id="paymentsTable">

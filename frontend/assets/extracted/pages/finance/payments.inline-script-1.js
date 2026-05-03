@@ -150,7 +150,16 @@ function renderTable(){
             <td>${inv.payment_method || "Cash"}</td>
             <td>${inv.cheque_no || ""}</td>
             <td><span class="${badgeClass}">${status}</span></td>
-            <td><button type="button" class="btn btn-secondary" onclick="deletePaymentEntry(${Number(inv.id)}, '${String(inv.invoice_no || "").replace(/'/g, "\\'")}')">Delete</button></td>
+            <td>
+                <button type="button" class="icon-btn btn-danger" aria-label="Delete payment" title="Delete payment" onclick="deletePaymentEntry(${Number(inv.id)}, '${String(inv.invoice_no || "").replace(/'/g, "\\'")}')">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5 7h14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                        <path d="M9.5 7V5.5h5V7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                        <path d="M7.5 7.5l.8 11a1 1 0 0 0 1 .9h5.4a1 1 0 0 0 1-.9l.8-11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                        <path d="M10 10.5v6M14 10.5v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </td>
         `;
         tbody.appendChild(tr);
     });
