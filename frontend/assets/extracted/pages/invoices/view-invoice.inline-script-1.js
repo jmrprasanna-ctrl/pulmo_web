@@ -1335,6 +1335,23 @@ async function emailQuotations(){
     }
 }
 
+function openQuotationPage(version){
+    const invoiceId = new URLSearchParams(window.location.search).get("id");
+    if(!invoiceId){
+        alert("Invoice id is missing.");
+        return;
+    }
+    if(Number(version) === 2){
+        window.location.href = `view-quotation-2.html?id=${invoiceId}`;
+        return;
+    }
+    if(Number(version) === 3){
+        window.location.href = `view-quotation-3.html?id=${invoiceId}`;
+        return;
+    }
+    window.location.href = `view-quotation.html?id=${invoiceId}`;
+}
+
 function waitForIframeLoad(frame){
     return new Promise((resolve, reject) => {
         const timeout = window.setTimeout(() => {

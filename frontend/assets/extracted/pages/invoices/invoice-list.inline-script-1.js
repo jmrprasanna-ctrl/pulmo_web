@@ -58,9 +58,6 @@ let selectedYear = String(new Date().getFullYear());
                     <td>
                         <div class="invoice-action-row">
                             <button class="btn btn-success invoice-action-btn" onclick="viewInvoice(${inv.id})">INV 1</button>
-                            <button class="btn btn-primary btn-inline invoice-action-btn" onclick="viewQuatation(${inv.id})">QUT 1</button>
-                            <button class="btn btn-primary btn-inline invoice-action-btn" onclick="viewQuatation2(${inv.id})">QUT 2</button>
-                            <button class="btn btn-primary btn-inline invoice-action-btn" onclick="viewQuatation3(${inv.id})">QUT 3</button>
                             ${isAdmin() ? `<button class="btn btn-danger btn-inline invoice-action-btn" onclick="deleteInvoice(${inv.id})">Delete</button>` : ""}
                         </div>
                     </td>
