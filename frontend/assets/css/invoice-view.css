@@ -19,6 +19,18 @@ body {
   letter-spacing: -0.02em;
 }
 
+.invoice-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.invoice-head .icon-btn {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
 .invoice-address-controls {
   margin: 14px 0 12px;
   padding: 12px 14px;
@@ -105,6 +117,16 @@ body {
 .invoice-actions .btn {
   min-width: 120px;
   margin-top: 0;
+}
+
+.invoice-actions .icon-btn {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  margin-top: 0;
+  flex: 0 0 auto;
 }
 
 @media (max-width: 900px) {
