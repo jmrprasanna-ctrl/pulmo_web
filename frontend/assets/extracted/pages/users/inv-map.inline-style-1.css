@@ -1,3 +1,14 @@
+.page-head{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:12px;
+            margin-bottom:16px;
+        }
+        .page-head h2{
+            margin:0;
+        }
+
 .inv-map-wrap{max-width:980px}
         .inv-map-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
         .inv-map-card{margin-top:14px;background:#f7fbff;border:1px solid #d8e8f8;border-radius:10px;padding:12px}
