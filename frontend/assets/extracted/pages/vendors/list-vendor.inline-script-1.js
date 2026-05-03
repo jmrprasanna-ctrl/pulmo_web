@@ -18,20 +18,12 @@ const canAccessPath = (path) => canManage
     ? true
     : (role === "user" && allowedPaths.has(String(path || "").trim().toLowerCase()));
 const canAddVendor = canAccessPath("/vendors/add-vendor.html");
-const canEditVendor = canManage || (role === "user" && typeof hasUserActionPermission === "function" && hasUserActionPermission("/vendors/list-vendor.html", "edit"));
 const vendorSearchEl = document.getElementById("vendorSearch");
 let allVendors = [];
 
 const addVendorBtn = document.getElementById("addVendorBtn");
 if(addVendorBtn && !canAddVendor){
     addVendorBtn.style.display = "none";
-}
-
-if(!canEditVendor){
-    const actionHeader = document.querySelector("#vendorTable thead th:last-child");
-    if(actionHeader && actionHeader.innerText.toLowerCase().includes("action")){
-        actionHeader.remove();
-    }
 }
 
 function renderVendors(vendors){
@@ -44,15 +36,6 @@ function renderVendors(vendors){
             <td>${v.address}</td>
             <td>${v.category || ""}</td>
         `;
-        if(canEditVendor){
-            tr.innerHTML += `
-                <td>
-                    <div class="vendor-action-row">
-                        ${canEditVendor ? `<a class="btn vendor-action-btn" href="edit-vendor.html?id=${v.id}">Edit</a>` : ""}
-                    </div>
-                </td>
-            `;
-        }
         tbody.appendChild(tr);
     });
 }
