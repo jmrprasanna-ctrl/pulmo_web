@@ -41,6 +41,7 @@
 }
 
 @media (min-width: 1101px) {
+  .form-container #addTechnicianForm,
   .form-container #editTechnicianForm {
     max-width: 980px;
   }
