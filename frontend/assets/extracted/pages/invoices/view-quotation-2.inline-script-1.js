@@ -1551,6 +1551,115 @@ async function emailInvoice(){
     }
 }
 
+function blobToDataUrl(blob){
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error("Failed to read generated PDF."));
+        reader.readAsDataURL(blob);
+    });
+}
+
+function waitForIframeLoad(frame){
+    return new Promise((resolve, reject) => {
+        const timeout = window.setTimeout(() => {
+            reject(new Error("Loading quotation preview page timed out."));
+        }, 30000);
+        frame.onload = () => {
+            window.clearTimeout(timeout);
+            resolve();
+        };
+        frame.onerror = () => {
+            window.clearTimeout(timeout);
+            reject(new Error("Failed to load quotation preview page."));
+        };
+    });
+}
+
+async function waitForIframeBuilder(frame, buildFnName){
+    const started = Date.now();
+    while(Date.now() - started < 30000){
+        const w = frame.contentWindow;
+        const fn = w && typeof w[buildFnName] === "function" ? w[buildFnName] : null;
+        if(fn){
+            return fn.bind(w);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 120));
+    }
+    throw new Error("Quotation preview renderer is not ready.");
+}
+
+async function buildRenderedPdfFromQuotationPage(invoiceId, pageName, buildFnName){
+    const frame = document.createElement("iframe");
+    frame.style.position = "fixed";
+    frame.style.left = "-10000px";
+    frame.style.top = "-10000px";
+    frame.style.width = "1px";
+    frame.style.height = "1px";
+    frame.style.opacity = "0";
+    frame.setAttribute("aria-hidden", "true");
+    frame.src = `${pageName}?id=${encodeURIComponent(invoiceId)}&embed=email`;
+    document.body.appendChild(frame);
+    try{
+        await waitForIframeLoad(frame);
+        const buildFn = await waitForIframeBuilder(frame, buildFnName);
+        const rendered = await buildFn();
+        if(!rendered || !rendered.pdfBlob){
+            throw new Error("Failed to build quotation PDF attachment.");
+        }
+        return rendered;
+    }finally{
+        frame.remove();
+    }
+}
+
+async function emailQuotations(){
+    if(!latestInvoiceData){
+        alert("Invoice details are not ready yet.");
+        return;
+    }
+    const invoiceId = new URLSearchParams(window.location.search).get("id");
+    if(!invoiceId){
+        alert("Invoice id is missing.");
+        return;
+    }
+    try{
+        const attachments = [];
+        if(hasMappedFeature("quotation2")){
+            const renderedQ2 = await buildQuotation2RenderedPdf();
+            const q2DataUrl = await blobToDataUrl(renderedQ2.pdfBlob);
+            attachments.push({
+                attachment_pdf_base64: q2DataUrl,
+                attachment_file_name: renderedQ2.fileName
+            });
+        }
+        if(hasMappedFeature("quotation3")){
+            const renderedQ3 = await buildRenderedPdfFromQuotationPage(invoiceId, "view-quotation-3.html", "buildQuotation3RenderedPdf");
+            const q3DataUrl = await blobToDataUrl(renderedQ3.pdfBlob);
+            attachments.push({
+                attachment_pdf_base64: q3DataUrl,
+                attachment_file_name: renderedQ3.fileName
+            });
+        }
+        if(!attachments.length){
+            alert("No Quotation functions are mapped for this user/database.");
+            return;
+        }
+        const res = await request(`/invoices/${invoiceId}/send-email`, "POST", {
+            attachment_list: attachments,
+            email_type: "quotation23",
+            require_rendered_attachment: true
+        });
+        if(typeof showMessageBox === "function"){
+            showMessageBox(res.message || "Quotation 2/3 email sent");
+        }else{
+            alert(res.message || "Quotation 2/3 email sent");
+        }
+    }catch(err){
+        alert(err.message || "Failed to send Quotation 2/3 email");
+    }
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
     await loadInvMapFlags();
     const saveQut2DateBtn = document.getElementById("saveQut2DateBtn");
