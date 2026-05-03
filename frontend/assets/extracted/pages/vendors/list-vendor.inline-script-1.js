@@ -21,6 +21,14 @@ const canAddVendor = canAccessPath("/vendors/add-vendor.html");
 const vendorSearchEl = document.getElementById("vendorSearch");
 let allVendors = [];
 
+function sortVendorsByNameAsc(vendors){
+    return [...vendors].sort((a, b) => {
+        const nameA = String(a?.name || "").trim();
+        const nameB = String(b?.name || "").trim();
+        return nameA.localeCompare(nameB, undefined, { sensitivity: "base", numeric: true });
+    });
+}
+
 const addVendorBtn = document.getElementById("addVendorBtn");
 if(addVendorBtn && !canAddVendor){
     addVendorBtn.style.display = "none";
@@ -48,13 +56,13 @@ function renderVendors(vendors){
 function applyVendorFilter(){
     const query = (vendorSearchEl?.value || "").trim().toLowerCase();
     if(!query){
-        renderVendors(allVendors);
+        renderVendors(sortVendorsByNameAsc(allVendors));
         return;
     }
     const filtered = allVendors.filter(v =>
         [v.name, v.category].some(val => String(val || "").toLowerCase().includes(query))
     );
-    renderVendors(filtered);
+    renderVendors(sortVendorsByNameAsc(filtered));
 }
 
 async function loadVendors(){
