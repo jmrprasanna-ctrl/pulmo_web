@@ -10,7 +10,14 @@
 </head>
 <body>
 <div class="main-content invoice-main">
-    <h1 class="invoice-title">Quatation Details 2</h1>
+    <header class="invoice-head">
+        <h1 class="invoice-title">Quatation Details 2</h1>
+        <a class="icon-btn" id="backToInvoiceDetailsBtn" href="invoice-list.html" aria-label="Back to invoice details" title="Back to invoice details">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+    </header>
     <div class="invoice-address-controls">
         <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
             <input type="checkbox" id="sign1Chk">
@@ -27,12 +34,24 @@
         <div class="invoice-date-inline">
             <label for="qut2DateInput" style="margin:0;font-weight:600;color:#1d3655;white-space:nowrap;">Qut 2 Date</label>
             <input type="date" id="qut2DateInput">
-            <button class="btn btn-secondary" type="button" id="saveQut2DateBtn">Update</button>
+            <button class="icon-btn" type="button" id="saveQut2DateBtn" aria-label="Update quotation 2 date" title="Update quotation 2 date">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5.5 3.5h11l2 2V20.5H5.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                    <path d="M8 3.5v5h7v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                    <path d="M8 14h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+            </button>
         </div>
         <div class="invoice-date-inline">
             <label for="qut2CustomerNameInput" style="margin:0;font-weight:600;color:#1d3655;white-space:nowrap;">Customer</label>
             <input type="text" id="qut2CustomerNameInput" placeholder="Customer Name">
-            <button class="btn btn-secondary" type="button" id="saveQut2CustomerNameBtn">Update</button>
+            <button class="icon-btn" type="button" id="saveQut2CustomerNameBtn" aria-label="Update customer name" title="Update customer name">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5.5 3.5h11l2 2V20.5H5.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                    <path d="M8 3.5v5h7v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                    <path d="M8 14h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+            </button>
         </div>
     </div>
     <div class="invoice-layout-controls" style="margin: 0 0 12px; padding: 10px 12px; background: rgba(255, 255, 255, 0.86); border: 1px solid #d6e3f2; border-radius: 14px; display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; overflow-x: auto;">
@@ -128,9 +147,14 @@
         <img id="invoicePreview" class="invoice-image" alt="Invoice preview">
     </div>
     <div class="invoice-actions">
-        <button class="btn btn-primary" onclick="printPDF()">Print PDF</button>
+        <button class="icon-btn" onclick="printPDF()" aria-label="Print PDF" title="Print PDF">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 9V4.5h10V9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                <rect x="5" y="9" width="14" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/>
+                <path d="M8 14.5h8V20H8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+            </svg>
+        </button>
         <button class="btn btn-primary" onclick="emailQuotations()">Quatation 2/3 Email</button>
-        <button class="btn btn-secondary" type="button" onclick="window.location.href='invoice-list.html'">Back</button>
     </div>
 </div>
 
