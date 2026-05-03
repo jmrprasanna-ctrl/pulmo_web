@@ -114,6 +114,31 @@ const userSelectEl = document.getElementById("userSelect");
             try{
                 const res = await request("/users/access-pages", "GET");
                 moduleOptions = Array.isArray(res.modules) ? res.modules : [];
+
+                // Ensure newly introduced pages are grantable even if backend module config is stale.
+                const ensureMatrixItem = (moduleName, item) => {
+                    if(!item || !item.path) return;
+                    const targetModule = String(moduleName || "").trim().toLowerCase();
+                    let mod = moduleOptions.find((m) => String(m?.module || "").trim().toLowerCase() === targetModule);
+                    if(!mod){
+                        mod = { module: moduleName, items: [] };
+                        moduleOptions.push(mod);
+                    }
+                    if(!Array.isArray(mod.items)){
+                        mod.items = [];
+                    }
+                    const exists = mod.items.some((x) => String(x?.path || "").trim().toLowerCase() === String(item.path).trim().toLowerCase());
+                    if(!exists){
+                        mod.items.push(item);
+                    }
+                };
+
+                ensureMatrixItem("Products", {
+                    path: "/products/edit-added-consumable.html",
+                    label: "Edit Added Consumables",
+                    actions: ["view"]
+                });
+
                 renderAccessMatrix();
             }catch(err){
                 alert(err.message || "Failed to load access pages");
