@@ -1245,8 +1245,16 @@ async function emailQuotation(){
     }
 }
 
+function initBackToInvoiceDetailsLink(){
+    const backLink = document.getElementById("backToInvoiceDetailsBtn");
+    if(!backLink) return;
+    const invoiceId = new URLSearchParams(window.location.search).get("id");
+    backLink.href = invoiceId ? `view-invoice.html?id=${invoiceId}` : "invoice-list.html";
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
     await loadInvMapFlags();
+    initBackToInvoiceDetailsLink();
     const saveQutDateBtn = document.getElementById("saveQutDateBtn");
     if(saveQutDateBtn){
         saveQutDateBtn.addEventListener("click", updateQuotationDateFromTile);
