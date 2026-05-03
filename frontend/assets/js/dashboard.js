@@ -92,9 +92,7 @@ const DASHBOARD_MENU_ENTRIES = [
                 path: "/products/machine.html",
                 label: "Rental",
                 children: [
-                    { path: "/products/machine.html", label: "Rental Mchine" },
-                    { path: "/products/add-rental-count.html", label: "Rental Count" },
-                    { path: "/products/add-rental-consumable.html", label: "Consumables" }
+                    { path: "/products/machine.html", label: "Rental Mchine" }
                 ]
             }
         ]

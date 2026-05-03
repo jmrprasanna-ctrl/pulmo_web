@@ -340,9 +340,7 @@ function renderSidebarMenuByAccess(){
                     path: "/products/machine.html",
                     label: "Rental",
                     children: [
-                        { path: "/products/machine.html", label: "Rental Mchine" },
-                        { path: "/products/add-rental-count.html", label: "Rental Count" },
-                        { path: "/products/add-rental-consumable.html", label: "Consumables" }
+                        { path: "/products/machine.html", label: "Rental Mchine" }
                     ]
                 }
             ]
@@ -499,8 +497,6 @@ function upgradeMachinesSidebarInPlace(){
 
         const generalAllowed = hasUserGrantedPath("/products/general-machine.html");
         const rentalAllowed = hasUserGrantedPath("/products/machine.html");
-        const rentalCountAllowed = hasUserGrantedPath("/products/add-rental-count.html");
-        const consumablesAllowed = hasUserGrantedPath("/products/add-rental-consumable.html");
         const machinesChildren = [];
         if(generalAllowed){
             machinesChildren.push(`<li><a href="${toMenuHref("/products/general-machine.html")}">General</a></li>`);
@@ -508,12 +504,6 @@ function upgradeMachinesSidebarInPlace(){
         const rentalChildren = [];
         if(rentalAllowed){
             rentalChildren.push(`<li><a href="${toMenuHref("/products/machine.html")}">Rental Mchine</a></li>`);
-        }
-        if(rentalCountAllowed){
-            rentalChildren.push(`<li><a href="${toMenuHref("/products/add-rental-count.html")}">Rental Count</a></li>`);
-        }
-        if(consumablesAllowed){
-            rentalChildren.push(`<li><a href="${toMenuHref("/products/add-rental-consumable.html")}">Consumables</a></li>`);
         }
         if(rentalAllowed || rentalChildren.length){
             if(rentalChildren.length){
