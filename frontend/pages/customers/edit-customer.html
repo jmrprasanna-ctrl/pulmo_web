@@ -31,9 +31,9 @@
 
                      
 <div class="main-content">
-    <header class="page-head">
+    <header class="page-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:nowrap;width:100%;">
         <h2>Edit Customer</h2>
-        <a class="icon-btn" href="customer-list.html" aria-label="Back to customers list" title="Back to customers list">
+        <a class="icon-btn" href="customer-list.html" aria-label="Back to customers list" title="Back to customers list" style="margin-left:auto;flex:0 0 auto;">
             <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
@@ -77,8 +77,21 @@
             <input type="text" id="vatNumber" placeholder="VAT Number (Optional)">
 
             <div class="form-actions">
-                <button type="submit">Update Customer</button>
-                <button type="button" class="btn btn-danger" id="deleteCustomerBtn">Delete Customer</button>
+                <button type="submit" class="icon-btn" aria-label="Update customer" title="Update customer">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5.5 3.5h11l2 2V20.5H5.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M8 3.5v5h7v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M8 14h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <button type="button" class="icon-btn btn-danger" id="deleteCustomerBtn" aria-label="Delete customer" title="Delete customer">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5 7h14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                        <path d="M9.5 7V5.5h5V7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                        <path d="M7.5 7.5l.8 11a1 1 0 0 0 1 .9h5.4a1 1 0 0 0 1-.9l.8-11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                        <path d="M10 10.5v6M14 10.5v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                    </svg>
+                </button>
             </div>
         </form>
     </div>
