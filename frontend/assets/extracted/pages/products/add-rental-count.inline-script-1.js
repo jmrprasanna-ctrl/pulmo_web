@@ -134,7 +134,7 @@ function renderRentalCounts(){
             <td>${updatedCount}</td>
             <td>${priceAmount.toFixed(2)}</td>
             <td>${dateText}</td>
-            <td>${canDeleteCount ? `<button class="btn btn-danger" type="button" onclick="deleteRentalCount(${Number(r.id)})">Delete</button>` : "-"}</td>
+            <td>${canDeleteCount ? `<button class="icon-btn rental-count-delete-btn" type="button" aria-label="Delete rental count" title="Delete rental count" onclick="deleteRentalCount(${Number(r.id)})"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M9.5 7V5.5h5V7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7.5 7.5l.8 11a1 1 0 0 0 1 .9h5.4a1 1 0 0 0 1-.9l.8-11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 10.5v6M14 10.5v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>` : "-"}</td>
         `;
         tbody.appendChild(tr);
     });
@@ -162,12 +162,6 @@ document.getElementById("transactionId").addEventListener("blur", (e) => {
 
 document.getElementById("rentalMachineId").addEventListener("change", onMachineChange);
 document.getElementById("machineTitleFilter").addEventListener("change", renderRentalCounts);
-const backToMachineBtn = document.getElementById("backToMachineBtn");
-if(backToMachineBtn){
-    backToMachineBtn.addEventListener("click", () => {
-        window.location.href = "machine.html";
-    });
-}
 
 document.getElementById("rentalCountForm").addEventListener("submit", async (e) => {
     e.preventDefault();

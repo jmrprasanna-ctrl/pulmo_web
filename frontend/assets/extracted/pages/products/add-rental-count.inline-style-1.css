@@ -1,3 +1,20 @@
+.page-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:nowrap;
+    width:100%;
+}
+.page-head h2{
+    margin:0;
+    flex:1 1 auto;
+    min-width:0;
+}
+.page-head .icon-btn{
+    margin-left:auto;
+    flex:0 0 auto;
+}
 .button-row{
     display:flex;
     gap:10px;
@@ -7,6 +24,14 @@
 .button-row button,
 .button-row .btn{
     margin-top:0;
+}
+.button-row .icon-btn{
+    width:44px;
+    min-width:44px;
+    height:44px;
+    min-height:44px;
+    padding:0;
+    flex:0 0 auto;
 }
 .table-header-row{
     display:flex;
@@ -20,4 +45,24 @@
 }
 .table-filter{
     min-width:220px;
+}
+.rental-count-delete-btn{
+    width:44px;
+    min-width:44px;
+    height:44px;
+    min-height:44px;
+    padding:0;
+    margin-top:0;
+    border:1px solid #f0c2ca;
+    background:#fff2f4;
+    color:#b4232f;
+}
+.rental-count-delete-btn:hover{
+    background:#ffe8ec;
+    border-color:#e8aab5;
+}
+@media (min-width: 1101px){
+    .form-container:first-of-type form{
+        max-width: 980px;
+    }
 }
