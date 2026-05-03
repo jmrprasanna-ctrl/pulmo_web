@@ -418,6 +418,42 @@ function bindMachinesSidebarMenu(){
     });
 }
 
+function upgradeMachinesSidebarInPlace(){
+    document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach((nav) => {
+        const machineLink = Array.from(nav.querySelectorAll(":scope > li > a"))
+            .find((a) => {
+                const label = String(a.textContent || "").trim().toLowerCase();
+                const href = String(a.getAttribute("href") || "").trim().replace(/\\/g, "/").toLowerCase();
+                return label === "machines" || href.endsWith("/products/general-machine.html") || href.endsWith("products/general-machine.html");
+            });
+        if(!machineLink) return;
+        const machineLi = machineLink.closest("li");
+        if(!machineLi || machineLi.classList.contains("nav-group")) return;
+
+        const generalAllowed = hasUserGrantedPath("/products/general-machine.html");
+        const rentalAllowed = hasUserGrantedPath("/products/machine.html");
+        const children = [];
+        if(generalAllowed){
+            children.push(`<li><a href="${toMenuHref("/products/general-machine.html")}">General</a></li>`);
+        }
+        if(rentalAllowed){
+            children.push(`<li><a href="${toMenuHref("/products/machine.html")}">Rental</a></li>`);
+        }
+        if(!children.length){
+            return;
+        }
+
+        machineLi.classList.add("nav-group");
+        machineLi.innerHTML = `
+            <a href="#" class="nav-group-toggle" data-sidebar-machines-toggle="1" aria-expanded="false">Machines</a>
+            <ul class="nav-submenu" data-sidebar-machines-menu="1">
+                ${children.join("")}
+            </ul>
+        `;
+    });
+    bindMachinesSidebarMenu();
+}
+
 function setSidebarReadyState(isReady){
     document.querySelectorAll(".sidebar .nav-links, .sidebar ul").forEach((nav) => {
         nav.style.visibility = isReady ? "visible" : "hidden";
@@ -447,6 +483,7 @@ function applyStockNav(){
 
 function applyAccessGuards(){
     renderSidebarMenuByAccess();
+    upgradeMachinesSidebarInPlace();
     enforceUserAccess();
     enforceManagerAccess();
     applyUserNavRestrictions();
