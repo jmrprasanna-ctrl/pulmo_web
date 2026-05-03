@@ -112,6 +112,11 @@ body {
   border-radius: 10px;
 }
 
+.sidebar .nav-links .nav-submenu .nav-submenu {
+  padding-left: 14px;
+  margin-top: 2px;
+}
+
 .main-content {
   margin-left: 264px;
   width: calc(100% - 264px);
