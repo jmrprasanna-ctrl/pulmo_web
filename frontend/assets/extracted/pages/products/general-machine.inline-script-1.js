@@ -15,8 +15,6 @@ const canAccessPath = (path) => (canManage)
     : (role === "user" && allowedPaths.has(String(path || "").trim().toLowerCase()));
 const canAddGeneralMachine = canAccessPath("/products/add-general-machine.html");
 const canEditGeneralMachine = canManage || (role === "user" && typeof hasUserActionPermission === "function" && hasUserActionPermission("/products/general-machine.html", "edit"));
-const canDeleteGeneralMachine = canManage || (role === "user" && typeof hasUserActionPermission === "function" && hasUserActionPermission("/products/general-machine.html", "delete"));
-const isReadOnlyUser = !canEditGeneralMachine && !canDeleteGeneralMachine;
 const addMachineBtn = document.getElementById("addMachineBtn");
 const savePdfBtn = document.getElementById("savePdfBtn");
 const machineSearchEl = document.getElementById("machineSearch");
@@ -27,13 +25,6 @@ if(addMachineBtn && !canAddGeneralMachine){
 }
 if(savePdfBtn){
     savePdfBtn.addEventListener("click", savePDF);
-}
-
-if(isReadOnlyUser){
-    const actionHeader = document.querySelector("#machineTable thead th:last-child");
-    if(actionHeader && actionHeader.innerText.toLowerCase().includes("action")){
-        actionHeader.remove();
-    }
 }
 
 function renderMachines(machines){
@@ -55,17 +46,6 @@ function renderMachines(machines){
             <td>${m.serial_no || ""}</td>
             <td>${m.start_count ?? 0}</td>
         `;
-
-        if(!isReadOnlyUser){
-            tr.innerHTML += `
-                <td>
-                    <div class="machine-action-row">
-                        ${canEditGeneralMachine ? `<a class="btn machine-action-btn" href="edit-general-machine.html?id=${m.id}">Edit</a>` : ""}
-                        ${canDeleteGeneralMachine ? `<button class="btn btn-danger btn-inline machine-action-btn" type="button" onclick="deleteMachine(${m.id})">Delete</button>` : ""}
-                    </div>
-                </td>
-            `;
-        }
 
         if(canEditGeneralMachine){
             tr.addEventListener("click", (event) => {
@@ -105,17 +85,6 @@ async function loadMachines(){
 
 if(machineSearchEl){
     machineSearchEl.addEventListener("input", applyMachineFilter);
-}
-
-async function deleteMachine(id){
-    if(!confirm("Delete this general machine?")) return;
-    try{
-        await request(`/general-machines/${id}`, "DELETE");
-        showMessageBox("General machine deleted");
-        await loadMachines();
-    }catch(err){
-        alert(err.message || "Failed to delete general machine");
-    }
 }
 
 function savePDF(){
