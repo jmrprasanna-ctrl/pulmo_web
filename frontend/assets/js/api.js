@@ -81,6 +81,38 @@ const MANAGER_BLOCKED_PATHS = [
     "/preference.html"
 ];
 
+const USER_ROLE_ALIASES = new Set([
+    "user",
+    "coordinator",
+    "cordinator",
+    "co-ordinator",
+    "co ordinator",
+    "co_ordinator"
+]);
+
+function normalizeRoleValue(role){
+    const normalized = String(role || "").trim().toLowerCase();
+    if(USER_ROLE_ALIASES.has(normalized)){
+        return "user";
+    }
+    return normalized;
+}
+
+function syncStoredRoleAlias(){
+    try{
+        const rawRole = localStorage.getItem("role");
+        if(!rawRole) return;
+        const rawNormalized = String(rawRole).trim().toLowerCase();
+        const normalized = normalizeRoleValue(rawRole);
+        if(normalized && normalized !== rawNormalized){
+            localStorage.setItem("role", normalized);
+        }
+    }catch(_err){
+    }
+}
+
+syncStoredRoleAlias();
+
 function buildPagesPath(fileName){
     const path = window.location.pathname.replace(/\\/g, "/");
     const idx = path.lastIndexOf("/pages/");
@@ -192,7 +224,7 @@ function getAccessConfigState(){
 }
 
 function enforceUserAccess(){
-    const role = (localStorage.getItem("role") || "").toLowerCase();
+    const role = normalizeRoleValue(localStorage.getItem("role"));
     if(role !== "user" && role !== "admin" && role !== "manager") return;
     const selectedDb = String(localStorage.getItem("selectedDatabaseName") || "").trim().toLowerCase();
     if(role === "user" && selectedDb === "demo"){
@@ -210,7 +242,7 @@ function enforceUserAccess(){
 }
 
 function enforceManagerAccess(){
-    const role = (localStorage.getItem("role") || "").toLowerCase();
+    const role = normalizeRoleValue(localStorage.getItem("role"));
     if(role !== "manager") return;
     const path = window.location.pathname.replace(/\\/g,"/");
     const blocked = MANAGER_BLOCKED_PATHS.some(suffix => path.endsWith(suffix));
@@ -224,7 +256,7 @@ function enforceManagerAccess(){
 }
 
 function applyUserNavRestrictions(){
-    const role = (localStorage.getItem("role") || "").toLowerCase();
+    const role = normalizeRoleValue(localStorage.getItem("role"));
     const enforceByConfiguredRole = (role === "admin" || role === "manager") && getAccessConfigState() === true;
     if(role !== "user" && !enforceByConfiguredRole) return;
     const allowed = USER_ALLOWED_PATHS_RUNTIME;
@@ -251,7 +283,7 @@ function applyUserNavRestrictions(){
 }
 
 function applyManagerNavRestrictions(){
-    const role = (localStorage.getItem("role") || "").toLowerCase();
+    const role = normalizeRoleValue(localStorage.getItem("role"));
     if(role !== "manager") return;
     document.querySelectorAll(".sidebar a").forEach(a=>{
         const href = (a.getAttribute("href") || "").trim();
@@ -325,7 +357,7 @@ function toMenuHref(canonicalPath){
 }
 
 function renderSidebarMenuByAccess(){
-    const role = (localStorage.getItem("role") || "").toLowerCase();
+    const role = normalizeRoleValue(localStorage.getItem("role"));
     if(role !== "admin" && role !== "manager" && role !== "user") return;
     const normalizePath = (value) => `/${String(value || "").trim().toLowerCase().replace(/\\/g, "/").replace(/^\/+/, "")}`;
     const menuEntries = [
@@ -860,7 +892,7 @@ async function loadPublicUiSettings(){
 }
 
 async function loadUserAccessPermissions(){
-    const role = (localStorage.getItem("role") || "").toLowerCase();
+    const role = normalizeRoleValue(localStorage.getItem("role"));
     if(role !== "user" && role !== "admin" && role !== "manager"){
         USER_ALLOWED_PATHS_RUNTIME = [...USER_DEFAULT_ALLOWED_PATHS];
         USER_ALLOWED_ACTIONS_RUNTIME = [];
@@ -1185,7 +1217,7 @@ async function request(endpoint, method="GET", data=null){
 async function login(){
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value.trim();
-    const role = document.getElementById("role").value;
+    const role = normalizeRoleValue(document.getElementById("role").value);
 
     if(!email || !password || !role){
         alert("Please fill all fields!");
@@ -1198,12 +1230,12 @@ async function login(){
         localStorage.removeItem(USER_ALLOWED_ACTIONS_CACHE_KEY);
         localStorage.removeItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY);
         const res = await request("/auth/login","POST",{email,password});
-        if(res.user.role !== role){
+        if(normalizeRoleValue(res.user.role) !== role){
             alert("Selected role does not match your account role!");
             return;
         }
         localStorage.setItem("token",res.token);
-        localStorage.setItem("role",res.user.role);
+        localStorage.setItem("role",normalizeRoleValue(res.user.role));
         localStorage.setItem("userId", res.user.id);
         localStorage.setItem("userName", res.user.username || "");
         localStorage.setItem("userEmail", res.user.email || "");
@@ -1259,7 +1291,7 @@ function hasUserGrantedPath(path){
 window.hasUserGrantedPath = hasUserGrantedPath;
 
 function hasUserActionPermission(path, action){
-    const role = (localStorage.getItem("role") || "").toLowerCase();
+    const role = normalizeRoleValue(localStorage.getItem("role"));
     if(role !== "admin" && role !== "manager" && role !== "user"){
         return false;
     }
