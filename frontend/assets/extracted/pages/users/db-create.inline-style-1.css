@@ -8,13 +8,6 @@
         .page-head h2{
             margin:0;
         }
-        .page-head-left{
-            justify-content:flex-start;
-        }
-        .page-head-left .icon-btn{
-            margin-left:0;
-            flex:0 0 auto;
-        }
 
 .db-create-wrap{max-width:760px}
         .db-create-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
