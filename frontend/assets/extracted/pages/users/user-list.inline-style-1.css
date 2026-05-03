@@ -1,4 +1,21 @@
-.form-actions{
+.page-head{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:10px;
+            flex-wrap:nowrap;
+            width:100%;
+        }
+        .page-head h2{
+            margin:0;
+            flex:1 1 auto;
+            min-width:0;
+        }
+        .page-head .icon-btn{
+            margin-left:auto;
+            flex:0 0 auto;
+        }
+        .form-actions{
             display: flex;
             gap: 12px;
             flex-wrap: wrap;
@@ -28,27 +45,6 @@
         .btn-secondary:hover{
             filter: brightness(0.98);
         }
-        .action-btn{
-            width: 84px;
-            min-width: 84px;
-            height: 36px;
-            padding: 0 12px;
-            margin-top: 0;
-        }
-        .user-action-row{
-            display:flex;
-            gap:8px;
-            align-items:center;
-            flex-wrap:nowrap;
-            white-space:nowrap;
-        }
-        @media (max-width: 900px){
-            .user-action-row{
-                flex-direction: row !important;
-                align-items: center !important;
-                flex-wrap: nowrap !important;
-            }
-            .user-action-row > *{
-                width: auto !important;
-            }
+        #user-table-body tr.user-row-clickable{
+            cursor:pointer;
         }

@@ -28,24 +28,50 @@
     </div>
 
     <div class="main-content">
-        <header><h2>User List</h2></header>
+        <header class="page-head">
+            <h2>User List</h2>
+            <a class="icon-btn" href="../dashboard.html" aria-label="Back to dashboard" title="Back to dashboard">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </a>
+        </header>
         <div class="form-actions">
             <button id="btnAddUser" class="btn btn-primary is-hidden" type="button">Add User</button>
             <button id="btnPreference" class="btn btn-primary is-hidden" type="button">Preference</button>
             <button id="btnAccess" class="btn btn-primary is-hidden" type="button">Access</button>
             <button id="btnLogged" class="btn btn-primary is-hidden" type="button">Logged</button>
             <button id="btnEmailSetup" class="btn btn-primary is-hidden" type="button">email</button>
-            <button id="btnCheckTools" class="btn btn-primary is-hidden" type="button">Check Tools</button>
-            <button id="btnBackup" class="btn btn-primary is-hidden" type="button">Backup</button>
-            <button id="btnUploadDb" class="btn btn-primary is-hidden" type="button">Upload DB</button>
+            <button id="btnCheckTools" class="icon-btn is-hidden" type="button" aria-label="Check tools" title="Check tools">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 6v6l4 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                </svg>
+            </button>
+            <button id="btnBackup" class="icon-btn is-hidden" type="button" aria-label="Backup" title="Backup">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 5v9M8.5 10.5 12 14l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M5.5 18.5h13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <button id="btnUploadDb" class="icon-btn is-hidden" type="button" aria-label="Upload database" title="Upload database">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 19V10M8.5 12.5 12 9l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M5.5 19h13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+            </button>
             <input id="restore-db-file" type="file" accept=".sql" class="is-hidden">
-            <a class="btn btn-secondary" href="../dashboard.html">Back</a>
         </div>
 
         <section class="health-panel" id="healthPanel" aria-live="polite">
             <div class="health-head">
                 <h3>System Health</h3>
-                <button class="btn btn-secondary" type="button" id="healthRefreshBtn">Refresh</button>
+                <button class="icon-btn" type="button" id="healthRefreshBtn" aria-label="Refresh" title="Refresh">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M19 12a7 7 0 1 1-2.05-4.95" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        <path d="M19 5.5V9h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
             </div>
             <div class="health-grid">
                 <div class="health-item"><span class="health-label">Overall</span><span class="health-badge unknown" id="healthOverall">Unknown</span></div>
@@ -70,7 +96,6 @@
                         <th>Telephone</th>
                         <th>Email</th>
                         <th>Role</th>
-                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="user-table-body"></tbody>

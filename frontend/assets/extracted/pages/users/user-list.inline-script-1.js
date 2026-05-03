@@ -60,22 +60,9 @@ function canShowAdminTool(path){
                 const users = await request("/users","GET");
                 const tbody = document.getElementById('user-table-body');
                 tbody.innerHTML = '';
-                const canEditUser = typeof hasUserActionPermission === "function"
-                    && hasUserActionPermission("/users/user-list.html", "edit");
-                const canDeleteUser = typeof hasUserActionPermission === "function"
-                    && hasUserActionPermission("/users/user-list.html", "delete");
                 users.forEach(u => {
-                    const rowActions = [];
-                    if(canEditUser){
-                        rowActions.push(`<a class="btn btn-inline action-btn" href="edit-user.html?id=${u.id}">Edit</a>`);
-                    }
-                    if(canDeleteUser){
-                        rowActions.push(`<button class="btn btn-danger btn-inline action-btn" type="button" onclick="deleteUser(${u.id})">Delete</button>`);
-                    }
-                    const actionHtml = rowActions.length
-                        ? rowActions.join("")
-                        : `<span class="muted">No actions</span>`;
                     const row = document.createElement('tr');
+                    row.classList.add("user-row-clickable");
                     row.innerHTML = `
                         <td>${u.id}</td>
                         <td>${u.username}</td>
@@ -84,27 +71,16 @@ function canShowAdminTool(path){
                         <td>${u.telephone || ""}</td>
                         <td>${u.email}</td>
                         <td>${u.role}</td>
-                        <td>
-                            <div class="user-action-row">
-                                ${actionHtml}
-                            </div>
-                        </td>
                     `;
+                    row.addEventListener("click", (event) => {
+                        const target = event.target;
+                        if(target && target.closest("a, button, input, select, textarea")) return;
+                        window.location.href = `edit-user.html?id=${u.id}`;
+                    });
                     tbody.appendChild(row);
                 });
             }catch(err){
                 alert(err.message || "Failed to load users");
-            }
-        }
-
-        async function deleteUser(id){
-            if(!confirm("Delete this user?")) return;
-            try{
-                await request(`/users/${id}`,"DELETE");
-                showMessageBox("User deleted");
-                loadUsers();
-            }catch(err){
-                alert(err.message || "Failed to delete user");
             }
         }
 
