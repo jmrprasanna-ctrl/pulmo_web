@@ -29,7 +29,14 @@
 </div>
 
 <div class="main-content">
-    <header><h2>Edit Rental Machine</h2></header>
+    <header class="page-head">
+        <h2>Edit Rental Machine</h2>
+        <a class="icon-btn" href="machine.html" aria-label="Back to rental machines" title="Back to rental machines">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+    </header>
 
     <div class="form-container">
         <form id="rentalMachineForm">
@@ -63,8 +70,21 @@
             <input type="number" id="updatedCount" placeholder="0" min="0" step="1" value="0">
 
             <div class="button-row">
-                <button type="submit">Update Rental Machine</button>
-                <a class="btn btn-secondary" href="machine.html">Back</a>
+                <button type="submit" class="icon-btn" aria-label="Update rental machine" title="Update rental machine">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5.5 3.5h11l2 2V20.5H5.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M8 3.5v5h7v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M8 14h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <button type="button" class="icon-btn btn-danger" id="deleteRentalMachineBtn" aria-label="Delete rental machine" title="Delete rental machine">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5 7h14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                        <path d="M9.5 7V5.5h5V7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                        <path d="M7.5 7.5l.8 11a1 1 0 0 0 1 .9h5.4a1 1 0 0 0 1-.9l.8-11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                        <path d="M10 10.5v6M14 10.5v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                    </svg>
+                </button>
             </div>
         </form>
     </div>

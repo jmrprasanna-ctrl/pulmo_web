@@ -117,6 +117,20 @@ document.getElementById("rentalMachineForm").addEventListener("submit", async (e
     }
 });
 
+const deleteRentalMachineBtn = document.getElementById("deleteRentalMachineBtn");
+if(deleteRentalMachineBtn){
+    deleteRentalMachineBtn.addEventListener("click", async () => {
+        if(!confirm("Delete this rental machine?")) return;
+        try{
+            await request(`/rental-machines/${machineIdParam}`, "DELETE");
+            showMessageBox("Rental machine deleted");
+            window.location.href = "machine.html";
+        }catch(err){
+            alert(err.message || "Failed to delete rental machine");
+        }
+    });
+}
+
 function logout(){
     localStorage.removeItem("token");
     localStorage.removeItem("role");
