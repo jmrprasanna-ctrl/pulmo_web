@@ -25,3 +25,14 @@
     .btn-secondary:hover{
         filter: brightness(0.98);
     }
+
+    .btn-danger{
+        background:#fff2f4;
+        color:#b4232f;
+        border:1px solid #f0c2ca;
+    }
+
+    .btn-danger:hover{
+        background:#ffe8ec;
+        border-color:#e8aab5;
+    }

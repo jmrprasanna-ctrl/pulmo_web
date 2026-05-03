@@ -1,6 +1,11 @@
 const params = new URLSearchParams(window.location.search);
 const customerId = params.get("id");
 const uppercaseFields = ["name", "address", "quotation2Address"];
+const role = (localStorage.getItem("role") || "").toLowerCase();
+const selectedDb = (localStorage.getItem("selectedDatabaseName") || "").toLowerCase();
+const isTrainingUser = role === "user" && selectedDb === "demo";
+const canManage = role === "admin" || role === "manager" || isTrainingUser;
+const canDeleteCustomer = canManage || (role === "user" && typeof hasUserActionPermission === "function" && hasUserActionPermission("/customers/customer-list.html", "delete"));
 
 uppercaseFields.forEach((fieldId) => {
     const field = document.getElementById(fieldId);
@@ -13,6 +18,11 @@ uppercaseFields.forEach((fieldId) => {
 if(!customerId){
     alert("Missing customer id.");
     window.location.href = "customer-list.html";
+}
+
+const deleteCustomerBtn = document.getElementById("deleteCustomerBtn");
+if(deleteCustomerBtn && !canDeleteCustomer){
+    deleteCustomerBtn.style.display = "none";
 }
 
 async function loadCustomer(){
@@ -54,6 +64,23 @@ document.getElementById("customerForm").addEventListener("submit", async functio
         alert(err.message || "Failed to update customer");
     }
 });
+
+if(deleteCustomerBtn){
+    deleteCustomerBtn.addEventListener("click", async function(){
+        if(!canDeleteCustomer){
+            alert("You don't have permission to delete customers.");
+            return;
+        }
+        if(!confirm("Delete this customer?")) return;
+        try{
+            await request(`/customers/${customerId}`,"DELETE");
+            showMessageBox("Customer deleted");
+            window.location.href = "customer-list.html";
+        }catch(err){
+            alert(err.message || "Failed to delete customer");
+        }
+    });
+}
 
 function logout(){
     localStorage.removeItem("token");
