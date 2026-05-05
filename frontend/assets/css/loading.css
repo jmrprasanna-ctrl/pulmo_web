@@ -1,0 +1,76 @@
+/*
+  System: PULMO WEB SYSTEM
+  Owner : CRONIT SOLLUTIONS
+  Author: JMR Prasanna
+*/
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#ffffff;
+    color:#1f2f3e;
+}
+
+.loading-wrap{
+    text-align:center;
+    width:100%;
+    max-width:420px;
+    padding:8px 12px;
+}
+
+.loading-logo{
+    width:96px;
+    height:96px;
+    object-fit:contain;
+    margin:0 auto 10px;
+    display:block;
+}
+
+.loading-spinner{
+    position:relative;
+    width:36px;
+    height:36px;
+    margin:2px auto 14px;
+}
+
+.loading-spinner span{
+    position:absolute;
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:#6faedb;
+    left:50%;
+    top:50%;
+    margin-left:-3px;
+    margin-top:-3px;
+    opacity:.25;
+    animation: axis-dot-fade 1s linear infinite;
+}
+
+.loading-spinner span:nth-child(1){ transform: rotate(0deg) translate(0,-14px); animation-delay: 0s; }
+.loading-spinner span:nth-child(2){ transform: rotate(45deg) translate(0,-14px); animation-delay: .125s; }
+.loading-spinner span:nth-child(3){ transform: rotate(90deg) translate(0,-14px); animation-delay: .25s; }
+.loading-spinner span:nth-child(4){ transform: rotate(135deg) translate(0,-14px); animation-delay: .375s; }
+.loading-spinner span:nth-child(5){ transform: rotate(180deg) translate(0,-14px); animation-delay: .5s; }
+.loading-spinner span:nth-child(6){ transform: rotate(225deg) translate(0,-14px); animation-delay: .625s; }
+.loading-spinner span:nth-child(7){ transform: rotate(270deg) translate(0,-14px); animation-delay: .75s; }
+.loading-spinner span:nth-child(8){ transform: rotate(315deg) translate(0,-14px); animation-delay: .875s; }
+
+.loading-text{
+    font-size:16px;
+    font-weight:500;
+    letter-spacing:.2px;
+}
+
+@keyframes axis-dot-fade{
+    0%, 39%, 100% { opacity: .25; }
+    40% { opacity: 1; }
+}
