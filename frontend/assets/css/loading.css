@@ -78,7 +78,7 @@ body{
 
 @media (max-width:640px){
     .loading-logo{
-        width:min(220px, 72vw);
+        width:min(200px, 66vw);
         margin:0 auto 14px;
     }
 }
