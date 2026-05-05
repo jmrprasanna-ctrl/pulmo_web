@@ -19,7 +19,7 @@ async function login(){
 
     try{
         if(loginBtn) loginBtn.disabled = true;
-        setLoadingOverlay(true, "Signing In...");
+        setLoadingOverlay(true, "Starting PULMO WEB SYSTEM...");
         const res = await request("/auth/login","POST",{email,password});
         localStorage.setItem("token",res.token);
         localStorage.setItem("role",res.user.role);
@@ -55,7 +55,7 @@ async function login(){
         } else {
             localStorage.removeItem("mappedCompanyLogoUrl");
         }
-        setLoadingOverlay(true, "Opening Dashboard...");
+        setLoadingOverlay(true, "Starting PULMO WEB SYSTEM...");
         window.location.href = "dashboard.html";
     }catch(err){
         setLoadingOverlay(false);
@@ -120,6 +120,6 @@ if(passwordToggle){
 });
 
 window.addEventListener("DOMContentLoaded", () => {
-    setLoadingOverlay(true, "Loading System");
+    setLoadingOverlay(true, "Starting PULMO WEB SYSTEM...");
     window.setTimeout(() => setLoadingOverlay(false), 950);
 });

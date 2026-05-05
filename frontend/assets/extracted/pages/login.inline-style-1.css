@@ -26,10 +26,7 @@ body{
     align-items: center;
     justify-content: center;
     padding: 20px;
-    background:
-        radial-gradient(circle at 10% 10%, rgba(255,255,255,0.14) 0, transparent 35%),
-        radial-gradient(circle at 90% 95%, rgba(255,255,255,0.08) 0, transparent 30%),
-        linear-gradient(135deg, #547fa8 0%, #244b6f 100%);
+    background: #ffffff;
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
@@ -44,100 +41,74 @@ body{
 
 .axis-loader-card{
     width: 100%;
-    max-width: 380px;
-    background: rgba(255,255,255,0.97);
-    border: 1px solid rgba(255,255,255,0.8);
-    border-radius: 22px;
-    box-shadow: 0 24px 44px rgba(0, 30, 58, 0.35);
-    padding: 26px 24px 22px;
+    max-width: 420px;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    padding: 8px 12px;
     text-align: center;
 }
 
 .axis-loader-logo-wrap{
-    width: 88px;
-    height: 88px;
-    margin: 0 auto 14px;
-    border-radius: 18px;
-    background: #eef4fb;
+    width: 106px;
+    height: 106px;
+    margin: 0 auto 10px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .axis-loader-logo-wrap img{
-    width: 68px;
-    height: 68px;
+    width: 96px;
+    height: 96px;
     object-fit: contain;
 }
 
+.axis-loader-brand{
+    margin: 0;
+    font-size: 40px;
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: .14em;
+    color: #0f2740;
+}
+
+.axis-loader-subbrand{
+    margin: 4px 0 18px;
+    font-size: 14px;
+    letter-spacing: .24em;
+    color: #4a6b88;
+    font-weight: 600;
+}
+
 .axis-loader-spinner{
-    width: 64px;
-    height: 64px;
-    margin: 0 auto 12px;
-    position: relative;
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.axis-loader-spinner span{
-    position: absolute;
-    inset: 0;
+.axis-loader-dot-ring{
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
-    border: 2px solid transparent;
-}
-
-.axis-loader-spinner span:nth-child(1){
-    border-top-color: #4f7da8;
-    animation: loader-spin 1.1s linear infinite;
-}
-
-.axis-loader-spinner span:nth-child(2){
-    inset: 8px;
-    border-right-color: #7da3c8;
-    animation: loader-spin-rev 1.4s linear infinite;
-}
-
-.axis-loader-spinner span:nth-child(3){
-    inset: 16px;
-    border-bottom-color: #244b6f;
-    animation: loader-spin 1.8s linear infinite;
+    border: 4px dotted #7ab0da;
+    border-top-color: #2f87c8;
+    animation: loader-spin 1s linear infinite;
 }
 
 .axis-loader-title{
-    margin: 0 0 10px;
-    font-size: 15px;
-    font-weight: 700;
-    color: #264460;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+    color: #202d39;
     letter-spacing: .2px;
-}
-
-.axis-loader-bar{
-    width: 100%;
-    height: 8px;
-    border-radius: 999px;
-    overflow: hidden;
-    background: #e3edf8;
-}
-
-.axis-loader-bar span{
-    display: block;
-    width: 45%;
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, #4f7da8 0%, #6f9bc4 100%);
-    animation: loader-progress 1.2s ease-in-out infinite;
 }
 
 @keyframes loader-spin{
     to{ transform: rotate(360deg); }
-}
-
-@keyframes loader-spin-rev{
-    to{ transform: rotate(-360deg); }
-}
-
-@keyframes loader-progress{
-    0%{ transform: translateX(-120%); }
-    50%{ transform: translateX(70%); }
-    100%{ transform: translateX(190%); }
 }
 
 .login-container{
@@ -292,8 +263,20 @@ body{
 @media (max-width:640px){
     .axis-loader-card{
         max-width: 94vw;
-        border-radius: 18px;
-        padding: 22px 18px 18px;
+        padding: 6px 10px;
+    }
+
+    .axis-loader-brand{
+        font-size: 32px;
+        letter-spacing: .12em;
+    }
+
+    .axis-loader-subbrand{
+        font-size: 12px;
+    }
+
+    .axis-loader-title{
+        font-size: 15px;
     }
 
     .login-container{
