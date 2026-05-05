@@ -332,14 +332,17 @@ function initDashboardUserMenu(){
         menuRole.innerText = (storedRole || "User").toUpperCase();
     }
 
-    if(profileLink && !hasDashboardAccessFor("/users/profile-list.html", ["view", "edit"])){
-        profileLink.style.display = "none";
+    const currentUserId = String(localStorage.getItem("userId") || "").trim();
+    if(profileLink){
+        profileLink.href = currentUserId
+            ? `users/edit-profile.html?userId=${encodeURIComponent(currentUserId)}&mode=view`
+            : "users/profile-list.html";
     }
-    if(preferenceLink && !hasDashboardAccessFor("/users/preference.html", ["view", "edit"])){
-        preferenceLink.style.display = "none";
+    if(preferenceLink){
+        preferenceLink.href = "users/preference.html";
     }
 
-    loadUserMenuAvatar(localStorage.getItem("userId") || "", (displayName || "U").slice(0, 2));
+    loadUserMenuAvatar(currentUserId, (displayName || "U").slice(0, 2));
 
     const openMenu = () => {
         menuPanel.classList.remove("hidden");

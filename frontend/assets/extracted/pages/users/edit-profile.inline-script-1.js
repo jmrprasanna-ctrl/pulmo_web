@@ -3,6 +3,12 @@ function getTargetUserId(){
     return params.get("userId") || params.get("id");
 }
 
+function isViewOnlyMode(){
+    const params = new URLSearchParams(window.location.search);
+    const mode = String(params.get("mode") || "").trim().toLowerCase();
+    return mode === "view" || mode === "readonly";
+}
+
 function safeText(value){
     return String(value || "").trim();
 }
@@ -118,9 +124,38 @@ async function loadProfile(){
             fallbackName,
             pictureUrl: profile.picture_url || ""
         });
+
+        if(isViewOnlyMode()){
+            const titleEl = document.querySelector(".page-head h2");
+            if(titleEl){
+                titleEl.innerText = "Profile View";
+            }
+        }
     }catch(err){
         alert(err.message || "Failed to load profile");
         window.location.href = "profile-list.html";
+    }
+}
+
+function applyViewOnlyState(){
+    if(!isViewOnlyMode()) return;
+    const form = document.getElementById("editProfileForm");
+    if(!form) return;
+    form.querySelectorAll("input, textarea, select").forEach((el) => {
+        if(el.id === "profilePictureFile"){
+            el.disabled = true;
+            return;
+        }
+        el.setAttribute("readonly", "readonly");
+        el.setAttribute("disabled", "disabled");
+    });
+    const pictureActions = document.querySelector(".profile-picture-actions");
+    if(pictureActions){
+        pictureActions.style.display = "none";
+    }
+    const formActions = document.querySelector(".form-actions");
+    if(formActions){
+        formActions.style.display = "none";
     }
 }
 
@@ -132,8 +167,9 @@ window.addEventListener("DOMContentLoaded", async () => {
     const form = document.getElementById("editProfileForm");
     const pictureInput = document.getElementById("profilePictureFile");
     const userId = Number(getTargetUserId() || 0);
+    const readOnly = isViewOnlyMode();
 
-    if(form){
+    if(form && !readOnly){
         form.addEventListener("submit", async (e) => {
             e.preventDefault();
             try{
@@ -153,7 +189,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    if(pictureInput){
+    if(pictureInput && !readOnly){
         pictureInput.addEventListener("change", async (event) => {
             const file = event.target.files && event.target.files[0];
             if(!file) return;
@@ -183,4 +219,5 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
 
     await loadProfile();
+    applyViewOnlyState();
 });
