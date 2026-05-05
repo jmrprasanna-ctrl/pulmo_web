@@ -33,6 +33,39 @@ function createTextCell(value){
     return td;
 }
 
+async function loadProtectedAvatar(avatarEl, fallbackEl, pictureUrl){
+    const targetUrl = safeText(pictureUrl);
+    const token = localStorage.getItem("token");
+    if(!avatarEl || !fallbackEl || !targetUrl || !token){
+        if(avatarEl) avatarEl.style.display = "none";
+        if(fallbackEl) fallbackEl.style.display = "inline-flex";
+        return;
+    }
+    try{
+        const apiBase = (window.BASE_URL || `${window.location.origin.replace(/\/+$/, "")}/api`).replace(/\/+$/, "");
+        const endpoint = targetUrl.startsWith("http")
+            ? targetUrl
+            : `${apiBase}${targetUrl.startsWith("/") ? "" : "/"}${targetUrl}`;
+        const res = await fetch(`${endpoint}${endpoint.includes("?") ? "&" : "?"}t=${Date.now()}`, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        if(!res.ok){
+            avatarEl.style.display = "none";
+            fallbackEl.style.display = "inline-flex";
+            return;
+        }
+        const blob = await res.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        avatarEl.src = objectUrl;
+        avatarEl.style.display = "inline-block";
+        fallbackEl.style.display = "none";
+    }catch(_err){
+        avatarEl.style.display = "none";
+        fallbackEl.style.display = "inline-flex";
+    }
+}
+
 function createProfileNameCell(row){
     const td = document.createElement("td");
     td.className = "profile-name-cell";
@@ -51,22 +84,9 @@ function createProfileNameCell(row){
     fallback.className = "profile-avatar-fallback";
     fallback.textContent = getInitials(safeText(row.profile_name) || safeText(row.login_user) || "User");
 
-    if(!pictureUrl){
-        avatar.style.display = "none";
-        fallback.style.display = "inline-flex";
-    }else{
-        fallback.style.display = "none";
-        avatar.src = pictureUrl;
-    }
-    avatar.onload = () => {
-        avatar.style.display = "inline-block";
-        fallback.style.display = "none";
-    };
-    avatar.onerror = () => {
-        avatar.onerror = null;
-        avatar.style.display = "none";
-        fallback.style.display = "inline-flex";
-    };
+    avatar.style.display = "none";
+    fallback.style.display = "inline-flex";
+    loadProtectedAvatar(avatar, fallback, pictureUrl);
 
     const name = document.createElement("span");
     name.className = "profile-name-text";
