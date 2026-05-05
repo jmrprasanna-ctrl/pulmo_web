@@ -40,11 +40,27 @@ async function loadProfilePicture(userId, options = {}){
     const token = localStorage.getItem("token");
     const preserveOnFail = Boolean(options && options.preserveOnFail);
     const fallbackName = safeText(options && options.fallbackName);
+    const directPictureUrl = safeText(options && options.pictureUrl);
     if(!preview || !token) return;
 
     try{
         const apiBase = (window.BASE_URL || `${window.location.origin.replace(/\/+$/, "")}/api`).replace(/\/+$/, "");
-        const res = await fetch(`${apiBase}/users/profiles/${encodeURIComponent(userId)}/picture?t=${Date.now()}`, {
+        const originBase = window.location.origin.replace(/\/+$/, "");
+        let endpoint = "";
+        if(directPictureUrl){
+            if(directPictureUrl.startsWith("http")){
+                endpoint = directPictureUrl;
+            }else if(directPictureUrl.startsWith("/api/")){
+                endpoint = `${originBase}${directPictureUrl}`;
+            }else if(directPictureUrl.startsWith("/")){
+                endpoint = `${originBase}/api${directPictureUrl}`;
+            }else{
+                endpoint = `${apiBase}/${directPictureUrl}`;
+            }
+        }else{
+            endpoint = `${apiBase}/users/profiles/${encodeURIComponent(userId)}/picture`;
+        }
+        const res = await fetch(`${endpoint}${endpoint.includes("?") ? "&" : "?"}t=${Date.now()}`, {
             method: "GET",
             headers: {
                 Authorization: `Bearer ${token}`
@@ -54,15 +70,18 @@ async function loadProfilePicture(userId, options = {}){
             if(!preserveOnFail){
                 setPreviewFallback(fallbackName);
             }
+            preview.style.visibility = "visible";
             return;
         }
         const blob = await res.blob();
         const objectUrl = URL.createObjectURL(blob);
         preview.src = objectUrl;
+        preview.style.visibility = "visible";
     }catch(_err){
         if(!preserveOnFail){
             setPreviewFallback(fallbackName);
         }
+        preview.style.visibility = "visible";
     }
 }
 
@@ -85,8 +104,19 @@ async function loadProfile(){
         document.getElementById("metaLoginUser").innerText = profile.login_user || "-";
         document.getElementById("metaEmail").innerText = profile.email || "-";
         document.getElementById("metaDepartment").innerText = profile.department || "-";
-        setPreviewFallback(profile.profile_name || profile.login_user || "U");
-        await loadProfilePicture(userId, { fallbackName: profile.profile_name || profile.login_user || "U" });
+        const fallbackName = profile.profile_name || profile.login_user || "U";
+        const hasUploadedPicture = Boolean(safeText(profile.picture_url));
+        const preview = document.getElementById("profilePicturePreview");
+        if(hasUploadedPicture && preview){
+            // Avoid initial-letter flicker before real image is fetched.
+            preview.style.visibility = "hidden";
+        }else{
+            setPreviewFallback(fallbackName);
+        }
+        await loadProfilePicture(userId, {
+            fallbackName,
+            pictureUrl: profile.picture_url || ""
+        });
     }catch(err){
         alert(err.message || "Failed to load profile");
         window.location.href = "profile-list.html";
