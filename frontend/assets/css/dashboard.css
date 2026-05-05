@@ -149,6 +149,97 @@ body {
   gap: 10px;
 }
 
+.user-menu-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.user-menu-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 270px;
+  max-width: calc(100vw - 24px);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 20px 35px rgba(11, 51, 89, 0.22);
+  padding: 10px;
+  z-index: 1400;
+}
+
+.user-menu-panel.hidden {
+  display: none;
+}
+
+.user-menu-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 12px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid #e6eef7;
+}
+
+.user-menu-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #d1dff0;
+  background: #eef4fc;
+}
+
+.user-menu-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.user-menu-meta strong {
+  color: #16395b;
+  font-size: 1.18rem;
+  letter-spacing: 0.01em;
+}
+
+.user-menu-meta span {
+  color: #6b7f96;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.user-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  color: #223d5d;
+  text-decoration: none;
+  border-radius: 12px;
+  padding: 11px 10px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.user-menu-item svg {
+  width: 21px;
+  height: 21px;
+  flex: 0 0 21px;
+}
+
+.user-menu-item:hover {
+  background: #f2f7fd;
+}
+
+.user-menu-item.danger {
+  color: #b22b3a;
+}
+
 .user-chip {
   display: flex;
   align-items: center;
@@ -557,7 +648,7 @@ body {
     justify-content: flex-start;
     flex-wrap: nowrap;
     overflow-x: auto;
-    overflow-y: hidden;
+    overflow-y: visible;
     -webkit-overflow-scrolling: touch;
     gap: 6px;
   }
@@ -593,6 +684,11 @@ body {
   .icon-btn svg {
     width: 19px;
     height: 19px;
+  }
+
+  .user-menu-panel {
+    right: 0;
+    left: auto;
   }
 
   .cards {
@@ -649,6 +745,41 @@ body.theme-dark .icon-btn {
 body.theme-dark .icon-btn:hover {
   border-color: #53708f;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.28);
+}
+
+body.theme-dark .user-menu-panel {
+  background: #223446;
+  border-color: #3a4f64;
+  box-shadow: 0 20px 36px rgba(0, 0, 0, 0.35);
+}
+
+body.theme-dark .user-menu-head {
+  border-bottom-color: #32495f;
+}
+
+body.theme-dark .user-menu-avatar {
+  border-color: #3a4f64;
+  background: #2d4258;
+}
+
+body.theme-dark .user-menu-meta strong {
+  color: #e3eef9;
+}
+
+body.theme-dark .user-menu-meta span {
+  color: #a9bfd5;
+}
+
+body.theme-dark .user-menu-item {
+  color: #d6e5f4;
+}
+
+body.theme-dark .user-menu-item:hover {
+  background: #2a3d51;
+}
+
+body.theme-dark .user-menu-item.danger {
+  color: #f59aa7;
 }
 
 body.theme-dark .health-item {

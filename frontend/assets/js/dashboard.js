@@ -281,6 +281,109 @@ function logout(){
     window.location.href = "login.html";
 }
 
+function buildMenuAvatarDataUri(label){
+    const safeLabel = String(label || "U").trim().slice(0, 2).toUpperCase() || "U";
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="92" height="92"><rect width="100%" height="100%" rx="46" ry="46" fill="#e8f2ff"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="700" fill="#0d4f90">${safeLabel}</text></svg>`;
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+async function loadUserMenuAvatar(userId, fallbackLabel){
+    const avatarEl = document.getElementById("userMenuAvatar");
+    const token = localStorage.getItem("token");
+    if(!avatarEl){
+        return;
+    }
+    avatarEl.src = buildMenuAvatarDataUri(fallbackLabel);
+    if(!token || !userId){
+        return;
+    }
+    try{
+        const apiBase = (window.BASE_URL || `${window.location.origin.replace(/\/+$/, "")}/api`).replace(/\/+$/, "");
+        const res = await fetch(`${apiBase}/users/profiles/${encodeURIComponent(String(userId))}/picture?t=${Date.now()}`, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        if(!res.ok){
+            return;
+        }
+        const blob = await res.blob();
+        avatarEl.src = URL.createObjectURL(blob);
+    }catch(_err){
+    }
+}
+
+function initDashboardUserMenu(){
+    const menuBtn = document.getElementById("userMenuBtn");
+    const menuPanel = document.getElementById("userMenuPanel");
+    const logoutBtn = document.getElementById("userMenuLogout");
+    const profileLink = document.getElementById("userMenuProfile");
+    const preferenceLink = document.getElementById("userMenuPreference");
+    const menuName = document.getElementById("userMenuName");
+    const menuRole = document.getElementById("userMenuRole");
+
+    if(!menuBtn || !menuPanel){
+        return;
+    }
+
+    if(menuName){
+        menuName.innerText = displayName || "User";
+    }
+    if(menuRole){
+        menuRole.innerText = (storedRole || "User").toUpperCase();
+    }
+
+    if(profileLink && !hasDashboardAccessFor("/users/profile-list.html", ["view", "edit"])){
+        profileLink.style.display = "none";
+    }
+    if(preferenceLink && !hasDashboardAccessFor("/users/preference.html", ["view", "edit"])){
+        preferenceLink.style.display = "none";
+    }
+
+    loadUserMenuAvatar(localStorage.getItem("userId") || "", (displayName || "U").slice(0, 2));
+
+    const openMenu = () => {
+        menuPanel.classList.remove("hidden");
+        menuBtn.setAttribute("aria-expanded", "true");
+    };
+    const closeMenu = () => {
+        menuPanel.classList.add("hidden");
+        menuBtn.setAttribute("aria-expanded", "false");
+    };
+    const toggleMenu = () => {
+        if(menuPanel.classList.contains("hidden")){
+            openMenu();
+        }else{
+            closeMenu();
+        }
+    };
+
+    menuBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleMenu();
+    });
+
+    menuPanel.addEventListener("click", (event) => {
+        event.stopPropagation();
+    });
+
+    document.addEventListener("click", () => {
+        closeMenu();
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if(event.key === "Escape"){
+            closeMenu();
+        }
+    });
+
+    if(logoutBtn){
+        logoutBtn.addEventListener("click", () => {
+            logout();
+        });
+    }
+}
+
 let salesChartInstance = null;
 let profitChartInstance = null;
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -534,6 +637,7 @@ if(summaryDateEl){
 }
 fetchSummary();
 startDashboardSidebarGuard();
+initDashboardUserMenu();
 
 function setHealthBadge(id, ok){
     const el = document.getElementById(id);
