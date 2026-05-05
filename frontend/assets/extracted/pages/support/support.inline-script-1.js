@@ -22,26 +22,6 @@ function canManage(){
     return role === "admin" || role === "manager" || isTrainingUser();
 }
 
-function canAddTechnician(){
-    const role = getRole();
-    const hasAnyTechnicianPermission = () => {
-        if(typeof hasUserGrantedPath === "function" && hasUserGrantedPath("/users/technician-list.html")){
-            return true;
-        }
-        if(typeof hasUserActionPermission === "function"){
-            return hasUserActionPermission("/users/technician-list.html", "view")
-                || hasUserActionPermission("/users/technician-list.html", "add")
-                || hasUserActionPermission("/users/technician-list.html", "edit")
-                || hasUserActionPermission("/users/technician-list.html", "delete");
-        }
-        return false;
-    };
-    if(role === "admin" || role === "manager"){
-        return hasAnyTechnicianPermission();
-    }
-    return hasAnyTechnicianPermission();
-}
-
 function canViewWarrenty(){
     const role = getRole();
     const hasWarrentyPermission = () => {
@@ -141,11 +121,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         await window.__waitForUserAccessPermissions();
     }
     const form = document.getElementById("supportImportantForm");
-    const addTechnicianBtn = document.getElementById("addTechnicianBtn");
     const warrentyBtn = document.getElementById("warrentyBtn");
-    if(addTechnicianBtn && !canAddTechnician()){
-        addTechnicianBtn.style.display = "none";
-    }
     if(warrentyBtn){
         const allowWarrenty = canViewWarrenty();
         warrentyBtn.classList.toggle("is-hidden", !allowWarrenty);
