@@ -58,13 +58,14 @@
                             var storedName = localStorage.getItem("userName") || "";
                             var storedProfileName = localStorage.getItem("profileName") || "";
                             var displayName = storedProfileName || storedName || storedEmail || storedRole || "";
+                            var accountName = storedName || storedEmail || storedRole || "";
                             var roleEl = document.getElementById("userRole");
                             if (roleEl) roleEl.textContent = displayName || "User";
                             var nameEl = document.getElementById("userName");
-                            if (nameEl) nameEl.textContent = displayName;
+                            if (nameEl) nameEl.textContent = accountName || "User";
                             var initialEl = document.getElementById("userInitial");
                             if (initialEl) {
-                                var initialSource = String(displayName || "").trim();
+                                var initialSource = String(accountName || "").trim();
                                 initialEl.textContent = initialSource ? initialSource.charAt(0).toUpperCase() : "U";
                             }
                         } catch (_err) {
@@ -244,7 +245,7 @@
 </div>
 
 <script src="../assets/js/api.js?v=20260330p02"></script>
-<script src="../assets/js/dashboard.js?v=20260506p04"></script>
+<script src="../assets/js/dashboard.js?v=20260506p05"></script>
 <script src="../assets/extracted/pages/dashboard.inline-script-1.js"></script>
 </body>
 </html>

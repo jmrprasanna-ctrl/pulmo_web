@@ -4,16 +4,17 @@ const storedEmail = localStorage.getItem("userEmail") || "";
 const storedName = localStorage.getItem("userName") || "";
 const storedProfileName = localStorage.getItem("profileName") || "";
 let displayName = storedProfileName || storedName || storedEmail || storedRole || "User";
+const accountName = storedName || storedEmail || storedRole || "User";
 
 const roleEl = document.getElementById("userRole");
 if (roleEl) roleEl.innerText = displayName || "User";
 
 const nameEl = document.getElementById("userName");
-if (nameEl) nameEl.innerText = displayName;
+if (nameEl) nameEl.innerText = accountName;
 
 const initialEl = document.getElementById("userInitial");
 if (initialEl) {
-    const initialSource = displayName.trim();
+    const initialSource = accountName.trim();
     initialEl.innerText = initialSource ? initialSource[0].toUpperCase() : "U";
 }
 
@@ -22,12 +23,6 @@ function applyDashboardIdentity(name){
     displayName = safeName;
     const welcomeEl = document.getElementById("userRole");
     if(welcomeEl) welcomeEl.innerText = safeName;
-    const chipNameEl = document.getElementById("userName");
-    if(chipNameEl) chipNameEl.innerText = safeName;
-    const initialBadgeEl = document.getElementById("userInitial");
-    if(initialBadgeEl){
-        initialBadgeEl.innerText = safeName ? safeName.charAt(0).toUpperCase() : "U";
-    }
 }
 
 async function loadDashboardProfileName(){
