@@ -253,6 +253,12 @@ body {
   color: #b22b3a;
 }
 
+.user-menu-item.danger span,
+.user-menu-item.danger svg {
+  color: #b22b3a;
+  stroke: currentColor;
+}
+
 .user-chip {
   display: flex;
   align-items: center;
@@ -856,6 +862,12 @@ body.theme-dark .user-menu-item:hover {
 
 body.theme-dark .user-menu-item.danger {
   color: #f59aa7;
+}
+
+body.theme-dark .user-menu-item.danger span,
+body.theme-dark .user-menu-item.danger svg {
+  color: #f59aa7;
+  stroke: currentColor;
 }
 
 body.theme-dark .health-item {
