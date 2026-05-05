@@ -69,6 +69,72 @@ function hasDashboardAccessFor(path, actions = ["view"]){
     return true;
 }
 
+function resolveFirstAccessiblePath(paths, actions = ["view"]){
+    const list = Array.isArray(paths) ? paths : [];
+    for(const path of list){
+        if(hasDashboardAccessFor(path, actions)){
+            return path;
+        }
+    }
+    return "";
+}
+
+function bindDashboardTileAccessLinks(){
+    const tileTargets = [
+        { id: "totalMchine", paths: ["/products/general-machine.html"] },
+        { id: "totalRentalMachines", paths: ["/products/machine.html"] },
+        { id: "totalCustomers", paths: ["/customers/customer-list.html"] },
+        { id: "totalVendors", paths: ["/vendors/list-vendor.html"] },
+        { id: "totalProducts", paths: ["/products/product-list.html"] },
+        { id: "totalSales", paths: ["/reports/sales-report.html", "/invoices/invoice-list.html"] },
+        { id: "receivedPayment", paths: ["/finance/payments.html", "/finance/finance.html"] },
+        { id: "rentalMachinesCountsPrice", paths: ["/products/add-rental-count.html"] },
+        { id: "rentalConsumablesPrice", paths: ["/products/add-rental-consumable.html"] },
+        { id: "totalExpenses", paths: ["/expenses/expense-list.html"] },
+        { id: "technicianPaid", paths: ["/users/technician-list.html", "/finance/finance.html"] },
+        { id: "vendorPaid", paths: ["/finance/payments.html", "/finance/finance.html"] },
+        { id: "netProfit", paths: ["/finance/finance.html"] }
+    ];
+
+    tileTargets.forEach((item) => {
+        const card = document.getElementById(item.id);
+        if(!card) return;
+
+        const targetPath = resolveFirstAccessiblePath(item.paths, ["view"]);
+        const existing = card.getAttribute("data-dashboard-link");
+        const next = String(targetPath || "").trim();
+        if(existing === next){
+            return;
+        }
+
+        card.classList.remove("dashboard-card-link-enabled");
+        card.removeAttribute("role");
+        card.removeAttribute("tabindex");
+        card.removeAttribute("data-dashboard-link");
+        card.onclick = null;
+        card.onkeydown = null;
+
+        if(!next){
+            return;
+        }
+
+        card.setAttribute("data-dashboard-link", next);
+        card.classList.add("dashboard-card-link-enabled");
+        card.setAttribute("role", "link");
+        card.setAttribute("tabindex", "0");
+        const go = () => {
+            window.location.href = toDashboardMenuHref(next);
+        };
+        card.onclick = go;
+        card.onkeydown = (event) => {
+            if(event.key === "Enter" || event.key === " "){
+                event.preventDefault();
+                go();
+            }
+        };
+    });
+}
+
 function syncDashboardCommunicationButtons(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
     if(role !== "admin" && role !== "manager" && role !== "user") return;
@@ -91,6 +157,11 @@ if(window.__userAccessPermissionsLoaded){
     syncDashboardCommunicationButtons();
 }else{
     document.addEventListener("app:user-access-ready", syncDashboardCommunicationButtons, { once: true });
+}
+if(window.__userAccessPermissionsLoaded){
+    bindDashboardTileAccessLinks();
+}else{
+    document.addEventListener("app:user-access-ready", bindDashboardTileAccessLinks, { once: true });
 }
 
 function normalizeAccessPath(path){

@@ -485,6 +485,17 @@ body {
   color: var(--primary);
 }
 
+.dashboard-card-link-enabled {
+  cursor: pointer;
+  transition: transform 0.14s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.dashboard-card-link-enabled:hover {
+  transform: translateY(-1px);
+  border-color: #bcd5ec;
+  box-shadow: 0 12px 24px rgba(10, 92, 170, 0.14);
+}
+
 .charts {
   display: grid;
   grid-template-columns: 1fr 1fr;
