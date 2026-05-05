@@ -496,6 +496,10 @@ body {
   box-shadow: 0 12px 24px rgba(10, 92, 170, 0.14);
 }
 
+.dashboard-card-hidden {
+  display: none !important;
+}
+
 .charts {
   display: grid;
   grid-template-columns: 1fr 1fr;

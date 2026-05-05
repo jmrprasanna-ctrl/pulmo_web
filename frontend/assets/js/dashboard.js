@@ -69,6 +69,15 @@ function hasDashboardAccessFor(path, actions = ["view"]){
     return true;
 }
 
+function hasDashboardTilePermission(tilePath){
+    const role = (localStorage.getItem("role") || "").toLowerCase();
+    const hasConfiguredAccess = typeof hasAccessConfigRestrictions === "function" && hasAccessConfigRestrictions();
+    if((role === "admin" || role === "manager" || role === "user") && !hasConfiguredAccess){
+        return true;
+    }
+    return hasDashboardAccessFor(tilePath, ["view"]);
+}
+
 function resolveFirstAccessiblePath(paths, actions = ["view"]){
     const list = Array.isArray(paths) ? paths : [];
     for(const path of list){
@@ -81,24 +90,36 @@ function resolveFirstAccessiblePath(paths, actions = ["view"]){
 
 function bindDashboardTileAccessLinks(){
     const tileTargets = [
-        { id: "totalMchine", paths: ["/products/general-machine.html"] },
-        { id: "totalRentalMachines", paths: ["/products/machine.html"] },
-        { id: "totalCustomers", paths: ["/customers/customer-list.html"] },
-        { id: "totalVendors", paths: ["/vendors/list-vendor.html"] },
-        { id: "totalProducts", paths: ["/products/product-list.html"] },
-        { id: "totalSales", paths: ["/reports/sales-report.html", "/invoices/invoice-list.html"] },
-        { id: "receivedPayment", paths: ["/finance/payments.html", "/finance/finance.html"] },
-        { id: "rentalMachinesCountsPrice", paths: ["/products/add-rental-count.html"] },
-        { id: "rentalConsumablesPrice", paths: ["/products/add-rental-consumable.html"] },
-        { id: "totalExpenses", paths: ["/expenses/expense-list.html"] },
-        { id: "technicianPaid", paths: ["/users/technician-list.html", "/finance/finance.html"] },
-        { id: "vendorPaid", paths: ["/finance/payments.html", "/finance/finance.html"] },
-        { id: "netProfit", paths: ["/finance/finance.html"] }
+        { id: "totalMchine", permissionPath: "/dashboard/tiles/total-machines", paths: ["/products/general-machine.html"] },
+        { id: "totalRentalMachines", permissionPath: "/dashboard/tiles/total-rental-machines", paths: ["/products/machine.html"] },
+        { id: "totalCustomers", permissionPath: "/dashboard/tiles/total-customers", paths: ["/customers/customer-list.html"] },
+        { id: "totalVendors", permissionPath: "/dashboard/tiles/total-vendors", paths: ["/vendors/list-vendor.html"] },
+        { id: "totalProducts", permissionPath: "/dashboard/tiles/total-products", paths: ["/products/product-list.html"] },
+        { id: "totalSales", permissionPath: "/dashboard/tiles/total-sales", paths: ["/reports/sales-report.html", "/invoices/invoice-list.html"] },
+        { id: "receivedPayment", permissionPath: "/dashboard/tiles/received-payment", paths: ["/finance/payments.html", "/finance/finance.html"] },
+        { id: "rentalMachinesCountsPrice", permissionPath: "/dashboard/tiles/rental-machines-counts", paths: ["/products/add-rental-count.html"] },
+        { id: "rentalConsumablesPrice", permissionPath: "/dashboard/tiles/rental-consumables", paths: ["/products/add-rental-consumable.html"] },
+        { id: "totalExpenses", permissionPath: "/dashboard/tiles/total-expenses", paths: ["/expenses/expense-list.html"] },
+        { id: "technicianPaid", permissionPath: "/dashboard/tiles/support-technician-pay", paths: ["/users/technician-list.html", "/finance/finance.html"] },
+        { id: "vendorPaid", permissionPath: "/dashboard/tiles/vendor-paid", paths: ["/finance/payments.html", "/finance/finance.html"] },
+        { id: "netProfit", permissionPath: "/dashboard/tiles/net-profit", paths: ["/finance/finance.html"] }
     ];
 
     tileTargets.forEach((item) => {
         const card = document.getElementById(item.id);
         if(!card) return;
+
+        const canViewTile = hasDashboardTilePermission(item.permissionPath);
+        card.classList.toggle("dashboard-card-hidden", !canViewTile);
+        if(!canViewTile){
+            card.classList.remove("dashboard-card-link-enabled");
+            card.removeAttribute("role");
+            card.removeAttribute("tabindex");
+            card.removeAttribute("data-dashboard-link");
+            card.onclick = null;
+            card.onkeydown = null;
+            return;
+        }
 
         const targetPath = resolveFirstAccessiblePath(item.paths, ["view"]);
         const existing = card.getAttribute("data-dashboard-link");
