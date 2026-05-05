@@ -52,3 +52,13 @@
         max-width: 980px;
     }
 }
+@media (max-width: 900px){
+    .button-row{
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center !important;
+    }
+    .button-row > *{
+        width: auto !important;
+    }
+}
