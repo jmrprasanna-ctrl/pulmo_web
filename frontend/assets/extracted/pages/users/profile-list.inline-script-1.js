@@ -43,9 +43,17 @@ async function loadProtectedAvatar(avatarEl, fallbackEl, pictureUrl){
     }
     try{
         const apiBase = (window.BASE_URL || `${window.location.origin.replace(/\/+$/, "")}/api`).replace(/\/+$/, "");
-        const endpoint = targetUrl.startsWith("http")
-            ? targetUrl
-            : `${apiBase}${targetUrl.startsWith("/") ? "" : "/"}${targetUrl}`;
+        const originBase = window.location.origin.replace(/\/+$/, "");
+        let endpoint = "";
+        if(targetUrl.startsWith("http")){
+            endpoint = targetUrl;
+        }else if(targetUrl.startsWith("/api/")){
+            endpoint = `${originBase}${targetUrl}`;
+        }else if(targetUrl.startsWith("/")){
+            endpoint = `${originBase}/api${targetUrl}`;
+        }else{
+            endpoint = `${apiBase}/${targetUrl}`;
+        }
         const res = await fetch(`${endpoint}${endpoint.includes("?") ? "&" : "?"}t=${Date.now()}`, {
             method: "GET",
             headers: { Authorization: `Bearer ${token}` }

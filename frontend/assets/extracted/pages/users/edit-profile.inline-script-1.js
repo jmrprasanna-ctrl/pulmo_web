@@ -12,9 +12,10 @@ function toBase64(file){
     });
 }
 
-async function loadProfilePicture(userId){
+async function loadProfilePicture(userId, options = {}){
     const preview = document.getElementById("profilePicturePreview");
     const token = localStorage.getItem("token");
+    const preserveOnFail = Boolean(options && options.preserveOnFail);
     if(!preview || !token) return;
 
     try{
@@ -26,14 +27,18 @@ async function loadProfilePicture(userId){
             }
         });
         if(!res.ok){
-            preview.src = "../../assets/images/logo.png";
+            if(!preserveOnFail){
+                preview.src = "../../assets/images/logo.png";
+            }
             return;
         }
         const blob = await res.blob();
         const objectUrl = URL.createObjectURL(blob);
         preview.src = objectUrl;
     }catch(_err){
-        preview.src = "../../assets/images/logo.png";
+        if(!preserveOnFail){
+            preview.src = "../../assets/images/logo.png";
+        }
     }
 }
 
@@ -98,12 +103,17 @@ window.addEventListener("DOMContentLoaded", async () => {
             if(!file) return;
             try{
                 const fileDataBase64 = await toBase64(file);
+                const preview = document.getElementById("profilePicturePreview");
+                if(preview){
+                    // Show selected photo immediately so company logo does not flash back.
+                    preview.src = fileDataBase64;
+                }
                 await request(`/users/profiles/${userId}/picture`, "POST", {
                     fileName: file.name,
                     fileDataBase64
                 });
                 showMessageBox("Profile picture uploaded");
-                await loadProfilePicture(userId);
+                await loadProfilePicture(userId, { preserveOnFail: true });
             }catch(err){
                 alert(err.message || "Failed to upload profile picture");
             }finally{
