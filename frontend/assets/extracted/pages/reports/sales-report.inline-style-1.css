@@ -77,14 +77,25 @@
 
 @media (max-width: 768px){
     .report-controls{
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        overflow-y: hidden;
-        white-space: nowrap;
-        -webkit-overflow-scrolling: touch;
-        padding-bottom: 2px;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        gap: 8px;
     }
     .report-controls > *{
-        flex: 0 0 auto;
+        flex: 1 1 100% !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+    .report-controls > .icon-btn{
+        flex: 0 0 auto !important;
+        width: 44px !important;
+        min-width: 44px !important;
+        max-width: 44px !important;
+        margin-left: 0 !important;
+        align-self: center !important;
+    }
+    .report-controls > .icon-btn + .icon-btn{
+        margin-left: 8px !important;
     }
 }
