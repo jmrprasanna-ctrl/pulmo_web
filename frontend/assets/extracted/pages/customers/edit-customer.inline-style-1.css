@@ -70,3 +70,9 @@
             max-width: 980px;
         }
     }
+
+    @media (max-width: 600px){
+        .form-actions{
+            flex-wrap: nowrap;
+        }
+    }
