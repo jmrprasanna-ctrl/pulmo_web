@@ -50,17 +50,17 @@ body{
 }
 
 .axis-loader-logo-wrap{
-    width: 106px;
-    height: 106px;
-    margin: 0 auto 10px;
+    width: min(340px, 86vw);
+    height: auto;
+    margin: 0 auto 18px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .axis-loader-logo-wrap img{
-    width: 96px;
-    height: 96px;
+    width: 100%;
+    height: auto;
     object-fit: contain;
 }
 
