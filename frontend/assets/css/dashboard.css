@@ -688,8 +688,16 @@ body {
   }
 
   .user-menu-panel {
-    right: 0;
-    left: auto;
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+    top: 84px;
+    max-height: 72vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1600;
   }
 
   .cards {

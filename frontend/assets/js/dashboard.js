@@ -345,6 +345,13 @@ function initDashboardUserMenu(){
     loadUserMenuAvatar(currentUserId, (displayName || "U").slice(0, 2));
 
     const openMenu = () => {
+        if(window.matchMedia("(max-width: 640px)").matches){
+            const rect = menuBtn.getBoundingClientRect();
+            const top = Math.max(12, Math.round(rect.bottom + 8));
+            menuPanel.style.top = `${top}px`;
+        }else{
+            menuPanel.style.top = "";
+        }
         menuPanel.classList.remove("hidden");
         menuBtn.setAttribute("aria-expanded", "true");
     };
