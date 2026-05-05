@@ -64,27 +64,10 @@ body{
     object-fit: contain;
 }
 
-.axis-loader-brand{
-    margin: 0;
-    font-size: 40px;
-    line-height: 1;
-    font-weight: 800;
-    letter-spacing: .14em;
-    color: #0f2740;
-}
-
-.axis-loader-subbrand{
-    margin: 4px 0 18px;
-    font-size: 14px;
-    letter-spacing: .24em;
-    color: #4a6b88;
-    font-weight: 600;
-}
-
 .axis-loader-spinner{
     width: 48px;
     height: 48px;
-    margin: 0 auto 14px;
+    margin: 2px auto 14px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -264,15 +247,6 @@ body{
     .axis-loader-card{
         max-width: 94vw;
         padding: 6px 10px;
-    }
-
-    .axis-loader-brand{
-        font-size: 32px;
-        letter-spacing: .12em;
-    }
-
-    .axis-loader-subbrand{
-        font-size: 12px;
     }
 
     .axis-loader-title{
