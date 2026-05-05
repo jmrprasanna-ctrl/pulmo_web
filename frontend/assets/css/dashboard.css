@@ -209,7 +209,9 @@ body {
   letter-spacing: 0.12em;
 }
 
-.user-menu-item {
+.user-menu-item,
+.user-menu-panel a.user-menu-item,
+.user-menu-panel button.user-menu-item {
   width: 100%;
   display: flex;
   align-items: center;
@@ -228,7 +230,7 @@ body {
   line-height: 1.15;
   text-align: left;
   cursor: pointer;
-  margin: 0;
+  margin: 0 !important;
   appearance: none;
   -webkit-appearance: none;
 }
@@ -701,8 +703,8 @@ body {
     position: fixed;
     right: 12px;
     left: auto;
-    width: clamp(236px, 69vw, 278px);
-    max-width: calc(100vw - 92px);
+    width: min(252px, calc(100vw - 104px));
+    max-width: calc(100vw - 104px);
     top: 84px;
     max-height: 56vh;
     overflow-y: auto;
@@ -732,13 +734,16 @@ body {
   }
 
   .user-menu-item {
-    font-size: 0.9rem;
-    padding: 6px 7px;
+    font-size: 0.88rem;
+    padding: 4px 6px;
+    gap: 10px;
     border-radius: 11px;
+    margin-top: 0 !important;
+    letter-spacing: 0 !important;
   }
 
   .user-menu-item + .user-menu-item {
-    margin-top: 1px;
+    margin-top: 0 !important;
   }
 
   .user-menu-item svg {
