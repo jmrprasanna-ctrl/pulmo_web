@@ -50,6 +50,11 @@ router.get("/access/me", getMyAccess);
 router.get("/inv-map/me", roleMiddleware(["admin","manager","user"]), getMyInvMap);
 router.put("/inv-map/me/quotation2-render-inputs", roleMiddleware(["admin","manager","user"]), saveMyQuotation2RenderVisibility);
 router.put("/inv-map/me/quotation3-render-inputs", roleMiddleware(["admin","manager","user"]), saveMyQuotation3RenderVisibility);
+router.get("/profiles", roleMiddleware(["admin","manager","user"]), getUserProfiles);
+router.get("/profiles/:userId", roleMiddleware(["admin","manager","user"]), getUserProfileByUserId);
+router.put("/profiles/:userId", roleMiddleware(["admin","manager","user"]), updateUserProfile);
+router.post("/profiles/:userId/picture", roleMiddleware(["admin","manager","user"]), uploadUserProfilePicture);
+router.get("/profiles/:userId/picture", roleMiddleware(["admin","manager","user"]), getUserProfilePicture);
 
 router.use(roleMiddleware(["admin"]));
 
@@ -75,11 +80,6 @@ router.get("/logs", getLoginLogs);
 router.delete("/logs", clearLoginLogs);
 router.get("/access/:userId", getUserAccess);
 router.put("/access/:userId", saveUserAccess);
-router.get("/profiles", getUserProfiles);
-router.get("/profiles/:userId", getUserProfileByUserId);
-router.put("/profiles/:userId", updateUserProfile);
-router.post("/profiles/:userId/picture", uploadUserProfilePicture);
-router.get("/profiles/:userId/picture", getUserProfilePicture);
 router.get("/", getUsers);
 router.get("/:id", getUserById);
 router.post("/", addUser);
