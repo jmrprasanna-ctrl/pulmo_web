@@ -164,6 +164,20 @@ async function isRequesterSuperAdmin(req) {
   return Boolean(me && String(me.role || "").toLowerCase() === "admin" && me.is_super_user);
 }
 
+function getRequesterId(req) {
+  const requesterId = Number(req?.user?.id || req?.user?.userId || 0);
+  if (!Number.isFinite(requesterId) || requesterId <= 0) return 0;
+  return requesterId;
+}
+
+async function canRequesterAccessProfileUser(req, targetUserId) {
+  const requesterId = getRequesterId(req);
+  if (!requesterId || !Number.isFinite(targetUserId) || targetUserId <= 0) return false;
+  const requesterIsSuper = await isRequesterSuperAdmin(req);
+  if (requesterIsSuper) return true;
+  return requesterId === Number(targetUserId);
+}
+
 function isTargetProtectedSuperAdmin(targetUser, requesterId, requesterIsSuper) {
   const isTargetAdmin = String(targetUser?.role || "").toLowerCase() === "admin";
   const isTargetSuper = Boolean(targetUser?.is_super_user);
@@ -317,14 +331,27 @@ exports.getUserProfiles = async (req, res) => {
     await ensureUserSuperColumn();
     await ensureUserProfileSchema();
 
-    const users = await User.findAll({
-      attributes: ["id", "username", "department", "telephone", "email", "role", "is_super_user"],
-      order: [["id", "DESC"]],
-    });
-
-    const requesterId = Number(req?.user?.id || req?.user?.userId || 0);
+    const requesterId = getRequesterId(req);
+    if (!requesterId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
     const requesterIsSuper = await isRequesterSuperAdmin(req);
-    const filteredUsers = (Array.isArray(users) ? users : []).filter((u) => !isTargetProtectedSuperAdmin(u, requesterId, requesterIsSuper));
+
+    let filteredUsers = [];
+    if (requesterIsSuper) {
+      const users = await User.findAll({
+        attributes: ["id", "username", "department", "telephone", "email", "role", "is_super_user"],
+        order: [["id", "DESC"]],
+      });
+      filteredUsers = Array.isArray(users)
+        ? users.filter((u) => !isTargetProtectedSuperAdmin(u, requesterId, requesterIsSuper))
+        : [];
+    } else {
+      const me = await User.findByPk(requesterId, {
+        attributes: ["id", "username", "department", "telephone", "email", "role", "is_super_user"],
+      });
+      filteredUsers = me ? [me] : [];
+    }
 
     const result = [];
     for (const user of filteredUsers) {
@@ -347,6 +374,11 @@ exports.getUserProfileByUserId = async (req, res) => {
 
   try {
     await ensureUserSuperColumn();
+    const canAccessTarget = await canRequesterAccessProfileUser(req, userId);
+    if (!canAccessTarget) {
+      return res.status(403).json({ message: "Forbidden: You can only access your own profile." });
+    }
+
     const user = await User.findByPk(userId, {
       attributes: ["id", "username", "department", "telephone", "email", "role", "is_super_user"],
     });
@@ -377,6 +409,11 @@ exports.updateUserProfile = async (req, res) => {
 
   try {
     await ensureUserSuperColumn();
+    const canAccessTarget = await canRequesterAccessProfileUser(req, userId);
+    if (!canAccessTarget) {
+      return res.status(403).json({ message: "Forbidden: You can only update your own profile." });
+    }
+
     const user = await User.findByPk(userId, {
       attributes: ["id", "username", "department", "telephone", "email", "role", "is_super_user"],
     });
@@ -441,6 +478,11 @@ exports.uploadUserProfilePicture = async (req, res) => {
 
   try {
     await ensureUserSuperColumn();
+    const canAccessTarget = await canRequesterAccessProfileUser(req, userId);
+    if (!canAccessTarget) {
+      return res.status(403).json({ message: "Forbidden: You can only update your own profile picture." });
+    }
+
     const user = await User.findByPk(userId, {
       attributes: ["id", "username", "department", "telephone", "email", "role", "is_super_user"],
     });
@@ -500,6 +542,11 @@ exports.getUserProfilePicture = async (req, res) => {
   }
 
   try {
+    const canAccessTarget = await canRequesterAccessProfileUser(req, userId);
+    if (!canAccessTarget) {
+      return res.status(403).json({ message: "Forbidden: You can only view your own profile picture." });
+    }
+
     const user = await User.findByPk(userId, { attributes: ["id"] });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
