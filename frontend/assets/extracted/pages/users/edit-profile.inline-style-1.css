@@ -27,6 +27,7 @@
     object-fit:cover;
     border:1px solid #c9d8ea;
     background:#f2f7fd;
+    visibility:hidden;
 }
 .profile-picture-actions{
     display:flex;

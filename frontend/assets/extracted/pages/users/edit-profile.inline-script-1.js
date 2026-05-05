@@ -24,6 +24,7 @@ function setPreviewFallback(name){
     const preview = document.getElementById("profilePicturePreview");
     if(!preview) return;
     preview.src = buildAvatarDataUri(getInitials(name));
+    preview.style.visibility = "visible";
 }
 
 function toBase64(file){
@@ -162,6 +163,7 @@ window.addEventListener("DOMContentLoaded", async () => {
                 if(preview){
                     // Show selected photo immediately so company logo does not flash back.
                     preview.src = fileDataBase64;
+                    preview.style.visibility = "visible";
                 }
                 await request(`/users/profiles/${userId}/picture`, "POST", {
                     fileName: file.name,
