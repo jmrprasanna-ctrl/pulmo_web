@@ -53,9 +53,21 @@ function renderStocks(rows){
             <td>
                 <div class="stock-actions">
                     <input type="number" class="stock-qty" id="qty-${p.id}" min="0" step="1" value="1" ${canManage ? "" : "disabled"}>
-                    <button class="btn btn-inline" type="button" onclick="adjustStock(${p.id}, 'add')" ${canManage ? "" : "disabled"}>Add</button>
-                    <button class="btn btn-inline" type="button" onclick="adjustStock(${p.id}, 'remove')" ${canManage ? "" : "disabled"}>Reduce</button>
-                    <button class="btn btn-inline" type="button" onclick="adjustStock(${p.id}, 'set')" ${canManage ? "" : "disabled"}>Set</button>
+                    <button class="icon-btn stock-action-icon" type="button" onclick="adjustStock(${p.id}, 'add')" ${canManage ? "" : "disabled"} aria-label="Add stock" title="Add stock">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn stock-action-icon" type="button" onclick="adjustStock(${p.id}, 'remove')" ${canManage ? "" : "disabled"} aria-label="Reduce stock" title="Reduce stock">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn stock-action-icon" type="button" onclick="adjustStock(${p.id}, 'set')" ${canManage ? "" : "disabled"} aria-label="Set stock" title="Set stock">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M5.5 12.5 9.5 16.5 18.5 7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
                 </div>
             </td>
         `;
