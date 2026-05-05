@@ -2,7 +2,8 @@
 const storedRole = localStorage.getItem("role") || "";
 const storedEmail = localStorage.getItem("userEmail") || "";
 const storedName = localStorage.getItem("userName") || "";
-const displayName = storedName || storedEmail || storedRole || "User";
+const storedProfileName = localStorage.getItem("profileName") || "";
+let displayName = storedProfileName || storedName || storedEmail || storedRole || "User";
 
 const roleEl = document.getElementById("userRole");
 if (roleEl) roleEl.innerText = displayName || "User";
@@ -14,6 +15,33 @@ const initialEl = document.getElementById("userInitial");
 if (initialEl) {
     const initialSource = displayName.trim();
     initialEl.innerText = initialSource ? initialSource[0].toUpperCase() : "U";
+}
+
+function applyDashboardIdentity(name){
+    const safeName = String(name || "").trim() || displayName || "User";
+    displayName = safeName;
+    const welcomeEl = document.getElementById("userRole");
+    if(welcomeEl) welcomeEl.innerText = safeName;
+    const chipNameEl = document.getElementById("userName");
+    if(chipNameEl) chipNameEl.innerText = safeName;
+    const initialBadgeEl = document.getElementById("userInitial");
+    if(initialBadgeEl){
+        initialBadgeEl.innerText = safeName ? safeName.charAt(0).toUpperCase() : "U";
+    }
+}
+
+async function loadDashboardProfileName(){
+    const userId = Number(localStorage.getItem("userId") || 0);
+    if(!Number.isFinite(userId) || userId <= 0) return;
+    try{
+        const profile = await request(`/users/profiles/${userId}`,"GET");
+        const profileName = String(profile?.profile_name || "").trim();
+        if(profileName){
+            localStorage.setItem("profileName", profileName);
+            applyDashboardIdentity(profileName);
+        }
+    }catch(_err){
+    }
 }
 
 const userRole = (storedRole || "").toLowerCase();
@@ -911,6 +939,7 @@ if(todoForm){
 
 loadTodoAssignees();
 loadTodos();
+loadDashboardProfileName();
 
 
 

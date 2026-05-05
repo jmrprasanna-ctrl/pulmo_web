@@ -56,7 +56,8 @@
                             var storedRole = localStorage.getItem("role") || "";
                             var storedEmail = localStorage.getItem("userEmail") || "";
                             var storedName = localStorage.getItem("userName") || "";
-                            var displayName = storedName || storedEmail || storedRole || "";
+                            var storedProfileName = localStorage.getItem("profileName") || "";
+                            var displayName = storedProfileName || storedName || storedEmail || storedRole || "";
                             var roleEl = document.getElementById("userRole");
                             if (roleEl) roleEl.textContent = displayName || "User";
                             var nameEl = document.getElementById("userName");
@@ -243,7 +244,7 @@
 </div>
 
 <script src="../assets/js/api.js?v=20260330p02"></script>
-<script src="../assets/js/dashboard.js?v=20260506p03"></script>
+<script src="../assets/js/dashboard.js?v=20260506p04"></script>
 <script src="../assets/extracted/pages/dashboard.inline-script-1.js"></script>
 </body>
 </html>
