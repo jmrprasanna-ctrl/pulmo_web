@@ -74,3 +74,17 @@
 .form-container{
     overflow-x: visible !important;
 }
+
+@media (max-width: 768px){
+    .report-controls{
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 2px;
+    }
+    .report-controls > *{
+        flex: 0 0 auto;
+    }
+}
