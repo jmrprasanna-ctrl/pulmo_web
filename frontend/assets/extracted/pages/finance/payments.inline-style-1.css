@@ -24,3 +24,21 @@
     .status-badge{padding:3px 8px;border-radius:999px;font-size:12px;font-weight:700;display:inline-block;}
     .status-received{background:#d9f5e8;color:#157347;}
     .status-pending{background:#fde7e9;color:#b02a37;}
+
+@media (max-width: 900px){
+    .payments-list-toolbar{
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        align-items: flex-end !important;
+    }
+    .payments-list-toolbar .field{
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+    .payments-list-toolbar > .icon-btn{
+        width: 40px !important;
+        min-width: 40px !important;
+        max-width: 40px !important;
+        align-self: flex-start !important;
+    }
+}
