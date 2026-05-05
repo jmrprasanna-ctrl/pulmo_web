@@ -1,0 +1,77 @@
+.page-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    width:100%;
+}
+.page-head h2{
+    margin:0;
+    flex:1 1 auto;
+    min-width:0;
+}
+.page-head .icon-btn{
+    margin-left:auto;
+    flex:0 0 auto;
+}
+.profile-picture-wrap{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin:0 0 14px 0;
+}
+#profilePicturePreview{
+    width:84px;
+    height:84px;
+    border-radius:16px;
+    object-fit:cover;
+    border:1px solid #c9d8ea;
+    background:#f2f7fd;
+}
+.profile-picture-actions{
+    display:flex;
+    gap:8px;
+    align-items:center;
+}
+.is-hidden{
+    display:none;
+}
+.meta-grid{
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:10px;
+    margin:0 0 12px 0;
+}
+.meta-card{
+    background:#f4f8fd;
+    border:1px solid #d7e4f3;
+    border-radius:12px;
+    padding:9px 11px;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+}
+.meta-card span{
+    font-size:12px;
+    color:#486483;
+}
+.meta-card strong{
+    font-size:14px;
+    color:#1f2e40;
+    font-weight:700;
+    word-break:break-word;
+}
+#editProfileForm textarea{
+    min-height:80px;
+    resize:vertical;
+}
+.form-actions{
+    display:flex;
+    gap:12px;
+    margin-top:12px;
+}
+@media (max-width:900px){
+    .meta-grid{
+        grid-template-columns:1fr;
+    }
+}

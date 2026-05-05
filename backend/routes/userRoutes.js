@@ -1,5 +1,16 @@
 const express = require("express");
-const { getUsers, getUserById, addUser, updateUser, deleteUser } = require("../controllers/userController");
+const {
+  getUsers,
+  getUserById,
+  addUser,
+  updateUser,
+  deleteUser,
+  getUserProfiles,
+  getUserProfileByUserId,
+  updateUserProfile,
+  uploadUserProfilePicture,
+  getUserProfilePicture,
+} = require("../controllers/userController");
 const {
   getAccessUsers,
   getAccessPages,
@@ -64,6 +75,11 @@ router.get("/logs", getLoginLogs);
 router.delete("/logs", clearLoginLogs);
 router.get("/access/:userId", getUserAccess);
 router.put("/access/:userId", saveUserAccess);
+router.get("/profiles", getUserProfiles);
+router.get("/profiles/:userId", getUserProfileByUserId);
+router.put("/profiles/:userId", updateUserProfile);
+router.post("/profiles/:userId/picture", uploadUserProfilePicture);
+router.get("/profiles/:userId/picture", getUserProfilePicture);
 router.get("/", getUsers);
 router.get("/:id", getUserById);
 router.post("/", addUser);

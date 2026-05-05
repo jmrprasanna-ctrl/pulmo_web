@@ -850,6 +850,35 @@ async function ensureUserPreferenceSettingsSchema() {
   });
 }
 
+async function ensureUserProfileSchema() {
+  await runOnBusinessDatabases(async () => {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS user_profiles (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        profile_name VARCHAR(200),
+        address TEXT,
+        mobile VARCHAR(60),
+        id_number VARCHAR(120),
+        emergency_contact_no VARCHAR(60),
+        authoris_officer VARCHAR(200),
+        profile_picture_path VARCHAR(500),
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    await db.query(`ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS mobile VARCHAR(60);`);
+    await db.query(`ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS id_number VARCHAR(120);`);
+    await db.query(`ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS emergency_contact_no VARCHAR(60);`);
+    await db.query(`ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS authoris_officer VARCHAR(200);`);
+    await db.query(`ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS profile_picture_path VARCHAR(500);`);
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS user_profiles_profile_name_idx
+      ON user_profiles(LOWER(COALESCE(profile_name, '')));
+    `);
+  });
+}
+
 async function ensureUserQuotationRenderSettingsSchema() {
   await runOnBusinessDatabases(async () => {
     await db.query(`
@@ -1001,6 +1030,7 @@ async function startServer() {
     await ensureUserMappingSchema();
     await ensureUserInvoiceMappingSchema();
     await ensureUserPreferenceSettingsSchema();
+    await ensureUserProfileSchema();
     await ensureUserQuotationRenderSettingsSchema();
     await ensureUserSuperSchema();
     await ensureUserPasswordRecoverySchema();

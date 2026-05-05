@@ -409,6 +409,7 @@ function renderSidebarMenuByAccess(){
             label: "System",
             children: [
                 { path: "/users/user-list.html", label: "User List" },
+                { path: "/users/profile-list.html", label: "Profile" },
                 { path: "/users/preference.html", label: "Preference" },
                 { path: "/users/user-access.html", label: "Access" },
                 {
@@ -958,6 +959,7 @@ async function loadUserAccessPermissions(){
             ...pagesFromActions,
             ...(normalizedActionKeys.includes("/users/technician-list.html::add") ? ["/users/add-technician.html"] : []),
             ...(normalizedActionKeys.includes("/users/technician-list.html::edit") ? ["/users/edit-technician.html"] : []),
+            ...(normalizedActionKeys.includes("/users/profile-list.html::edit") ? ["/users/edit-profile.html"] : []),
             ...(
                 normalizedAllowedPages.includes("/products/add-rental-consumable.html")
                 || pagesFromActions.includes("/products/add-rental-consumable.html")

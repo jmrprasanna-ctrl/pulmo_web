@@ -178,6 +178,8 @@ const ACCESS_MODULE_OPTIONS = [
     module: "Users",
     items: [
       { path: "/users/user-list.html", label: "User List", actions: ["view", "add", "edit", "delete"] },
+      { path: "/users/profile-list.html", label: "Profile List", actions: ["view", "edit"] },
+      { path: "/users/edit-profile.html", label: "Edit Profile", actions: ["view", "edit"] },
       { path: "/users/add-user.html", label: "Add User", actions: ["view", "add"] },
       { path: "/users/edit-user.html", label: "Edit User", actions: ["view", "edit"] },
       { path: "/users/user-access.html", label: "User Access", actions: ["view", "edit"] },
@@ -278,6 +280,10 @@ function expandImplicitActionDependencies(actionKeys) {
   if (set.has(toActionKey("/users/technician-list.html", "edit"))) {
     add("/users/edit-technician.html", "view");
     add("/users/edit-technician.html", "edit");
+  }
+  if (set.has(toActionKey("/users/profile-list.html", "edit"))) {
+    add("/users/edit-profile.html", "view");
+    add("/users/edit-profile.html", "edit");
   }
   if (set.has(toActionKey("/users/technician-list.html", "add"))) {
     add("/users/add-technician.html", "view");
