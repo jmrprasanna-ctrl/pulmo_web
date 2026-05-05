@@ -412,6 +412,10 @@ body {
   gap: 14px;
 }
 
+.cards.cards-access-pending .card {
+  display: none !important;
+}
+
 .health-panel {
   margin-top: 14px;
   margin-bottom: 14px;

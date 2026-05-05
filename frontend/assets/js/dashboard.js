@@ -154,6 +154,11 @@ function bindDashboardTileAccessLinks(){
             }
         };
     });
+
+    const cardsWrap = document.querySelector(".cards.cards-access-pending");
+    if(cardsWrap){
+        cardsWrap.classList.remove("cards-access-pending");
+    }
 }
 
 function syncDashboardCommunicationButtons(){
