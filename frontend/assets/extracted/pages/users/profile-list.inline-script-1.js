@@ -16,6 +16,44 @@ function canViewProfileList(){
     return hasPageAccess;
 }
 
+function safeText(value){
+    return String(value || "").trim();
+}
+
+function createTextCell(value){
+    const td = document.createElement("td");
+    td.textContent = safeText(value);
+    return td;
+}
+
+function createProfileNameCell(row){
+    const td = document.createElement("td");
+    td.className = "profile-name-cell";
+
+    const wrap = document.createElement("div");
+    wrap.className = "profile-identity";
+
+    const avatar = document.createElement("img");
+    avatar.className = "profile-avatar";
+    avatar.alt = "Profile picture";
+    avatar.loading = "lazy";
+    avatar.decoding = "async";
+    avatar.src = safeText(row.picture_url) || "../../assets/images/logo.png";
+    avatar.onerror = () => {
+        avatar.onerror = null;
+        avatar.src = "../../assets/images/logo.png";
+    };
+
+    const name = document.createElement("span");
+    name.className = "profile-name-text";
+    name.textContent = safeText(row.profile_name) || safeText(row.login_user) || "User";
+
+    wrap.appendChild(avatar);
+    wrap.appendChild(name);
+    td.appendChild(wrap);
+    return td;
+}
+
 async function loadProfiles(){
     try{
         const profiles = await request("/users/profiles", "GET");
@@ -24,13 +62,11 @@ async function loadProfiles(){
         (Array.isArray(profiles) ? profiles : []).forEach((row) => {
             const tr = document.createElement("tr");
             tr.classList.add("profile-row-clickable");
-            tr.innerHTML = `
-                <td>${row.profile_name || ""}</td>
-                <td>${row.email || ""}</td>
-                <td>${row.login_user || ""}</td>
-                <td>${row.department || ""}</td>
-                <td>${row.mobile || ""}</td>
-            `;
+            tr.appendChild(createProfileNameCell(row));
+            tr.appendChild(createTextCell(row.email));
+            tr.appendChild(createTextCell(row.login_user));
+            tr.appendChild(createTextCell(row.department));
+            tr.appendChild(createTextCell(row.mobile));
             tr.addEventListener("click", () => {
                 window.location.href = `edit-profile.html?userId=${row.user_id}`;
             });

@@ -17,3 +17,25 @@
 #profile-table-body tr.profile-row-clickable{
     cursor:pointer;
 }
+.profile-name-cell{
+    min-width: 240px;
+}
+.profile-identity{
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+.profile-avatar{
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid #d7e3f0;
+    background: #f4f8fc;
+    flex: 0 0 42px;
+}
+.profile-name-text{
+    font-weight: 600;
+    color: #1d2a3a;
+    line-height: 1.2;
+}
