@@ -1282,7 +1282,14 @@ async function forgotPassword(){
 function hasUserGrantedPath(path){
     const target = String(path || "").trim().toLowerCase();
     if(!target) return false;
-    return USER_ALLOWED_PATHS_RUNTIME.some((x) => String(x || "").trim().toLowerCase() === target);
+    const targets = [target];
+    if(target === "/users/profile-list.html"){
+        targets.push("/users/user-list.html");
+    }
+    if(target === "/users/edit-profile.html"){
+        targets.push("/users/profile-list.html", "/users/user-list.html");
+    }
+    return USER_ALLOWED_PATHS_RUNTIME.some((x) => targets.includes(String(x || "").trim().toLowerCase()));
 }
 window.hasUserGrantedPath = hasUserGrantedPath;
 
