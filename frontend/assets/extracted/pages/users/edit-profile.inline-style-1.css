@@ -34,6 +34,10 @@
     gap:8px;
     align-items:center;
 }
+html.profile-view-mode .profile-picture-actions,
+html.profile-view-mode .form-actions{
+    display: none !important;
+}
 .is-hidden{
     display:none;
 }

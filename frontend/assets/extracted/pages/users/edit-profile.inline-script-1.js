@@ -160,6 +160,8 @@ function applyViewOnlyState(){
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
+    applyViewOnlyState();
+
     if(typeof window.__waitForUserAccessPermissions === "function"){
         await window.__waitForUserAccessPermissions();
     }
@@ -219,5 +221,4 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
 
     await loadProfile();
-    applyViewOnlyState();
 });

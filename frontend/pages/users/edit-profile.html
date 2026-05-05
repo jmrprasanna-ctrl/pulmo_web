@@ -9,6 +9,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Profile - PULMO TECHNOLOGIES</title>
+    <script>
+        (function () {
+            try {
+                var params = new URLSearchParams(window.location.search || "");
+                var mode = String(params.get("mode") || "").trim().toLowerCase();
+                if (mode === "view" || mode === "readonly") {
+                    document.documentElement.classList.add("profile-view-mode");
+                }
+            } catch (_err) {
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="../../assets/css/style.css">
     <link rel="stylesheet" href="../../assets/css/dashboard.css">
     <link rel="stylesheet" href="../../assets/extracted/pages/users/edit-profile.inline-style-1.css">
@@ -95,6 +107,6 @@
     </div>
 
     <script src="../../assets/js/api.js?v=20260324p4"></script>
-    <script src="../../assets/extracted/pages/users/edit-profile.inline-script-1.js?v=20260506p1"></script>
+    <script src="../../assets/extracted/pages/users/edit-profile.inline-script-1.js?v=20260506p2"></script>
 </body>
 </html>
