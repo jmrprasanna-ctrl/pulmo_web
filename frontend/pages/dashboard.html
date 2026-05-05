@@ -47,9 +47,29 @@
                     <div class="user-avatar" id="userInitial">U</div>
                     <div class="user-meta">
                         <span class="user-label">Logged in</span>
-                        <span class="user-name" id="userName">User</span>
+                        <span class="user-name" id="userName"></span>
                     </div>
                 </div>
+                <script>
+                    (function () {
+                        try {
+                            var storedRole = localStorage.getItem("role") || "";
+                            var storedEmail = localStorage.getItem("userEmail") || "";
+                            var storedName = localStorage.getItem("userName") || "";
+                            var displayName = storedName || storedEmail || storedRole || "";
+                            var roleEl = document.getElementById("userRole");
+                            if (roleEl) roleEl.textContent = storedRole;
+                            var nameEl = document.getElementById("userName");
+                            if (nameEl) nameEl.textContent = displayName;
+                            var initialEl = document.getElementById("userInitial");
+                            if (initialEl) {
+                                var initialSource = String(displayName || "").trim();
+                                initialEl.textContent = initialSource ? initialSource.charAt(0).toUpperCase() : "U";
+                            }
+                        } catch (_err) {
+                        }
+                    })();
+                </script>
                 <span class="icon-btn health-indicator unknown" id="healthIconBtn" aria-label="System health status" title="System health">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M12 20.5c-.3 0-.6-.1-.8-.3-2.9-2.4-5.1-4.5-6.5-6.2C2.9 11.9 2 10.1 2 8.2 2 5.4 4.3 3 7.1 3c1.8 0 3.5.9 4.5 2.3C12.6 3.9 14.3 3 16.1 3 18.9 3 21.2 5.4 21.2 8.2c0 1.9-.9 3.7-2.7 5.8-1.4 1.7-3.6 3.8-6.5 6.2-.2.2-.5.3-.8.3Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>

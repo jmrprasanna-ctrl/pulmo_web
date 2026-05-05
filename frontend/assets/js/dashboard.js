@@ -50,7 +50,7 @@ function syncDashboardCommunicationButtons(){
     const role = (localStorage.getItem("role") || "").toLowerCase();
     if(role !== "admin" && role !== "manager" && role !== "user") return;
 
-    const messagesBtn = document.getElementById("messagesBtn");WWWWWWW
+    const messagesBtn = document.getElementById("messagesBtn");
     const noticeBtn = document.getElementById("noticeBtn");
 
     if(messagesBtn){
