@@ -34,6 +34,21 @@
     background: #f4f8fc;
     flex: 0 0 42px;
 }
+.profile-avatar-fallback{
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d7e3f0;
+    background: #e8f2ff;
+    color: #0d4f90;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.3px;
+    flex: 0 0 42px;
+}
 .profile-name-text{
     font-weight: 600;
     color: #1d2a3a;

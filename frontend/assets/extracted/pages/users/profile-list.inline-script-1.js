@@ -20,6 +20,13 @@ function safeText(value){
     return String(value || "").trim();
 }
 
+function getInitials(name){
+    const parts = safeText(name).split(/\s+/).filter(Boolean);
+    if(parts.length === 0) return "U";
+    if(parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
+}
+
 function createTextCell(value){
     const td = document.createElement("td");
     td.textContent = safeText(value);
@@ -38,16 +45,34 @@ function createProfileNameCell(row){
     avatar.alt = "Profile picture";
     avatar.loading = "lazy";
     avatar.decoding = "async";
-    avatar.src = safeText(row.picture_url) || "../../assets/images/logo.png";
+    const pictureUrl = safeText(row.picture_url);
+
+    const fallback = document.createElement("span");
+    fallback.className = "profile-avatar-fallback";
+    fallback.textContent = getInitials(safeText(row.profile_name) || safeText(row.login_user) || "User");
+
+    if(!pictureUrl){
+        avatar.style.display = "none";
+        fallback.style.display = "inline-flex";
+    }else{
+        fallback.style.display = "none";
+        avatar.src = pictureUrl;
+    }
+    avatar.onload = () => {
+        avatar.style.display = "inline-block";
+        fallback.style.display = "none";
+    };
     avatar.onerror = () => {
         avatar.onerror = null;
-        avatar.src = "../../assets/images/logo.png";
+        avatar.style.display = "none";
+        fallback.style.display = "inline-flex";
     };
 
     const name = document.createElement("span");
     name.className = "profile-name-text";
     name.textContent = safeText(row.profile_name) || safeText(row.login_user) || "User";
 
+    wrap.appendChild(fallback);
     wrap.appendChild(avatar);
     wrap.appendChild(name);
     td.appendChild(wrap);
