@@ -26,7 +26,6 @@ async function login(){
 
     try{
         if(loginBtn) loginBtn.disabled = true;
-        setLoadingOverlay(true, "Starting AXIS WEB SYSTEM...");
         const res = await request("/auth/login","POST",{email,password});
         localStorage.setItem("token",res.token);
         localStorage.setItem("role",res.user.role);
@@ -62,7 +61,6 @@ async function login(){
         } else {
             localStorage.removeItem("mappedCompanyLogoUrl");
         }
-        setLoadingOverlay(true, "Starting AXIS WEB SYSTEM...");
         window.location.href = "dashboard.html";
     }catch(err){
         setLoadingOverlay(false);
@@ -121,7 +119,6 @@ if(passwordToggle){
     el.addEventListener("keydown", (e) => {
         if(e.key === "Enter"){
             e.preventDefault();
-            login();
         }
     });
 });
