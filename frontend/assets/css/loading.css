@@ -27,7 +27,7 @@ body{
 }
 
 .loading-logo{
-    width:min(300px, 80vw);
+    width:min(270px, 76vw);
     height:auto;
     object-fit:contain;
     margin:0 auto 18px;
@@ -74,4 +74,11 @@ body{
 @keyframes axis-dot-fade{
     0%, 39%, 100% { opacity: .25; }
     40% { opacity: 1; }
+}
+
+@media (max-width:640px){
+    .loading-logo{
+        width:min(220px, 72vw);
+        margin:0 auto 14px;
+    }
 }

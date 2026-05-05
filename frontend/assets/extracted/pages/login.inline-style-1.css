@@ -50,7 +50,7 @@ body{
 }
 
 .axis-loader-logo-wrap{
-    width: min(300px, 80vw);
+    width: min(270px, 76vw);
     height: auto;
     margin: 0 auto 18px;
     display: flex;
@@ -261,6 +261,11 @@ body{
     .axis-loader-card{
         max-width: 94vw;
         padding: 6px 10px;
+    }
+
+    .axis-loader-logo-wrap{
+        width: min(220px, 72vw);
+        margin: 0 auto 14px;
     }
 
     .axis-loader-title{
