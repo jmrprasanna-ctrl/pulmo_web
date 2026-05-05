@@ -377,13 +377,7 @@ function renderSidebarMenuByAccess(){
             label: "Machines",
             children: [
                 { path: "/products/general-machine.html", label: "General" },
-                {
-                    path: "/products/machine.html",
-                    label: "Rental",
-                    children: [
-                        { path: "/products/machine.html", label: "Rental Mchine" }
-                    ]
-                }
+                { path: "/products/machine.html", label: "Rental" }
             ]
         },
         {
