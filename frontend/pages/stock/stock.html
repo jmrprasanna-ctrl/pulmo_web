@@ -40,7 +40,14 @@
             <div class="report-head">
                 <h3>Stock Overview</h3>
                 <div class="report-controls filters-inline">
-                    <button class="btn btn-secondary btn-inline" id="clearVendorStockBtn" type="button">Clear Vender Stock</button>
+                    <button class="icon-btn" id="clearVendorStockBtn" type="button" aria-label="Clear vender stock" title="Clear vender stock">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M5 7h14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                            <path d="M9.5 7V5.5h5V7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                            <path d="M7.5 7.5l.8 11a1 1 0 0 0 1 .9h5.4a1 1 0 0 0 1-.9l.8-11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                            <path d="M10 10.5v6M14 10.5v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                        </svg>
+                    </button>
                     <select id="stockSourceFilter" class="model-filter">
                         <option value="ALL" selected>All Sources</option>
                         <option value="PULMO">PULMO</option>
