@@ -365,6 +365,21 @@ function initDashboardUserMenu(){
         preferenceLink.href = "users/preference.html";
     }
 
+    const syncUserMenuAccess = () => {
+        if(profileLink){
+            const allowProfile = hasDashboardAccessFor("/users/profile-list.html", ["view", "edit"]);
+            profileLink.style.display = allowProfile ? "" : "none";
+        }
+        if(preferenceLink){
+            const allowPreference = hasDashboardAccessFor("/users/preference.html", ["view", "edit"]);
+            preferenceLink.style.display = allowPreference ? "" : "none";
+        }
+    };
+    syncUserMenuAccess();
+    if(!window.__userAccessPermissionsLoaded){
+        document.addEventListener("app:user-access-ready", syncUserMenuAccess, { once: true });
+    }
+
     loadUserMenuAvatar(currentUserId, (displayName || "U").slice(0, 2));
 
     const openMenu = () => {
