@@ -5,7 +5,7 @@ const storedName = localStorage.getItem("userName") || "";
 const displayName = storedName || storedEmail || storedRole || "User";
 
 const roleEl = document.getElementById("userRole");
-if (roleEl) roleEl.innerText = storedRole;
+if (roleEl) roleEl.innerText = displayName || "User";
 
 const nameEl = document.getElementById("userName");
 if (nameEl) nameEl.innerText = displayName;
