@@ -27,10 +27,10 @@ body{
 }
 
 .loading-logo{
-    width:94px;
-    height:94px;
+    width:min(240px, 72vw);
+    height:auto;
     object-fit:contain;
-    margin:0 auto 8px;
+    margin:0 auto 14px;
     display:block;
 }
 
