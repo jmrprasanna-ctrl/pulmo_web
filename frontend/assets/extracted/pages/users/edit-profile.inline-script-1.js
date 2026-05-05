@@ -3,6 +3,29 @@ function getTargetUserId(){
     return params.get("userId") || params.get("id");
 }
 
+function safeText(value){
+    return String(value || "").trim();
+}
+
+function getInitials(name){
+    const parts = safeText(name).split(/\s+/).filter(Boolean);
+    if(parts.length === 0) return "U";
+    if(parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
+}
+
+function buildAvatarDataUri(label){
+    const text = encodeURIComponent(String(label || "U").slice(0, 2).toUpperCase());
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="100%" height="100%" rx="20" ry="20" fill="#e8f2ff"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="42" font-weight="700" fill="#0d4f90">${text}</text></svg>`;
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function setPreviewFallback(name){
+    const preview = document.getElementById("profilePicturePreview");
+    if(!preview) return;
+    preview.src = buildAvatarDataUri(getInitials(name));
+}
+
 function toBase64(file){
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -16,6 +39,7 @@ async function loadProfilePicture(userId, options = {}){
     const preview = document.getElementById("profilePicturePreview");
     const token = localStorage.getItem("token");
     const preserveOnFail = Boolean(options && options.preserveOnFail);
+    const fallbackName = safeText(options && options.fallbackName);
     if(!preview || !token) return;
 
     try{
@@ -28,7 +52,7 @@ async function loadProfilePicture(userId, options = {}){
         });
         if(!res.ok){
             if(!preserveOnFail){
-                preview.src = "../../assets/images/logo.png";
+                setPreviewFallback(fallbackName);
             }
             return;
         }
@@ -37,7 +61,7 @@ async function loadProfilePicture(userId, options = {}){
         preview.src = objectUrl;
     }catch(_err){
         if(!preserveOnFail){
-            preview.src = "../../assets/images/logo.png";
+            setPreviewFallback(fallbackName);
         }
     }
 }
@@ -61,7 +85,8 @@ async function loadProfile(){
         document.getElementById("metaLoginUser").innerText = profile.login_user || "-";
         document.getElementById("metaEmail").innerText = profile.email || "-";
         document.getElementById("metaDepartment").innerText = profile.department || "-";
-        await loadProfilePicture(userId);
+        setPreviewFallback(profile.profile_name || profile.login_user || "U");
+        await loadProfilePicture(userId, { fallbackName: profile.profile_name || profile.login_user || "U" });
     }catch(err){
         alert(err.message || "Failed to load profile");
         window.location.href = "profile-list.html";
@@ -113,7 +138,10 @@ window.addEventListener("DOMContentLoaded", async () => {
                     fileDataBase64
                 });
                 showMessageBox("Profile picture uploaded");
-                await loadProfilePicture(userId, { preserveOnFail: true });
+                await loadProfilePicture(userId, {
+                    preserveOnFail: true,
+                    fallbackName: document.getElementById("profile_name")?.value || document.getElementById("metaLoginUser")?.innerText || "U"
+                });
             }catch(err){
                 alert(err.message || "Failed to upload profile picture");
             }finally{
