@@ -50,7 +50,7 @@ body{
 }
 
 .axis-loader-logo-wrap{
-    width: min(340px, 86vw);
+    width: min(300px, 80vw);
     height: auto;
     margin: 0 auto 18px;
     display: flex;
