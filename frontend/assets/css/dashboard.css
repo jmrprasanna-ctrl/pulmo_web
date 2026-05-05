@@ -689,48 +689,48 @@ body {
 
   .user-menu-panel {
     position: fixed;
-    right: 14px;
+    right: 12px;
     left: auto;
-    width: min(300px, calc(100vw - 80px));
-    max-width: calc(100vw - 80px);
+    width: min(340px, calc(100vw - 52px));
+    max-width: calc(100vw - 52px);
     top: 84px;
-    max-height: 62vh;
+    max-height: 68vh;
     overflow-y: auto;
     overflow-x: hidden;
     z-index: 1600;
-    padding: 8px 8px 10px;
-    border-radius: 16px;
+    padding: 9px 9px 11px;
+    border-radius: 18px;
   }
 
   .user-menu-head {
-    padding: 6px 6px 9px;
-    margin-bottom: 4px;
+    padding: 8px 8px 10px;
+    margin-bottom: 5px;
   }
 
   .user-menu-avatar {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
   }
 
   .user-menu-meta strong {
-    font-size: 1rem;
+    font-size: 1.1rem;
   }
 
   .user-menu-meta span {
-    font-size: 0.8rem;
-    letter-spacing: 0.09em;
+    font-size: 0.84rem;
+    letter-spacing: 0.1em;
   }
 
   .user-menu-item {
-    font-size: 0.9rem;
-    padding: 8px 8px;
-    border-radius: 10px;
+    font-size: 0.96rem;
+    padding: 9px 9px;
+    border-radius: 11px;
   }
 
   .user-menu-item svg {
-    width: 19px;
-    height: 19px;
-    flex-basis: 19px;
+    width: 20px;
+    height: 20px;
+    flex-basis: 20px;
   }
 
   .cards {
