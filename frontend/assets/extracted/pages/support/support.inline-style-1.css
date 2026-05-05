@@ -1,34 +1,52 @@
+.page-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:nowrap;
+    margin-bottom:12px;
+}
+.page-head h2{
+    margin:0;
+}
+.page-head .icon-btn{
+    margin-left:auto;
+    flex:0 0 auto;
+}
 .support-link-row{
-        display:flex;
-        gap:12px;
-        flex-wrap:wrap;
-    }
-    .card-mb-12{
-        margin-bottom: 12px;
-    }
-    .card-mt-12{
-        margin-top: 12px;
-    }
-    .is-hidden{
-        display: none;
-    }
-    .support-form-actions{
-        display:flex;
-        gap:12px;
-        flex-wrap:wrap;
-        margin-top:10px;
-    }
-    .support-action-row{
-        display:flex;
-        gap:8px;
-        align-items:center;
-        flex-wrap:nowrap;
-        white-space:nowrap;
-    }
-    .support-action-btn{
-        width:84px;
-        min-width:84px;
-        height:36px;
-        margin-top:0;
-        padding:0 12px;
-    }
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+}
+.card-mb-12{
+    margin-bottom: 12px;
+}
+.card-mt-12{
+    margin-top: 12px;
+}
+.is-hidden{
+    display: none;
+}
+.support-form-actions{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-top:10px;
+}
+.support-form-actions .icon-btn{
+    margin-top:0;
+}
+.support-action-row{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:nowrap;
+    white-space:nowrap;
+}
+.support-action-btn{
+    width:84px;
+    min-width:84px;
+    height:36px;
+    margin-top:0;
+    padding:0 12px;
+}
