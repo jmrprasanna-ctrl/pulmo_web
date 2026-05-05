@@ -91,7 +91,7 @@
                     </svg>
                     <span class="badge-count hidden" id="noticeBadgeCount" aria-hidden="true">0</span>
                 </a>
-                <a class="icon-btn" id="todoBtn" href="#todoSection" aria-label="To-do list">
+                <a class="icon-btn" id="todoBtn" href="todo/todo.html" aria-label="To-do list">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M4.5 6.5h10M4.5 12h10M4.5 17.5h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
                         <path d="M18 7l1.5 1.5L22 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -226,26 +226,10 @@
         </div>
     </div>
 
-    <section class="todo-section" id="todoSection">
-        <div class="todo-header">
-            <div>
-                <h3>To-Do List</h3>
-                <p class="muted">Shared tasks for all users.</p>
-            </div>
-            <form id="todoForm" class="todo-form">
-                <input type="text" id="todoInput" placeholder="Add a new to-do" maxlength="200">
-                <select id="todoAssign">
-                    <option value="">Assign to me</option>
-                </select>
-                <button class="btn btn-primary" type="submit">Add</button>
-            </form>
-        </div>
-        <ul id="todoList" class="todo-list"></ul>
-    </section>
 </div>
 
 <script src="../assets/js/api.js?v=20260330p02"></script>
-<script src="../assets/js/dashboard.js?v=20260506p09"></script>
+<script src="../assets/js/dashboard.js?v=20260506p10"></script>
 <script src="../assets/extracted/pages/dashboard.inline-script-1.js"></script>
 </body>
 </html>

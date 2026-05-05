@@ -1,0 +1,89 @@
+<!--
+  System: PULMO WEB SYSTEM 
+  Owner : CRONIT SOLLUTIONS 
+  Author: JMR Prasanna
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TO-DO - PULMO TECHNOLOGIES</title>
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="../../assets/css/dashboard.css">
+<link rel="stylesheet" href="../../assets/extracted/pages/todo/todo.inline-style-1.css">
+</head>
+<body>
+<div class="sidebar">
+    <div class="logo">
+        <img src="../../assets/images/logo.png" alt="Company Logo">
+        <span>PULMO TECHNOLOGIES</span>
+    </div>
+    <ul class="nav-links">
+        <li><a href="../dashboard.html">Dashboard</a></li>
+        <li><a href="../products/product-list.html">Products</a></li>
+        <li><a href="../products/general-machine.html">Machines</a></li>
+        <li><a href="../customers/customer-list.html">Customers</a></li>
+        <li><a href="../invoices/invoice-list.html">Invoices</a></li>
+        <li><a href="../vendors/list-vendor.html">Vendors</a></li>
+        <li><a href="../expenses/expense-list.html">Expenses</a></li>
+        <li><a href="../reports/sales-report.html">Reports</a></li>
+        <li><a href="../analytics/sales-chart.html">Analytics</a></li>
+    </ul>
+</div>
+
+<div class="main-content">
+    <header class="page-head">
+        <h2>TO-DO</h2>
+        <a class="icon-btn" href="../dashboard.html" aria-label="Back to dashboard" title="Back to dashboard">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+    </header>
+
+    <div class="todo-layout">
+        <section class="todo-card calendar-card">
+            <div class="calendar-head">
+                <button class="icon-btn" type="button" id="todoPrevMonthBtn" aria-label="Previous month" title="Previous month">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <h3 id="todoMonthTitle">Month</h3>
+                <button class="icon-btn" type="button" id="todoNextMonthBtn" aria-label="Next month" title="Next month">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="m9.5 6.5 5.5 5.5-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="calendar-weekdays" id="todoCalendarWeekdays"></div>
+            <div class="calendar-grid" id="todoCalendarGrid"></div>
+        </section>
+
+        <section class="todo-card day-card">
+            <div class="day-head">
+                <div>
+                    <h3 id="todoSelectedDayLabel">Selected Day</h3>
+                    <p id="todoDaySummary">0 items</p>
+                </div>
+                <button class="icon-btn" type="button" id="todoAddBtn" aria-label="Add to-do" title="Add to-do">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="todo-controls" id="todoControlsWrap">
+                <select id="todoAssignSelect">
+                    <option value="">Assign to me</option>
+                </select>
+            </div>
+            <ul id="todoDayList" class="todo-day-list"></ul>
+        </section>
+    </div>
+</div>
+
+<script src="../../assets/js/api.js"></script>
+<script src="../../assets/extracted/pages/todo/todo.inline-script-1.js"></script>
+</body>
+</html>

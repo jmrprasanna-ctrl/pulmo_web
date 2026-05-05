@@ -167,6 +167,7 @@ function syncDashboardCommunicationButtons(){
 
     const messagesBtn = document.getElementById("messagesBtn");
     const noticeBtn = document.getElementById("noticeBtn");
+    const todoBtn = document.getElementById("todoBtn");
 
     if(messagesBtn){
         const allowMessages = hasDashboardAccessFor("/messages/messages.html", ["view", "add", "delete"]);
@@ -176,6 +177,12 @@ function syncDashboardCommunicationButtons(){
     if(noticeBtn){
         const allowNotifications = hasDashboardAccessFor("/notifications/notifications.html", ["view", "add", "delete"]);
         noticeBtn.style.display = allowNotifications ? "" : "none";
+    }
+
+    if(todoBtn){
+        const hasConfiguredAccess = typeof hasAccessConfigRestrictions === "function" && hasAccessConfigRestrictions();
+        const allowTodo = !hasConfiguredAccess || hasDashboardAccessFor("/todo/todo.html", ["view"]);
+        todoBtn.style.display = allowTodo ? "" : "none";
     }
 }
 
@@ -921,14 +928,17 @@ function updateTodoBadgeCount(todos){
 
 async function loadTodos(){
     const listEl = document.getElementById("todoList");
-    if(!listEl) return;
     try{
         const todos = await request("/todos","GET");
-        renderTodos(todos || []);
+        if(listEl){
+            renderTodos(todos || []);
+        }
         updateTodoBadgeCount(todos || []);
     }catch(err){
         console.error(err);
-        listEl.innerHTML = "<li class=\"todo-item\"><span class=\"todo-title\">Failed to load to-do list.</span></li>";
+        if(listEl){
+            listEl.innerHTML = "<li class=\"todo-item\"><span class=\"todo-title\">Failed to load to-do list.</span></li>";
+        }
         updateTodoBadgeCount([]);
     }
 }

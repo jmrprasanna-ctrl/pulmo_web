@@ -200,6 +200,7 @@ const ACCESS_MODULE_OPTIONS = [
     module: "Core",
     items: [
       { path: "/dashboard.html", label: "Dashboard", actions: ["view"] },
+      { path: "/todo/todo.html", label: "TO-DO", actions: ["view"] },
       { path: "/dashboard/tiles/total-machines", label: "Tile: Total Machines", actions: ["view"] },
       { path: "/dashboard/tiles/total-rental-machines", label: "Tile: Total Rental Machines", actions: ["view"] },
       { path: "/dashboard/tiles/total-customers", label: "Tile: Total Customers", actions: ["view"] },
