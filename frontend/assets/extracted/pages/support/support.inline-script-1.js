@@ -59,8 +59,20 @@ async function loadSupportImportants(){
             const encWarranty = encodeURIComponent(String(row.warranty_period || "3 month"));
             const actions = canManage()
                 ? `<div class="support-action-row">
-                     <button class="btn btn-inline support-action-btn" type="button" onclick="editImportant(${row.id}, '${encText}', '${encWarranty}')">Edit</button>
-                     <button class="btn btn-danger btn-inline support-action-btn" type="button" onclick="deleteImportant(${row.id})">Delete</button>
+                     <button class="icon-btn support-action-btn" type="button" onclick="editImportant(${row.id}, '${encText}', '${encWarranty}')" aria-label="Edit important" title="Edit important">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 20h4l10-10-4-4L4 16v4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                            <path d="m12.5 6.5 4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                        </svg>
+                     </button>
+                     <button class="icon-btn btn-danger support-action-btn" type="button" onclick="deleteImportant(${row.id})" aria-label="Delete important" title="Delete important">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M5 7h14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                            <path d="M9.5 7V5.5h5V7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                            <path d="M7.5 7.5l.8 11a1 1 0 0 0 1 .9h5.4a1 1 0 0 0 1-.9l.8-11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                            <path d="M10 10.5v6M14 10.5v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                        </svg>
+                     </button>
                    </div>`
                 : `<span>-</span>`;
             const tr = document.createElement("tr");
