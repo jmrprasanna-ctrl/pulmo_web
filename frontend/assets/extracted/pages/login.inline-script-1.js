@@ -1,10 +1,25 @@
+const axisLoadingOverlay = document.getElementById("axisLoadingOverlay");
+const axisLoadingTitle = document.getElementById("axisLoadingTitle");
+
+function setLoadingOverlay(visible, message){
+    if(!axisLoadingOverlay) return;
+    if(axisLoadingTitle && message){
+        axisLoadingTitle.textContent = String(message);
+    }
+    axisLoadingOverlay.classList.toggle("is-active", !!visible);
+    axisLoadingOverlay.setAttribute("aria-hidden", visible ? "false" : "true");
+}
+
 async function login(){
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
+    const loginBtn = document.getElementById("loginBtn");
 
     if(!email || !password){ alert("Please fill all fields"); return; }
 
     try{
+        if(loginBtn) loginBtn.disabled = true;
+        setLoadingOverlay(true, "Signing In...");
         const res = await request("/auth/login","POST",{email,password});
         localStorage.setItem("token",res.token);
         localStorage.setItem("role",res.user.role);
@@ -40,8 +55,11 @@ async function login(){
         } else {
             localStorage.removeItem("mappedCompanyLogoUrl");
         }
+        setLoadingOverlay(true, "Opening Dashboard...");
         window.location.href = "dashboard.html";
     }catch(err){
+        setLoadingOverlay(false);
+        if(loginBtn) loginBtn.disabled = false;
         alert(err.message || "Login failed");
     }
 }
@@ -99,4 +117,9 @@ if(passwordToggle){
             login();
         }
     });
+});
+
+window.addEventListener("DOMContentLoaded", () => {
+    setLoadingOverlay(true, "Loading System");
+    window.setTimeout(() => setLoadingOverlay(false), 950);
 });
