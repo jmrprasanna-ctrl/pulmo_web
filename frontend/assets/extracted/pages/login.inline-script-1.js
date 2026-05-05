@@ -1,6 +1,12 @@
 const axisLoadingOverlay = document.getElementById("axisLoadingOverlay");
 const axisLoadingTitle = document.getElementById("axisLoadingTitle");
 
+function getLoginInputElement(){
+    return document.getElementById("email")
+        || document.getElementById("User")
+        || document.getElementById("user");
+}
+
 function setLoadingOverlay(visible, message){
     if(!axisLoadingOverlay) return;
     if(axisLoadingTitle && message){
@@ -11,8 +17,9 @@ function setLoadingOverlay(visible, message){
 }
 
 async function login(){
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+    const loginInput = getLoginInputElement();
+    const email = loginInput ? String(loginInput.value || "").trim() : "";
+    const password = String((document.getElementById("password") || {}).value || "");
     const loginBtn = document.getElementById("loginBtn");
 
     if(!email || !password){ alert("Please fill all fields"); return; }
@@ -65,7 +72,7 @@ async function login(){
 }
 
 async function forgotPassword(){
-    const emailInput = document.getElementById("email");
+    const emailInput = getLoginInputElement();
     const email = String(emailInput && emailInput.value ? emailInput.value : "").trim();
     if(!email){
         alert("Enter your email address first.");
@@ -108,7 +115,7 @@ const passwordToggle = document.getElementById("passwordToggle");
 if(passwordToggle){
     passwordToggle.addEventListener("click", togglePassword);
 }
-["email", "password"].forEach((id) => {
+["email", "User", "user", "password"].forEach((id) => {
     const el = document.getElementById(id);
     if(!el) return;
     el.addEventListener("keydown", (e) => {
