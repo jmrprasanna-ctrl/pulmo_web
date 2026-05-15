@@ -231,8 +231,16 @@ function enforceUserAccess(){
         return;
     }
     const path = window.location.pathname.replace(/\\/g,"/");
-    const allowed = USER_ALLOWED_PATHS_RUNTIME.some(suffix => path.endsWith(suffix));
-    if(allowed) return;
+    const normalizedPath = String(path || "").trim().toLowerCase();
+    const allowed = USER_ALLOWED_PATHS_RUNTIME.some((suffix) => normalizedPath.endsWith(String(suffix || "").trim().toLowerCase()));
+    const warrantyInvoiceAliasAllowed = (
+        normalizedPath.endsWith("/support/warranty-invoice-view.html")
+        || normalizedPath.endsWith("/support/warrenty-invoice-view.html")
+    ) && (
+        hasUserGrantedPath("/support/warranty-invoice-view.html")
+        || hasUserGrantedPath("/support/warrenty-invoice-view.html")
+    );
+    if(allowed || warrantyInvoiceAliasAllowed) return;
     const idx = path.lastIndexOf("/pages/");
     if(idx !== -1){
         window.location.href = path.slice(0, idx + 7) + "dashboard.html";
