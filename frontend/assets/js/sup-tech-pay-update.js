@@ -46,6 +46,59 @@ function toDataUrlFromFile(file) {
   });
 }
 
+function loadImageElementFromDataUrl(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Failed to process image."));
+    img.src = dataUrl;
+  });
+}
+
+function bytesFromDataUrl(dataUrl) {
+  const raw = String(dataUrl || "");
+  const commaIndex = raw.indexOf(",");
+  if (commaIndex === -1) return 0;
+  const base64 = raw.slice(commaIndex + 1);
+  return calculateBytesFromBase64(base64);
+}
+
+async function compressImageToTargetDataUrl(file, targetBytes = 50 * 1024) {
+  const originalDataUrl = await toDataUrlFromFile(file);
+  const image = await loadImageElementFromDataUrl(originalDataUrl);
+
+  const scaleLevels = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4];
+  const qualityLevels = [0.82, 0.72, 0.62, 0.52, 0.42, 0.34, 0.28];
+
+  let bestDataUrl = originalDataUrl;
+  let bestBytes = bytesFromDataUrl(originalDataUrl);
+
+  for (const scale of scaleLevels) {
+    const width = Math.max(1, Math.round(image.naturalWidth * scale));
+    const height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) continue;
+    ctx.drawImage(image, 0, 0, width, height);
+
+    for (const quality of qualityLevels) {
+      const dataUrl = canvas.toDataURL("image/jpeg", quality);
+      const size = bytesFromDataUrl(dataUrl);
+      if (size > 0 && size < bestBytes) {
+        bestBytes = size;
+        bestDataUrl = dataUrl;
+      }
+      if (size > 0 && size <= targetBytes) {
+        return { dataUrl, bytes: size };
+      }
+    }
+  }
+
+  return { dataUrl: bestDataUrl, bytes: bestBytes };
+}
+
 function formatImageBitrateFromBytes(bytes) {
   const numericBytes = Number(bytes || 0);
   if (!Number.isFinite(numericBytes) || numericBytes <= 0) return "-";
@@ -369,14 +422,17 @@ async function onImageSelected(event) {
   if (!file) return;
 
   try {
-    const dataUrl = await toDataUrlFromFile(file);
-    updatePageState.selectedImageBase64 = dataUrl;
+    const compressed = await compressImageToTargetDataUrl(file, 50 * 1024);
+    updatePageState.selectedImageBase64 = compressed.dataUrl;
     const preview = document.getElementById("paymentProofPreview");
     revokeProofObjectUrl();
-    preview.src = dataUrl;
+    preview.src = compressed.dataUrl;
     preview.hidden = false;
     document.getElementById("paymentProofName").textContent = file.name || "Captured image";
-    setProofBitrateFromBytes(file.size || 0);
+    setProofBitrateFromBytes(compressed.bytes || 0);
+    if ((compressed.bytes || 0) > 50 * 1024 && window.showMessageBox) {
+      showMessageBox("Image compressed, but this photo could not be reduced below 50KB.");
+    }
   } catch (err) {
     if (window.showMessageBox) {
       showMessageBox(err.message || "Failed to read selected image.", "error");
