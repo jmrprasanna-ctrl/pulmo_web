@@ -24,8 +24,9 @@ function escapeHtml(value) {
 
 function getFilteredRows() {
   const searchInput = document.getElementById("supTechSearch");
+  const technicianFilter = document.getElementById("supTechTechnicianFilter");
   const keyword = String(searchInput?.value || "").trim().toLowerCase();
-  if (!keyword) return supTechPayRows;
+  const selectedTechnician = String(technicianFilter?.value || "").trim().toLowerCase();
 
   return supTechPayRows.filter((row) => {
     const haystack = [
@@ -36,8 +37,36 @@ function getFilteredRows() {
     ]
       .map((x) => String(x || "").toLowerCase())
       .join(" ");
-    return haystack.includes(keyword);
+    const rowTechnician = String(row.support_technician || "").trim().toLowerCase();
+    const matchesKeyword = !keyword || haystack.includes(keyword);
+    const matchesTechnician = !selectedTechnician || rowTechnician === selectedTechnician;
+    return matchesKeyword && matchesTechnician;
   });
+}
+
+function populateTechnicianFilter() {
+  const technicianFilter = document.getElementById("supTechTechnicianFilter");
+  if (!technicianFilter) return;
+
+  const previousValue = String(technicianFilter.value || "").trim();
+  const technicians = Array.from(
+    new Set(
+      supTechPayRows
+        .map((row) => String(row.support_technician || "").trim())
+        .filter((name) => name.length > 0)
+    )
+  ).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+
+  technicianFilter.innerHTML = [
+    '<option value="">All Support Technicians</option>',
+    ...technicians.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`),
+  ].join("");
+
+  if (previousValue && technicians.includes(previousValue)) {
+    technicianFilter.value = previousValue;
+  } else {
+    technicianFilter.value = "";
+  }
 }
 
 function renderSupTechPayRows() {
@@ -80,11 +109,12 @@ function renderSupTechPayRows() {
 async function loadSupTechPayRows() {
   const body = document.getElementById("supTechPayBody");
   if (body) {
-    body.innerHTML = `<tr><td colspan="8" style="text-align:center;">Loading...</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7" style="text-align:center;">Loading...</td></tr>`;
   }
 
   try {
     supTechPayRows = await request("/support-tech-pay/invoices", "GET");
+    populateTechnicianFilter();
     renderSupTechPayRows();
   } catch (err) {
     if (body) {
@@ -98,9 +128,9 @@ async function loadSupTechPayRows() {
 
 window.addEventListener("DOMContentLoaded", () => {
   const searchInput = document.getElementById("supTechSearch");
-  const refreshBtn = document.getElementById("refreshSupTechPay");
+  const technicianFilter = document.getElementById("supTechTechnicianFilter");
 
   searchInput?.addEventListener("input", renderSupTechPayRows);
-  refreshBtn?.addEventListener("click", loadSupTechPayRows);
+  technicianFilter?.addEventListener("change", renderSupTechPayRows);
   loadSupTechPayRows();
 });
