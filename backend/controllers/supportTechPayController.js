@@ -25,6 +25,7 @@ const EXTENSION_MIME_MAP = {
   ".gif": "image/gif",
   ".bmp": "image/bmp",
   ".webp": "image/webp",
+  ".pdf": "application/pdf",
 };
 
 function normalizePaymentMethod(value) {
@@ -105,6 +106,24 @@ function parseBase64Image(fileDataBase64) {
   }
 
   return { buffer, ext };
+}
+
+function parseBase64Pdf(fileDataBase64) {
+  const raw = String(fileDataBase64 || "").trim();
+  if (!raw) return null;
+
+  let payload = raw;
+  const dataUrlMatch = raw.match(/^data:application\/pdf(?:;[^,]*)?;base64,(.+)$/i);
+  if (dataUrlMatch) {
+    payload = String(dataUrlMatch[1] || "");
+  }
+
+  const buffer = Buffer.from(payload, "base64");
+  if (!buffer.length) {
+    throw new Error("Generated PDF is empty.");
+  }
+
+  return { buffer, ext: ".pdf" };
 }
 
 function toPublicImageUrl(relPath) {
@@ -342,6 +361,8 @@ exports.getSupportTechPayInvoice = async (req, res) => {
         payment_status: payRecord ? "Paid" : "Pending",
         payment_proof_image_url: toPublicImageUrl(payRecord?.payment_proof_image_path || ""),
         payment_proof_image_path: String(payRecord?.payment_proof_image_path || ""),
+        payment_proof_pdf_url: toPublicImageUrl(payRecord?.payment_proof_pdf_path || ""),
+        payment_proof_pdf_path: String(payRecord?.payment_proof_pdf_path || ""),
         payment_proof_image_base64: paymentProofImageBase64,
         payment_proof_image_mime: paymentProofImageMime,
         paid_at: payRecord?.paid_at || null,
@@ -383,9 +404,14 @@ exports.updateSupportTechPayInvoice = async (req, res) => {
       : "Paid";
 
     let paymentProofImagePath = String(existing?.payment_proof_image_path || "").trim() || null;
+    let paymentProofPdfPath = String(existing?.payment_proof_pdf_path || "").trim() || null;
     if (req.body.clear_payment_image === true && paymentProofImagePath) {
       deleteStoredFileIfExists(paymentProofImagePath);
       paymentProofImagePath = null;
+    }
+    if (req.body.clear_payment_pdf === true && paymentProofPdfPath) {
+      deleteStoredFileIfExists(paymentProofPdfPath);
+      paymentProofPdfPath = null;
     }
 
     if (req.body.payment_proof_image_base64 !== undefined && String(req.body.payment_proof_image_base64 || "").trim()) {
@@ -399,6 +425,19 @@ exports.updateSupportTechPayInvoice = async (req, res) => {
         deleteStoredFileIfExists(paymentProofImagePath);
       }
       paymentProofImagePath = path.posix.join("support-tech-pay", dbName, fileName);
+    }
+
+    if (req.body.payment_proof_pdf_base64 !== undefined && String(req.body.payment_proof_pdf_base64 || "").trim()) {
+      const parsedPdf = parseBase64Pdf(req.body.payment_proof_pdf_base64);
+      const { dbName, dir } = ensureStorageDir(req);
+      const fileName = `invoice_${invoice.id}_${Date.now()}${parsedPdf.ext}`;
+      const targetPath = path.join(dir, fileName);
+      fs.writeFileSync(targetPath, parsedPdf.buffer);
+
+      if (paymentProofPdfPath) {
+        deleteStoredFileIfExists(paymentProofPdfPath);
+      }
+      paymentProofPdfPath = path.posix.join("support-tech-pay", dbName, fileName);
     }
 
     const paidAtRaw = String(req.body.paid_at || "").trim();
@@ -415,6 +454,7 @@ exports.updateSupportTechPayInvoice = async (req, res) => {
         payment_method: paymentMethod,
         payment_status: paymentStatus,
         payment_proof_image_path: paymentProofImagePath,
+        payment_proof_pdf_path: paymentProofPdfPath,
         paid_at: paidAt,
       });
     } else {
@@ -424,6 +464,7 @@ exports.updateSupportTechPayInvoice = async (req, res) => {
         payment_method: paymentMethod,
         payment_status: paymentStatus,
         payment_proof_image_path: paymentProofImagePath,
+        payment_proof_pdf_path: paymentProofPdfPath,
         paid_at: paidAt,
       });
     }
@@ -438,6 +479,8 @@ exports.updateSupportTechPayInvoice = async (req, res) => {
         payment_status: normalizePaymentStatus(row.payment_status),
         payment_proof_image_url: toPublicImageUrl(row.payment_proof_image_path || ""),
         payment_proof_image_path: String(row.payment_proof_image_path || ""),
+        payment_proof_pdf_url: toPublicImageUrl(row.payment_proof_pdf_path || ""),
+        payment_proof_pdf_path: String(row.payment_proof_pdf_path || ""),
         paid_at: row.paid_at || null,
       },
     });
@@ -462,6 +505,10 @@ exports.deleteSupportTechPayInvoice = async (req, res) => {
     const storedImagePath = String(row.payment_proof_image_path || "").trim();
     if (storedImagePath) {
       deleteStoredFileIfExists(storedImagePath);
+    }
+    const storedPdfPath = String(row.payment_proof_pdf_path || "").trim();
+    if (storedPdfPath) {
+      deleteStoredFileIfExists(storedPdfPath);
     }
 
     await row.destroy();

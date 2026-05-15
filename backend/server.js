@@ -618,6 +618,7 @@ async function ensureSupportTechPaySchema() {
         payment_method VARCHAR(30) DEFAULT 'Cash',
         payment_status VARCHAR(30) DEFAULT 'Pending',
         payment_proof_image_path VARCHAR(500),
+        payment_proof_pdf_path VARCHAR(500),
         paid_at DATE,
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW(),
@@ -644,6 +645,10 @@ async function ensureSupportTechPaySchema() {
     await db.query(`
       ALTER TABLE support_tech_pays
       ADD COLUMN IF NOT EXISTS payment_proof_image_path VARCHAR(500);
+    `);
+    await db.query(`
+      ALTER TABLE support_tech_pays
+      ADD COLUMN IF NOT EXISTS payment_proof_pdf_path VARCHAR(500);
     `);
     await db.query(`
       ALTER TABLE support_tech_pays

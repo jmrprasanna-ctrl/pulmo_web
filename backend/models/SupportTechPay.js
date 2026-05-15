@@ -17,6 +17,7 @@ const SupportTechPay = db.define(
     payment_method: { type: DataTypes.STRING(30), allowNull: false, defaultValue: "Cash" },
     payment_status: { type: DataTypes.STRING(30), allowNull: false, defaultValue: "Pending" },
     payment_proof_image_path: { type: DataTypes.STRING(500), allowNull: true, defaultValue: null },
+    payment_proof_pdf_path: { type: DataTypes.STRING(500), allowNull: true, defaultValue: null },
     paid_at: { type: DataTypes.DATEONLY, allowNull: true, defaultValue: null },
     createdAt: { type: DataTypes.DATE, allowNull: true, defaultValue: DataTypes.NOW },
     updatedAt: { type: DataTypes.DATE, allowNull: true, defaultValue: DataTypes.NOW },
