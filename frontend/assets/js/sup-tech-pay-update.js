@@ -1,6 +1,8 @@
 const updatePageState = {
   invoiceId: 0,
   selectedImageBase64: "",
+  invoiceAmount: 0,
+  supportTechnicianPercentage: 0,
 };
 
 function fmtCurrency(value) {
@@ -34,23 +36,38 @@ function toDataUrlFromFile(file) {
   });
 }
 
+function calculateSupportTechPayable(vendorPayAmount) {
+  const invoiceAmount = Number(updatePageState.invoiceAmount || 0);
+  const percentage = Number(updatePageState.supportTechnicianPercentage || 0);
+  const vendor = Number(vendorPayAmount || 0);
+  if (!Number.isFinite(invoiceAmount) || !Number.isFinite(percentage) || !Number.isFinite(vendor)) {
+    return 0;
+  }
+  return Number((((invoiceAmount - vendor) * percentage) / 100).toFixed(2));
+}
+
+function updatePayableFromVendorInput() {
+  const vendorInput = document.getElementById("vendorPayAmount");
+  const supportInput = document.getElementById("supportTechPayAmount");
+  if (!vendorInput || !supportInput) return;
+  const payable = calculateSupportTechPayable(vendorInput.value);
+  supportInput.value = fmtCurrency(payable);
+}
+
 function renderMeta(invoice) {
   const invoiceNo = String(invoice.invoice_no || "-").trim() || "-";
   const customerName = String(invoice.customer_name || "-").trim() || "-";
   const technician = String(invoice.support_technician || "-").trim() || "-";
   const invoiceDate = fmtDate(invoice.invoice_date);
-  const invoiceAmount = `Rs. ${fmtCurrency(invoice.total_amount)}`;
+  updatePageState.invoiceAmount = Number(invoice.total_amount || 0);
+  const invoiceAmount = `Rs. ${fmtCurrency(updatePageState.invoiceAmount)}`;
   const techPercentage = Number(invoice.support_technician_percentage);
+  updatePageState.supportTechnicianPercentage = Number.isFinite(techPercentage) ? techPercentage : 0;
   const techPercentageText = Number.isFinite(techPercentage) ? `${techPercentage.toFixed(2)}%` : "-";
 
   const titleInput = document.getElementById("invoiceTitle");
   if (titleInput) {
     titleInput.value = `Invoice ${invoiceNo}`;
-  }
-
-  const detailInput = document.getElementById("invoiceDetail");
-  if (detailInput) {
-    detailInput.value = `No: ${invoiceNo} | Customer: ${customerName} | Technician: ${technician}`;
   }
 
   const invoiceDateInput = document.getElementById("invoiceDate");
@@ -108,7 +125,7 @@ function renderItems(items) {
 
 function renderPayment(payment) {
   document.getElementById("vendorPayAmount").value = fmtCurrency(payment.vendor_pay_amount);
-  document.getElementById("supportTechPayAmount").value = fmtCurrency(payment.support_tech_pay_amount);
+  updatePayableFromVendorInput();
   document.getElementById("paymentMethod").value = payment.payment_method || "Cash";
 
   const preview = document.getElementById("paymentProofPreview");
@@ -211,10 +228,12 @@ window.addEventListener("DOMContentLoaded", () => {
 
   const fileInput = document.getElementById("paymentProofFile");
   const captureButton = document.getElementById("captureProofBtn");
+  const vendorPayInput = document.getElementById("vendorPayAmount");
   const form = document.getElementById("supTechPayForm");
 
   captureButton?.addEventListener("click", () => fileInput?.click());
   fileInput?.addEventListener("change", onImageSelected);
+  vendorPayInput?.addEventListener("input", updatePayableFromVendorInput);
   form?.addEventListener("submit", onSavePayment);
 
   loadSupportTechPayDetail();
