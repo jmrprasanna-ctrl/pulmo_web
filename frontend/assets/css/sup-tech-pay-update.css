@@ -1,3 +1,9 @@
+.sup-tech-update-back-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
 .invoice-meta-panel {
   margin-bottom: 14px;
 }
