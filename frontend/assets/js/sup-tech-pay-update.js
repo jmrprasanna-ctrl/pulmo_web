@@ -63,15 +63,18 @@ function bytesFromDataUrl(dataUrl) {
   return calculateBytesFromBase64(base64);
 }
 
-async function compressImageToTargetDataUrl(file, targetBytes = 50 * 1024) {
+async function compressImageToTargetRangeDataUrl(file, minBytes = 50 * 1024, maxBytes = 100 * 1024) {
   const originalDataUrl = await toDataUrlFromFile(file);
   const image = await loadImageElementFromDataUrl(originalDataUrl);
 
-  const scaleLevels = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4];
-  const qualityLevels = [0.82, 0.72, 0.62, 0.52, 0.42, 0.34, 0.28];
+  const scaleLevels = [1, 0.95, 0.9, 0.85, 0.8, 0.72, 0.64, 0.56, 0.48, 0.4];
+  const qualityLevels = [0.9, 0.84, 0.78, 0.72, 0.66, 0.6, 0.54, 0.48, 0.42, 0.36, 0.3, 0.24];
 
   let bestDataUrl = originalDataUrl;
   let bestBytes = bytesFromDataUrl(originalDataUrl);
+  const preferredTarget = (minBytes + maxBytes) / 2;
+  let bestInRange = null;
+  let bestUnderMax = null;
 
   for (const scale of scaleLevels) {
     const width = Math.max(1, Math.round(image.naturalWidth * scale));
@@ -90,23 +93,36 @@ async function compressImageToTargetDataUrl(file, targetBytes = 50 * 1024) {
         bestBytes = size;
         bestDataUrl = dataUrl;
       }
-      if (size > 0 && size <= targetBytes) {
-        return { dataUrl, bytes: size };
+      if (size >= minBytes && size <= maxBytes) {
+        const delta = Math.abs(size - preferredTarget);
+        if (!bestInRange || delta < bestInRange.delta) {
+          bestInRange = { dataUrl, bytes: size, delta };
+        }
+      } else if (size > 0 && size <= maxBytes) {
+        if (!bestUnderMax || size > bestUnderMax.bytes) {
+          bestUnderMax = { dataUrl, bytes: size };
+        }
       }
     }
   }
 
+  if (bestInRange) {
+    return { dataUrl: bestInRange.dataUrl, bytes: bestInRange.bytes, inRange: true };
+  }
+  if (bestUnderMax) {
+    return { dataUrl: bestUnderMax.dataUrl, bytes: bestUnderMax.bytes, inRange: false };
+  }
   return { dataUrl: bestDataUrl, bytes: bestBytes };
 }
 
-function formatImageBitrateFromBytes(bytes) {
+function formatImageSizeFromBytes(bytes) {
   const numericBytes = Number(bytes || 0);
   if (!Number.isFinite(numericBytes) || numericBytes <= 0) return "-";
-  const kiloBits = (numericBytes * 8) / 1024;
-  if (kiloBits >= 1024) {
-    return `${(kiloBits / 1024).toFixed(2)} Mb`;
+  const kiloBytes = numericBytes / 1024;
+  if (kiloBytes >= 1024) {
+    return `${(kiloBytes / 1024).toFixed(2)} MB`;
   }
-  return `${kiloBits.toFixed(2)} Kb`;
+  return `${kiloBytes.toFixed(2)} KB`;
 }
 
 function calculateBytesFromBase64(base64Value) {
@@ -119,7 +135,7 @@ function calculateBytesFromBase64(base64Value) {
 function setProofBitrateFromBytes(bytes) {
   const bitrateLabel = document.getElementById("paymentProofBitrate");
   if (!bitrateLabel) return;
-  bitrateLabel.textContent = `Bitrate: ${formatImageBitrateFromBytes(bytes)}`;
+  bitrateLabel.textContent = `Image Size: ${formatImageSizeFromBytes(bytes)}`;
 }
 
 function revokeProofObjectUrl() {
@@ -428,7 +444,7 @@ async function onImageSelected(event) {
   if (!file) return;
 
   try {
-    const compressed = await compressImageToTargetDataUrl(file, 50 * 1024);
+    const compressed = await compressImageToTargetRangeDataUrl(file, 50 * 1024, 100 * 1024);
     updatePageState.selectedImageBase64 = compressed.dataUrl;
     const preview = document.getElementById("paymentProofPreview");
     revokeProofObjectUrl();
@@ -436,8 +452,8 @@ async function onImageSelected(event) {
     preview.hidden = false;
     document.getElementById("paymentProofName").textContent = file.name || "Captured image";
     setProofBitrateFromBytes(compressed.bytes || 0);
-    if ((compressed.bytes || 0) > 50 * 1024 && window.showMessageBox) {
-      showMessageBox("Image compressed, but this photo could not be reduced below 50KB.");
+    if (((compressed.bytes || 0) < 50 * 1024 || (compressed.bytes || 0) > 100 * 1024) && window.showMessageBox) {
+      showMessageBox("Image compressed, but exact 50KB-100KB range could not be reached.");
     }
   } catch (err) {
     if (window.showMessageBox) {
