@@ -47,7 +47,7 @@
 }
 
 #supTechPayTable {
-  min-width: 860px;
+  min-width: 930px;
 }
 
 #supTechPayTable td,
@@ -96,6 +96,20 @@
   text-decoration: underline;
 }
 
+.save-pdf-btn {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  margin-top: 0;
+  padding: 0;
+}
+
+.save-pdf-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
 @media (max-width: 900px) {
   .main-content .page-head {
     gap: 10px;
@@ -114,6 +128,6 @@
   }
 
   #supTechPayTable {
-    min-width: 760px;
+    min-width: 840px;
   }
 }
