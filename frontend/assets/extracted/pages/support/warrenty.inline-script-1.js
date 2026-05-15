@@ -44,7 +44,7 @@ function fmtMoney(value){
 function openWarrentyInvoiceView(invoiceId){
     const id = Number(invoiceId || 0);
     if(!id) return;
-    window.location.href = `warrenty-invoice-view.html?id=${encodeURIComponent(id)}`;
+    window.location.href = `warranty-invoice-view.html?id=${encodeURIComponent(id)}`;
 }
 
 async function loadWarrentyInvoices(){

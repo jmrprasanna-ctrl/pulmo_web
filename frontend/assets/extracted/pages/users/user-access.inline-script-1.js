@@ -139,7 +139,7 @@ const userSelectEl = document.getElementById("userSelect");
                     actions: ["view"]
                 });
                 ensureMatrixItem("Finance", {
-                    path: "/support/warrenty-invoice-view.html",
+                    path: "/support/warranty-invoice-view.html",
                     label: "Warranty Invoice View",
                     actions: ["view"]
                 });

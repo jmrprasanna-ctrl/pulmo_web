@@ -401,7 +401,7 @@ function renderSidebarMenuByAccess(){
                 { path: "/finance/pendings.html", label: "Pendings" },
                 { path: "/finance/sup-tech-pay.html", label: "Sup.Tech Pay" },
                 { path: "/support/warrenty.html", label: "Warrenty" },
-                { path: "/support/warrenty-invoice-view.html", label: "Warranty Invoice View" }
+                { path: "/support/warranty-invoice-view.html", label: "Warranty Invoice View" }
             ]
         },
         { path: "/support/support.html", label: "Support" },
@@ -967,6 +967,18 @@ async function loadUserAccessPermissions(){
                 || pagesFromActions.includes("/products/add-rental-consumable.html")
                     ? ["/products/edit-added-consumable.html"]
                     : []
+            ),
+            ...(
+                normalizedAllowedPages.includes("/support/warranty-invoice-view.html")
+                || pagesFromActions.includes("/support/warranty-invoice-view.html")
+                    ? ["/support/warrenty-invoice-view.html"]
+                    : []
+            ),
+            ...(
+                normalizedAllowedPages.includes("/support/warrenty-invoice-view.html")
+                || pagesFromActions.includes("/support/warrenty-invoice-view.html")
+                    ? ["/support/warranty-invoice-view.html"]
+                    : []
             )
         ]));
         if(typeof data?.has_access_config === "boolean"){
@@ -1290,6 +1302,12 @@ function hasUserGrantedPath(path){
     }
     if(target === "/users/edit-profile.html"){
         targets.push("/users/profile-list.html", "/users/user-list.html");
+    }
+    if(target === "/support/warranty-invoice-view.html"){
+        targets.push("/support/warrenty-invoice-view.html");
+    }
+    if(target === "/support/warrenty-invoice-view.html"){
+        targets.push("/support/warranty-invoice-view.html");
     }
     return USER_ALLOWED_PATHS_RUNTIME.some((x) => targets.includes(String(x || "").trim().toLowerCase()));
 }
