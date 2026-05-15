@@ -1,6 +1,7 @@
 const updatePageState = {
   invoiceId: 0,
   selectedImageBase64: "",
+  calculatedSupportTechPayAmount: null,
 };
 
 function fmtCurrency(value) {
@@ -42,6 +43,11 @@ function renderMeta(invoice) {
   const invoiceAmount = `Rs. ${fmtCurrency(invoice.total_amount)}`;
   const techPercentage = Number(invoice.support_technician_percentage);
   const techPercentageText = Number.isFinite(techPercentage) ? `${techPercentage.toFixed(2)}%` : "-";
+  const invoiceTotal = Number(invoice.total_amount || 0);
+  const calculatedSupport = Number.isFinite(invoiceTotal) && Number.isFinite(techPercentage)
+    ? Number(((invoiceTotal * techPercentage) / 100).toFixed(2))
+    : null;
+  updatePageState.calculatedSupportTechPayAmount = calculatedSupport;
 
   const titleInput = document.getElementById("invoiceTitle");
   if (titleInput) {
@@ -77,6 +83,11 @@ function renderMeta(invoice) {
   if (technicianPercentageInput) {
     technicianPercentageInput.value = techPercentageText;
   }
+
+  const supportPayInput = document.getElementById("supportTechPayAmount");
+  if (supportPayInput && Number.isFinite(calculatedSupport)) {
+    supportPayInput.value = fmtCurrency(calculatedSupport);
+  }
 }
 
 function renderItems(items) {
@@ -107,7 +118,15 @@ function renderItems(items) {
 
 function renderPayment(payment) {
   document.getElementById("vendorPayAmount").value = fmtCurrency(payment.vendor_pay_amount);
-  document.getElementById("supportTechPayAmount").value = fmtCurrency(payment.support_tech_pay_amount);
+  const supportPayInput = document.getElementById("supportTechPayAmount");
+  const calculated = updatePageState.calculatedSupportTechPayAmount;
+  if (supportPayInput) {
+    if (Number.isFinite(calculated)) {
+      supportPayInput.value = fmtCurrency(calculated);
+    } else {
+      supportPayInput.value = fmtCurrency(payment.support_tech_pay_amount);
+    }
+  }
   document.getElementById("paymentMethod").value = payment.payment_method || "Cash";
   document.getElementById("paymentStatus").value = payment.payment_status || "Pending";
 
