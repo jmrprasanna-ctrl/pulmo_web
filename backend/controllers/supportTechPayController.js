@@ -18,6 +18,14 @@ const IMAGE_MIME_EXTENSIONS = {
   "image/bmp": ".bmp",
   "image/webp": ".webp",
 };
+const EXTENSION_MIME_MAP = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".gif": "image/gif",
+  ".bmp": "image/bmp",
+  ".webp": "image/webp",
+};
 
 function normalizePaymentMethod(value) {
   const raw = String(value || "").trim().toLowerCase();
@@ -115,6 +123,51 @@ function toPublicImageUrl(relPath) {
   }
 
   return normalized ? `/storage/${normalized}` : "";
+}
+
+function resolveStoredImageAbsolutePath(storedPath) {
+  const raw = String(storedPath || "").trim();
+  if (!raw) return "";
+
+  const normalized = raw.replace(/\\/g, "/");
+  const lower = normalized.toLowerCase();
+  const storageRoot = path.resolve(__dirname, "../storage");
+  const candidates = [];
+
+  if (path.isAbsolute(raw)) {
+    candidates.push(path.resolve(raw));
+  }
+
+  const marker = "/storage/";
+  const markerIndex = lower.lastIndexOf(marker);
+  if (markerIndex !== -1) {
+    const rel = normalized.slice(markerIndex + marker.length).replace(/^\/+/, "");
+    if (rel) candidates.push(path.resolve(storageRoot, rel));
+  }
+
+  let relPath = normalized.replace(/^\/+/, "");
+  if (relPath.toLowerCase().startsWith("storage/")) {
+    relPath = relPath.slice("storage/".length);
+  }
+  if (relPath) {
+    candidates.push(path.resolve(storageRoot, relPath));
+  }
+
+  for (const abs of candidates) {
+    try {
+      if (fs.existsSync(abs) && fs.statSync(abs).isFile()) {
+        return abs;
+      }
+    } catch (_err) {
+    }
+  }
+
+  return "";
+}
+
+function getMimeTypeFromPath(filePath) {
+  const ext = path.extname(String(filePath || "").toLowerCase());
+  return EXTENSION_MIME_MAP[ext] || "application/octet-stream";
 }
 
 function deleteStoredFileIfExists(relPath) {
@@ -227,6 +280,23 @@ exports.getSupportTechPayInvoice = async (req, res) => {
     const vendorPayAmount = calculateVendorPayAmount(invoice.InvoiceItems || []);
     const supportDefault = calculateSupportTechPayAmount(invoice);
 
+    let paymentProofImageBase64 = "";
+    let paymentProofImageMime = "";
+    const storedImagePath = String(payRecord?.payment_proof_image_path || "").trim();
+    if (storedImagePath) {
+      const absPath = resolveStoredImageAbsolutePath(storedImagePath);
+      if (absPath) {
+        try {
+          const buffer = fs.readFileSync(absPath);
+          if (buffer && buffer.length) {
+            paymentProofImageBase64 = buffer.toString("base64");
+            paymentProofImageMime = getMimeTypeFromPath(absPath);
+          }
+        } catch (_err) {
+        }
+      }
+    }
+
     const items = (invoice.InvoiceItems || []).map((item) => {
       const qty = Number(item.qty || 0);
       const sellRate = Number(item.rate || 0);
@@ -267,6 +337,8 @@ exports.getSupportTechPayInvoice = async (req, res) => {
         payment_status: normalizePaymentStatus(payRecord?.payment_status || "Pending"),
         payment_proof_image_url: toPublicImageUrl(payRecord?.payment_proof_image_path || ""),
         payment_proof_image_path: String(payRecord?.payment_proof_image_path || ""),
+        payment_proof_image_base64: paymentProofImageBase64,
+        payment_proof_image_mime: paymentProofImageMime,
         paid_at: payRecord?.paid_at || null,
       },
     });

@@ -46,6 +46,13 @@ function formatImageBitrateFromBytes(bytes) {
   return `${kiloBits.toFixed(2)} Kb`;
 }
 
+function calculateBytesFromBase64(base64Value) {
+  const base64 = String(base64Value || "").trim();
+  if (!base64) return 0;
+  const noPadLength = base64.replace(/=+$/, "").length;
+  return Math.floor((noPadLength * 3) / 4);
+}
+
 function setProofBitrateFromBytes(bytes) {
   const bitrateLabel = document.getElementById("paymentProofBitrate");
   if (!bitrateLabel) return;
@@ -183,8 +190,16 @@ function renderPayment(payment) {
   const imageUrl = String(payment.payment_proof_image_url || "").trim();
   const fallbackImageUrl = buildProofUrlFromStoredPath(payment.payment_proof_image_path || "");
   const resolvedImageUrl = imageUrl || fallbackImageUrl;
+  const imageBase64 = String(payment.payment_proof_image_base64 || "").trim();
+  const imageMime = String(payment.payment_proof_image_mime || "").trim() || "image/jpeg";
 
-  if (resolvedImageUrl) {
+  if (imageBase64) {
+    preview.src = `data:${imageMime};base64,${imageBase64}`;
+    preview.hidden = false;
+    const pathParts = String(payment.payment_proof_image_path || "").split("/");
+    fileNameLabel.textContent = pathParts[pathParts.length - 1] || "Saved image";
+    setProofBitrateFromBytes(calculateBytesFromBase64(imageBase64));
+  } else if (resolvedImageUrl) {
     preview.src = resolvedImageUrl;
     preview.hidden = false;
     const pathParts = String(payment.payment_proof_image_path || "").split("/");
