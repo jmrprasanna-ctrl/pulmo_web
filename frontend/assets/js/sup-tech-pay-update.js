@@ -5,8 +5,6 @@ const updatePageState = {
   supportTechnicianPercentage: 0,
   proofObjectUrl: "",
   hasSavedPayment: false,
-  invoiceMeta: null,
-  invoiceItems: [],
 };
 
 function fmtCurrency(value) {
@@ -292,21 +290,11 @@ function renderMeta(invoice) {
     technicianPercentageInput.value = techPercentageText;
   }
 
-  updatePageState.invoiceMeta = {
-    invoice_no: invoiceNo,
-    invoice_date: invoiceDate,
-    customer_name: customerName,
-    support_technician: technician,
-    support_technician_percentage: techPercentageText,
-    total_amount_text: invoiceAmount,
-  };
-
 }
 
 function renderItems(items) {
   const body = document.getElementById("supTechPayItemsBody");
   if (!body) return;
-  updatePageState.invoiceItems = Array.isArray(items) ? items : [];
 
   if (!Array.isArray(items) || !items.length) {
     body.innerHTML = `<tr><td colspan="3" style="text-align:center;">No items found.</td></tr>`;
@@ -378,105 +366,6 @@ function buildPaymentPayload() {
     payment_method: document.getElementById("paymentMethod").value,
     paid_at: document.getElementById("paymentDate").value || null,
   };
-}
-
-function addPdfLine(doc, label, value, y) {
-  doc.setFont("helvetica", "bold");
-  doc.text(`${label}:`, 40, y);
-  doc.setFont("helvetica", "normal");
-  doc.text(String(value || "-"), 180, y);
-}
-
-function buildPdfDataUrl() {
-  const jspdfRef = window.jspdf;
-  if (!jspdfRef || !jspdfRef.jsPDF) {
-    throw new Error("PDF library not loaded.");
-  }
-
-  const { jsPDF } = jspdfRef;
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const meta = updatePageState.invoiceMeta || {};
-  const items = Array.isArray(updatePageState.invoiceItems) ? updatePageState.invoiceItems : [];
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text("Sup.Tech Pay Update", 40, 42);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text(`Generated: ${new Date().toLocaleString()}`, 40, 62);
-
-  let y = 88;
-  addPdfLine(doc, "Invoice No", meta.invoice_no || "-", y); y += 18;
-  addPdfLine(doc, "Invoice Date", meta.invoice_date || "-", y); y += 18;
-  addPdfLine(doc, "Customer", meta.customer_name || "-", y); y += 18;
-  addPdfLine(doc, "Support Technician", meta.support_technician || "-", y); y += 18;
-  addPdfLine(doc, "Technician Percentage", meta.support_technician_percentage || "-", y); y += 18;
-  addPdfLine(doc, "Invoice Amount", meta.total_amount_text || "-", y); y += 18;
-  addPdfLine(doc, "Vendor Pay Amount", fmtCurrency(document.getElementById("vendorPayAmount").value), y); y += 18;
-  addPdfLine(doc, "Support Tech Pay Amount", fmtCurrency(document.getElementById("supportTechPayAmount").value), y); y += 18;
-  addPdfLine(doc, "Payment Method", document.getElementById("paymentMethod").value || "-", y); y += 18;
-  addPdfLine(doc, "Payment Date", document.getElementById("paymentDate").value || "-", y); y += 24;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.text("Invoice Items", 40, y);
-  y += 16;
-
-  doc.setFontSize(10);
-  doc.text("Item", 40, y);
-  doc.text("Qty", 340, y);
-  doc.text("Sell Rate", 400, y);
-  y += 8;
-  doc.line(40, y, 555, y);
-  y += 14;
-
-  doc.setFont("helvetica", "normal");
-  if (!items.length) {
-    doc.text("No items found.", 40, y);
-    y += 14;
-  } else {
-    for (const item of items) {
-      if (y > pageHeight - 50) {
-        doc.addPage();
-        y = 42;
-      }
-      const itemLabel = `${item.product_id || ""} ${item.description || item.model || ""}`.trim() || "-";
-      doc.text(itemLabel.slice(0, 52), 40, y);
-      doc.text(String(Number(item.qty || 0)), 340, y);
-      doc.text(fmtCurrency(item.sell_rate), 400, y);
-      y += 14;
-    }
-  }
-
-  return doc.output("datauristring");
-}
-
-async function onSavePdf() {
-  const { invoiceId } = updatePageState;
-  if (!invoiceId) return;
-
-  const savePdfButton = document.getElementById("saveSupTechPayPdfBtn");
-  if (savePdfButton) savePdfButton.disabled = true;
-
-  try {
-    const payload = buildPaymentPayload();
-    payload.payment_proof_pdf_base64 = buildPdfDataUrl();
-    await request(`/support-tech-pay/${invoiceId}`, "PUT", payload);
-    updatePageState.hasSavedPayment = true;
-    if (window.showMessageBox) {
-      showMessageBox("Sup.Tech Pay PDF saved successfully.");
-    }
-  } catch (err) {
-    if (window.showMessageBox) {
-      showMessageBox(err.message || "Failed to save Sup.Tech Pay PDF.", "error");
-    } else {
-      alert(err.message || "Failed to save Sup.Tech Pay PDF.");
-    }
-  } finally {
-    if (savePdfButton) savePdfButton.disabled = false;
-  }
 }
 
 async function onDeletePayment() {
@@ -610,13 +499,11 @@ window.addEventListener("DOMContentLoaded", () => {
   const fileInput = document.getElementById("paymentProofFile");
   const captureButton = document.getElementById("captureProofBtn");
   const deleteButton = document.getElementById("deleteSupTechPayBtn");
-  const savePdfButton = document.getElementById("saveSupTechPayPdfBtn");
   const vendorPayInput = document.getElementById("vendorPayAmount");
   const form = document.getElementById("supTechPayForm");
 
   captureButton?.addEventListener("click", () => fileInput?.click());
   deleteButton?.addEventListener("click", onDeletePayment);
-  savePdfButton?.addEventListener("click", onSavePdf);
   fileInput?.addEventListener("change", onImageSelected);
   vendorPayInput?.addEventListener("input", updatePayableFromVendorInput);
   form?.addEventListener("submit", onSavePayment);
