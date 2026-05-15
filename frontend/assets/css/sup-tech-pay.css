@@ -1,16 +1,25 @@
-.search-field {
-  min-width: min(360px, 100%);
-}
-
-.sup-tech-tile-head {
+.main-content .page-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  gap: 12px;
+  flex-wrap: nowrap;
+  width: 100%;
 }
 
-.sup-tech-tile-head h3 {
+.main-content .page-head h2 {
   margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.main-content .page-head .icon-btn {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.search-field {
+  min-width: min(360px, 100%);
 }
 
 #supTechPayTable td,
