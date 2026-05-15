@@ -1,8 +1,11 @@
-.invoice-meta-panel {
+.sup-tech-detail-tile {
   background: #f8fbff;
   border: 1px solid #d9e5f3;
   border-radius: 12px;
   padding: 14px;
+}
+
+.invoice-meta-panel {
   margin-bottom: 14px;
 }
 
@@ -23,12 +26,6 @@
 
 #invoiceTitle {
   font-size: 15px;
-}
-
-#invoiceDetail {
-  min-height: 68px;
-  resize: vertical;
-  line-height: 1.45;
 }
 
 .form-toolbar .field {
