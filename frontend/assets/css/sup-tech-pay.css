@@ -30,8 +30,10 @@
 }
 
 .search-field {
-  flex: 1 1 420px;
+  flex: 0 1 420px;
+  width: 420px;
   min-width: min(360px, 100%);
+  max-width: 100%;
 }
 
 .technician-filter-field {
