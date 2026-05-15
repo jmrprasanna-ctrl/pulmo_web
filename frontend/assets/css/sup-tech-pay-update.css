@@ -73,6 +73,21 @@
 
 .save-row {
   margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.danger-btn {
+  color: #b3261e;
+  border-color: #f0c9c4;
+  background: #fff7f6;
+}
+
+.danger-btn:hover {
+  color: #8f1e18;
+  border-color: #e6aaa2;
+  background: #ffefed;
 }
 
 .items-section {

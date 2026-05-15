@@ -4,6 +4,7 @@ const updatePageState = {
   invoiceAmount: 0,
   supportTechnicianPercentage: 0,
   proofObjectUrl: "",
+  hasSavedPayment: false,
 };
 
 function fmtCurrency(value) {
@@ -265,6 +266,7 @@ function renderItems(items) {
 }
 
 function renderPayment(payment) {
+  updatePageState.hasSavedPayment = String(payment.payment_status || "").toLowerCase() === "paid";
   document.getElementById("vendorPayAmount").value = fmtCurrency(payment.vendor_pay_amount);
   updatePayableFromVendorInput();
   document.getElementById("paymentMethod").value = payment.payment_method || "Cash";
@@ -304,6 +306,44 @@ function renderPayment(payment) {
     preview.hidden = true;
     fileNameLabel.textContent = "No image selected";
     setProofBitrateFromBytes(0);
+  }
+}
+
+async function onDeletePayment() {
+  const { invoiceId, hasSavedPayment } = updatePageState;
+  if (!invoiceId) return;
+
+  if (!hasSavedPayment) {
+    if (window.showMessageBox) {
+      showMessageBox("No saved Sup.Tech Pay entry to delete.", "error");
+    }
+    return;
+  }
+
+  const ok = window.confirm("Delete this Sup.Tech Pay entry? This action cannot be undone.");
+  if (!ok) return;
+
+  const deleteButton = document.getElementById("deleteSupTechPayBtn");
+  if (deleteButton) deleteButton.disabled = true;
+
+  try {
+    await request(`/support-tech-pay/${invoiceId}`, "DELETE");
+    updatePageState.hasSavedPayment = false;
+    updatePageState.selectedImageBase64 = "";
+    if (window.showMessageBox) {
+      showMessageBox("Sup.Tech Pay entry deleted successfully.");
+    }
+    window.setTimeout(() => {
+      window.location.href = "sup-tech-pay.html";
+    }, 250);
+  } catch (err) {
+    if (window.showMessageBox) {
+      showMessageBox(err.message || "Failed to delete Sup.Tech Pay entry.", "error");
+    } else {
+      alert(err.message || "Failed to delete Sup.Tech Pay entry.");
+    }
+  } finally {
+    if (deleteButton) deleteButton.disabled = false;
   }
 }
 
@@ -401,10 +441,12 @@ window.addEventListener("DOMContentLoaded", () => {
 
   const fileInput = document.getElementById("paymentProofFile");
   const captureButton = document.getElementById("captureProofBtn");
+  const deleteButton = document.getElementById("deleteSupTechPayBtn");
   const vendorPayInput = document.getElementById("vendorPayAmount");
   const form = document.getElementById("supTechPayForm");
 
   captureButton?.addEventListener("click", () => fileInput?.click());
+  deleteButton?.addEventListener("click", onDeletePayment);
   fileInput?.addEventListener("change", onImageSelected);
   vendorPayInput?.addEventListener("input", updatePayableFromVendorInput);
   form?.addEventListener("submit", onSavePayment);

@@ -448,6 +448,32 @@ exports.updateSupportTechPayInvoice = async (req, res) => {
   }
 };
 
+exports.deleteSupportTechPayInvoice = async (req, res) => {
+  const invoiceId = Number(req.params.invoiceId);
+  if (!Number.isFinite(invoiceId) || invoiceId <= 0) {
+    return res.status(400).json({ message: "Invalid invoice id." });
+  }
+
+  try {
+    const row = await SupportTechPay.findOne({ where: { invoice_id: invoiceId } });
+    if (!row) {
+      return res.status(404).json({ message: "Support technician payment not found." });
+    }
+
+    const storedImagePath = String(row.payment_proof_image_path || "").trim();
+    if (storedImagePath) {
+      deleteStoredFileIfExists(storedImagePath);
+    }
+
+    await row.destroy();
+
+    res.json({ message: "Support technician payment deleted successfully." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message || "Failed to delete support technician payment." });
+  }
+};
+
 exports.getSupportTechPayProofImage = async (req, res) => {
   const invoiceId = Number(req.params.invoiceId);
   if (!Number.isFinite(invoiceId) || invoiceId <= 0) {

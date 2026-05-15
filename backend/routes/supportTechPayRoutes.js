@@ -28,5 +28,11 @@ router.put(
   roleMiddleware(["admin", "manager", "user"]),
   supportTechPayController.updateSupportTechPayInvoice
 );
+router.delete(
+  "/:invoiceId",
+  authMiddleware,
+  roleMiddleware(["admin", "manager", "user"]),
+  supportTechPayController.deleteSupportTechPayInvoice
+);
 
 module.exports = router;
