@@ -263,6 +263,7 @@ exports.listSupportTechPayInvoices = async (req, res) => {
 
 exports.getSupportTechPayInvoice = async (req, res) => {
   const invoiceId = Number(req.params.invoiceId);
+  const includeImageBase64 = String(req.query?.include_image_base64 || "").trim() === "1";
   if (!Number.isFinite(invoiceId) || invoiceId <= 0) {
     return res.status(400).json({ message: "Invalid invoice id." });
   }
@@ -282,17 +283,19 @@ exports.getSupportTechPayInvoice = async (req, res) => {
 
     let paymentProofImageBase64 = "";
     let paymentProofImageMime = "";
-    const storedImagePath = String(payRecord?.payment_proof_image_path || "").trim();
-    if (storedImagePath) {
-      const absPath = resolveStoredImageAbsolutePath(storedImagePath);
-      if (absPath) {
-        try {
-          const buffer = fs.readFileSync(absPath);
-          if (buffer && buffer.length) {
-            paymentProofImageBase64 = buffer.toString("base64");
-            paymentProofImageMime = getMimeTypeFromPath(absPath);
+    if (includeImageBase64) {
+      const storedImagePath = String(payRecord?.payment_proof_image_path || "").trim();
+      if (storedImagePath) {
+        const absPath = resolveStoredImageAbsolutePath(storedImagePath);
+        if (absPath) {
+          try {
+            const buffer = fs.readFileSync(absPath);
+            if (buffer && buffer.length) {
+              paymentProofImageBase64 = buffer.toString("base64");
+              paymentProofImageMime = getMimeTypeFromPath(absPath);
+            }
+          } catch (_err) {
           }
-        } catch (_err) {
         }
       }
     }

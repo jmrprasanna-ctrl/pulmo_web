@@ -101,6 +101,30 @@ async function loadSavedImageBitrate(imageUrl) {
   }
 }
 
+async function loadProofImageBase64Fallback() {
+  const invoiceId = Number(updatePageState.invoiceId || 0);
+  if (!invoiceId) return;
+
+  try {
+    const data = await request(`/support-tech-pay/${invoiceId}?include_image_base64=1`, "GET");
+    const payment = data && data.payment ? data.payment : {};
+    const imageBase64 = String(payment.payment_proof_image_base64 || "").trim();
+    const imageMime = String(payment.payment_proof_image_mime || "").trim() || "image/jpeg";
+    if (!imageBase64) {
+      setProofBitrateFromBytes(0);
+      return;
+    }
+
+    const preview = document.getElementById("paymentProofPreview");
+    if (!preview) return;
+    preview.src = `data:${imageMime};base64,${imageBase64}`;
+    preview.hidden = false;
+    setProofBitrateFromBytes(calculateBytesFromBase64(imageBase64));
+  } catch (_err) {
+    setProofBitrateFromBytes(0);
+  }
+}
+
 function calculateSupportTechPayable(vendorPayAmount) {
   const invoiceAmount = Number(updatePageState.invoiceAmount || 0);
   const percentage = Number(updatePageState.supportTechnicianPercentage || 0);
@@ -221,7 +245,7 @@ function renderPayment(payment) {
         preview.src = fallbackImageUrl;
         loadSavedImageBitrate(fallbackImageUrl);
       } else {
-        setProofBitrateFromBytes(0);
+        loadProofImageBase64Fallback();
       }
     };
     preview.onload = () => {
@@ -292,12 +316,19 @@ async function onSavePayment(event) {
   if (saveButton) saveButton.disabled = true;
 
   try {
-    await request(`/support-tech-pay/${invoiceId}`, "PUT", payload);
+    const response = await request(`/support-tech-pay/${invoiceId}`, "PUT", payload);
     updatePageState.selectedImageBase64 = "";
     if (window.showMessageBox) {
       showMessageBox("Sup.Tech Pay details saved successfully.");
     }
-    await loadSupportTechPayDetail();
+    const payment = response && response.payment ? response.payment : null;
+    if (payment && payment.payment_proof_image_path) {
+      const pathParts = String(payment.payment_proof_image_path || "").split("/");
+      const fileNameLabel = document.getElementById("paymentProofName");
+      if (fileNameLabel) {
+        fileNameLabel.textContent = pathParts[pathParts.length - 1] || fileNameLabel.textContent;
+      }
+    }
   } catch (err) {
     if (window.showMessageBox) {
       showMessageBox(err.message || "Failed to save Sup.Tech Pay details.", "error");
