@@ -18,6 +18,10 @@
   flex: 0 0 auto;
 }
 
+.form-container {
+  overflow-x: visible;
+}
+
 .invoice-meta-panel {
   margin-bottom: 14px;
 }
@@ -94,7 +98,43 @@
   margin-top: 18px;
 }
 
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#supTechPayItemsTable {
+  min-width: 860px;
+}
+
 #supTechPayItemsTable td,
 #supTechPayItemsTable th {
   vertical-align: middle;
+}
+
+@media (max-width: 900px) {
+  .main-content .page-head {
+    gap: 10px;
+  }
+
+  .proof-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .file-name {
+    width: 100%;
+    line-height: 1.35;
+  }
+
+  .save-row {
+    flex-wrap: wrap;
+  }
+
+  #supTechPayItemsTable {
+    min-width: 760px;
+  }
 }

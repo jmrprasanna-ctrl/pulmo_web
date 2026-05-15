@@ -18,6 +18,10 @@
   flex: 0 0 auto;
 }
 
+.form-container {
+  overflow-x: visible;
+}
+
 .toolbar {
   display: flex;
   align-items: flex-end;
@@ -34,6 +38,16 @@
   flex: 0 0 260px;
   width: 260px;
   max-width: 100%;
+}
+
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#supTechPayTable {
+  min-width: 860px;
 }
 
 #supTechPayTable td,
@@ -80,4 +94,26 @@
 
 .action-link-btn:hover {
   text-decoration: underline;
+}
+
+@media (max-width: 900px) {
+  .main-content .page-head {
+    gap: 10px;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-field,
+  .technician-filter-field {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+  }
+
+  #supTechPayTable {
+    min-width: 760px;
+  }
 }
