@@ -1076,6 +1076,18 @@ function initLogoWithNameControl(){
     });
 }
 
+function initSupportTechnicianControl(){
+    const supTechChk = document.getElementById("supportTechnicianChk");
+    if(!supTechChk) return;
+    supTechChk.checked = false;
+    getLayoutConfig("supportTechnician").visible = false;
+
+    supTechChk.addEventListener("change", async () => {
+        getLayoutConfig("supportTechnician").visible = !!supTechChk.checked;
+        await refreshPreviewFromLatest();
+    });
+}
+
 function syncLayoutEditorSelects(){
     const fontSelect = document.getElementById("layoutFontSelect");
     const fontFamilySelect = document.getElementById("layoutFontFamilySelect");
@@ -1440,6 +1452,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         initSealControl();
         initSealVControl();
         initLogoWithNameControl();
+        initSupportTechnicianControl();
         initLayoutEditor();
     }
     const deleteBtn = document.getElementById("deleteInvoiceBtn");
