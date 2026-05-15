@@ -42,6 +42,11 @@
 .invoice-meta-grid .field,
 .form-toolbar .field { width: 100%; }
 
+#paymentDate {
+  width: 100%;
+  max-width: 100%;
+}
+
 .proof-toolbar {
   margin-top: 10px;
 }
@@ -136,5 +141,11 @@
 
   #supTechPayItemsTable {
     min-width: 760px;
+  }
+}
+
+@media (min-width: 901px) {
+  #paymentDate {
+    width: 260px;
   }
 }
