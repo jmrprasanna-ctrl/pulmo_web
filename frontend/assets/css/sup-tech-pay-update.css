@@ -1,12 +1,21 @@
-.page-head {
+.main-content .page-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: nowrap;
+  width: 100%;
 }
 
-.page-head h2 {
+.main-content .page-head h2 {
   margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.main-content .page-head .icon-btn {
+  margin-left: auto;
+  flex: 0 0 auto;
 }
 
 .invoice-meta-panel {
