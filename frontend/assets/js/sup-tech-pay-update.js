@@ -297,7 +297,7 @@ function renderItems(items) {
   if (!body) return;
 
   if (!Array.isArray(items) || !items.length) {
-    body.innerHTML = `<tr><td colspan="6" style="text-align:center;">No items found.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="3" style="text-align:center;">No items found.</td></tr>`;
     return;
   }
 
@@ -309,9 +309,6 @@ function renderItems(items) {
           <td>${escapeHtml(itemLabel)}</td>
           <td>${Number(item.qty || 0)}</td>
           <td>${fmtCurrency(item.sell_rate)}</td>
-          <td>${fmtCurrency(item.dealer_price)}</td>
-          <td>${fmtCurrency(item.line_sell_total)}</td>
-          <td>${fmtCurrency(item.line_vendor_total)}</td>
         </tr>
       `;
     })
