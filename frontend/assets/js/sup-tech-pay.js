@@ -60,7 +60,7 @@ function renderSupTechPayRows() {
           <td>${escapeHtml(row.customer_name)}</td>
           <td>${formatDate(row.invoice_date)}</td>
           <td>${escapeHtml(row.support_technician)}</td>
-          <td>${formatCurrency(row.vendor_pay_amount)}</td>
+          <td>${formatCurrency(row.total_amount)}</td>
           <td>${formatCurrency(row.support_tech_pay_amount)}</td>
           <td><span class="status-badge ${statusClass}">${status}</span></td>
         </tr>
