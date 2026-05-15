@@ -18,6 +18,14 @@ function fmtDate(value) {
   return date.toLocaleDateString("en-GB");
 }
 
+function toIsoDateValue(value) {
+  const raw = String(value || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toISOString().slice(0, 10);
+}
+
 function escapeHtml(value) {
   return String(value || "")
     .replace(/&/g, "&amp;")
@@ -184,6 +192,10 @@ function renderPayment(payment) {
   document.getElementById("vendorPayAmount").value = fmtCurrency(payment.vendor_pay_amount);
   updatePayableFromVendorInput();
   document.getElementById("paymentMethod").value = payment.payment_method || "Cash";
+  const paymentDateInput = document.getElementById("paymentDate");
+  if (paymentDateInput) {
+    paymentDateInput.value = toIsoDateValue(payment.paid_at) || new Date().toISOString().slice(0, 10);
+  }
 
   const preview = document.getElementById("paymentProofPreview");
   const fileNameLabel = document.getElementById("paymentProofName");
@@ -269,6 +281,7 @@ async function onSavePayment(event) {
     vendor_pay_amount: Number(document.getElementById("vendorPayAmount").value || 0),
     support_tech_pay_amount: Number(document.getElementById("supportTechPayAmount").value || 0),
     payment_method: document.getElementById("paymentMethod").value,
+    paid_at: document.getElementById("paymentDate").value || null,
   };
 
   if (selectedImageBase64) {
