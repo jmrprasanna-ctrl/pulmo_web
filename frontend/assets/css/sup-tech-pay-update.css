@@ -23,9 +23,7 @@
 }
 
 .invoice-meta-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 12px;
+  display: block;
   margin: 10px 0;
 }
 
@@ -34,15 +32,11 @@
 }
 
 .form-toolbar {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 12px;
-  align-items: end;
+  display: block;
 }
 
-.form-toolbar .field {
-  min-width: 0;
-}
+.invoice-meta-grid .field,
+.form-toolbar .field { width: 100%; }
 
 .proof-toolbar {
   margin-top: 10px;
