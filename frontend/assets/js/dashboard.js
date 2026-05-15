@@ -252,8 +252,7 @@ const DASHBOARD_MENU_ENTRIES = [
             { path: "/finance/finance.html", label: "Finance" },
             { path: "/finance/payments.html", label: "Payments" },
             { path: "/finance/pendings.html", label: "Pendings" },
-            { path: "/support/warrenty.html", label: "Warrenty" },
-            { path: "/support/warranty-invoice-view.html", label: "Warranty Invoice View" }
+            { path: "/support/warrenty.html", label: "Warrenty" }
         ]
     },
     { path: "/support/support.html", label: "Support" },
