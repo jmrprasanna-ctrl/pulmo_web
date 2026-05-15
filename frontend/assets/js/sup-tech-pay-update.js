@@ -36,6 +36,36 @@ function toDataUrlFromFile(file) {
   });
 }
 
+function formatImageBitrateFromBytes(bytes) {
+  const numericBytes = Number(bytes || 0);
+  if (!Number.isFinite(numericBytes) || numericBytes <= 0) return "-";
+  const kiloBits = (numericBytes * 8) / 1024;
+  if (kiloBits >= 1024) {
+    return `${(kiloBits / 1024).toFixed(2)} Mb`;
+  }
+  return `${kiloBits.toFixed(2)} Kb`;
+}
+
+function setProofBitrateFromBytes(bytes) {
+  const bitrateLabel = document.getElementById("paymentProofBitrate");
+  if (!bitrateLabel) return;
+  bitrateLabel.textContent = `Bitrate: ${formatImageBitrateFromBytes(bytes)}`;
+}
+
+async function loadSavedImageBitrate(imageUrl) {
+  try {
+    const response = await fetch(imageUrl, { cache: "no-store" });
+    if (!response.ok) {
+      setProofBitrateFromBytes(0);
+      return;
+    }
+    const blob = await response.blob();
+    setProofBitrateFromBytes(blob.size || 0);
+  } catch (_err) {
+    setProofBitrateFromBytes(0);
+  }
+}
+
 function calculateSupportTechPayable(vendorPayAmount) {
   const invoiceAmount = Number(updatePageState.invoiceAmount || 0);
   const percentage = Number(updatePageState.supportTechnicianPercentage || 0);
@@ -137,10 +167,12 @@ function renderPayment(payment) {
     preview.hidden = false;
     const pathParts = String(payment.payment_proof_image_path || "").split("/");
     fileNameLabel.textContent = pathParts[pathParts.length - 1] || "Saved image";
+    loadSavedImageBitrate(imageUrl);
   } else {
     preview.src = "";
     preview.hidden = true;
     fileNameLabel.textContent = "No image selected";
+    setProofBitrateFromBytes(0);
   }
 }
 
@@ -172,6 +204,7 @@ async function onImageSelected(event) {
     preview.src = dataUrl;
     preview.hidden = false;
     document.getElementById("paymentProofName").textContent = file.name || "Captured image";
+    setProofBitrateFromBytes(file.size || 0);
   } catch (err) {
     if (window.showMessageBox) {
       showMessageBox(err.message || "Failed to read selected image.", "error");
