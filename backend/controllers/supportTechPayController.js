@@ -235,7 +235,7 @@ exports.listSupportTechPayInvoices = async (req, res) => {
       const vendorPayAmount = calculateVendorPayAmount(inv.InvoiceItems || []);
       const defaultSupportAmount = calculateSupportTechPayAmount(inv);
       const record = payMap.get(inv.id);
-      const status = normalizePaymentStatus(record?.payment_status || "Pending");
+      const status = record ? "Paid" : "Pending";
       const supportAmount = toAmount(record?.support_tech_pay_amount, defaultSupportAmount);
       const vendorAmount = toAmount(record?.vendor_pay_amount, vendorPayAmount);
 
@@ -334,7 +334,7 @@ exports.getSupportTechPayInvoice = async (req, res) => {
         vendor_pay_amount: toAmount(payRecord?.vendor_pay_amount, vendorPayAmount),
         support_tech_pay_amount: toAmount(payRecord?.support_tech_pay_amount, supportDefault),
         payment_method: normalizePaymentMethod(payRecord?.payment_method || "Cash"),
-        payment_status: normalizePaymentStatus(payRecord?.payment_status || "Pending"),
+        payment_status: payRecord ? "Paid" : "Pending",
         payment_proof_image_url: toPublicImageUrl(payRecord?.payment_proof_image_path || ""),
         payment_proof_image_path: String(payRecord?.payment_proof_image_path || ""),
         payment_proof_image_base64: paymentProofImageBase64,
@@ -378,7 +378,7 @@ exports.updateSupportTechPayInvoice = async (req, res) => {
       : normalizePaymentMethod(existing?.payment_method || "Cash");
     const paymentStatus = req.body.payment_status !== undefined
       ? normalizePaymentStatus(req.body.payment_status)
-      : normalizePaymentStatus(existing?.payment_status || "Pending");
+      : "Paid";
 
     let paymentProofImagePath = String(existing?.payment_proof_image_path || "").trim() || null;
     if (req.body.clear_payment_image === true && paymentProofImagePath) {
