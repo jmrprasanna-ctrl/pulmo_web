@@ -953,6 +953,12 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({extended:true}));
 app.use("/storage", express.static(path.resolve(__dirname, "storage")));
+const frontendRoot = path.resolve(__dirname, "..", "frontend");
+app.use(express.static(frontendRoot));
+app.use("/pages", express.static(path.join(frontendRoot, "pages")));
+app.use("/assets", express.static(path.join(frontendRoot, "assets")));
+app.use("/js", express.static(path.join(frontendRoot, "js")));
+app.use("/css", express.static(path.join(frontendRoot, "css")));
 
          
 app.use("/api/auth", authRoutes);
@@ -984,7 +990,7 @@ app.use("/api/system-backup", systemBackupRoutes);
 app.use("/api/preferences", preferenceRoutes);
 
              
-app.get("/",(req,res)=>res.send("PULMO TECHNOLOGIES is running"));
+app.get("/", (_req, res) => res.redirect("/pages/login.html"));
 app.get("/api/health", (_req, res) => {
   const statusCode = appHealth.ok ? 200 : 503;
   res.status(statusCode).json({
