@@ -9,36 +9,6 @@
   margin: 0;
 }
 
-.form-container .field input,
-.form-container .field select,
-.form-container .field textarea {
-  width: 100%;
-  min-height: 44px;
-  padding: 10px 12px;
-  border: 1px solid #d3e0ee;
-  border-radius: 12px;
-  background: #ffffff;
-  color: #2b3d4f;
-  font-weight: 600;
-  line-height: 1.3;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.form-container .field input:focus,
-.form-container .field select:focus,
-.form-container .field textarea:focus {
-  border-color: #9ebedf;
-  box-shadow: 0 0 0 3px rgba(15, 106, 191, 0.12);
-  outline: none;
-}
-
-.form-container .field input[readonly],
-.form-container .field textarea[readonly] {
-  background: #ffffff;
-  color: #2b3d4f;
-  cursor: default;
-}
-
 .invoice-meta-panel {
   margin-bottom: 14px;
 }
