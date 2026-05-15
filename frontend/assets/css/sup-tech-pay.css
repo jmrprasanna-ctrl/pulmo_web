@@ -2,9 +2,28 @@
   min-width: min(360px, 100%);
 }
 
+.sup-tech-tile-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.sup-tech-tile-head h3 {
+  margin: 0;
+}
+
 #supTechPayTable td,
 #supTechPayTable th {
   vertical-align: middle;
+}
+
+.sup-tech-row {
+  cursor: pointer;
+}
+
+.sup-tech-row:hover {
+  background: #f7fbff;
 }
 
 .status-badge {

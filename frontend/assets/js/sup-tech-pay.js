@@ -46,7 +46,7 @@ function renderSupTechPayRows() {
 
   const rows = getFilteredRows();
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="8" style="text-align:center;">No support technician invoices found.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7" style="text-align:center;">No support technician invoices found.</td></tr>`;
     return;
   }
 
@@ -55,7 +55,7 @@ function renderSupTechPayRows() {
       const status = String(row.payment_status || "Pending").trim().toLowerCase() === "paid" ? "Paid" : "Pending";
       const statusClass = status === "Paid" ? "status-paid" : "status-pending";
       return `
-        <tr>
+        <tr class="sup-tech-row" data-invoice-id="${row.invoice_id}">
           <td>${escapeHtml(row.invoice_no)}</td>
           <td>${escapeHtml(row.customer_name)}</td>
           <td>${formatDate(row.invoice_date)}</td>
@@ -63,15 +63,14 @@ function renderSupTechPayRows() {
           <td>${formatCurrency(row.vendor_pay_amount)}</td>
           <td>${formatCurrency(row.support_tech_pay_amount)}</td>
           <td><span class="status-badge ${statusClass}">${status}</span></td>
-          <td><button class="action-link-btn" data-invoice-id="${row.invoice_id}">Update</button></td>
         </tr>
       `;
     })
     .join("");
 
-  body.querySelectorAll(".action-link-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const invoiceId = Number(btn.getAttribute("data-invoice-id") || 0);
+  body.querySelectorAll(".sup-tech-row").forEach((rowEl) => {
+    rowEl.addEventListener("click", () => {
+      const invoiceId = Number(rowEl.getAttribute("data-invoice-id") || 0);
       if (!invoiceId) return;
       window.location.href = `sup-tech-pay-update.html?invoiceId=${invoiceId}`;
     });
@@ -89,7 +88,7 @@ async function loadSupTechPayRows() {
     renderSupTechPayRows();
   } catch (err) {
     if (body) {
-      body.innerHTML = `<tr><td colspan="8" style="text-align:center;">${escapeHtml(err.message || "Failed to load data.")}</td></tr>`;
+      body.innerHTML = `<tr><td colspan="7" style="text-align:center;">${escapeHtml(err.message || "Failed to load data.")}</td></tr>`;
     }
     if (window.showMessageBox) {
       showMessageBox(err.message || "Failed to load support technician invoices.", "error");
