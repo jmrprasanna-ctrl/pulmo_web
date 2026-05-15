@@ -174,6 +174,7 @@ const ACCESS_MODULE_OPTIONS = [
       { path: "/notifications/notifications.html", label: "Notifications", actions: ["view"] },
       { path: "/support/support.html", label: "Support", actions: ["view", "add", "edit", "delete"] },
       { path: "/support/warrenty.html", label: "Warrenty", actions: ["view"] },
+      { path: "/support/warranty-invoice-view.html", label: "Warranty Invoice View", actions: ["view"] },
       { path: "/users/technician-list.html", label: "Support Technician", actions: ["view", "add", "edit", "delete"] },
     ],
   },
@@ -246,6 +247,7 @@ function normalizePages(rawPages) {
     new Set(
       list
         .map((p) => String(p || "").trim())
+        .map((p) => (p.toLowerCase() === "/support/warrenty-invoice-view.html" ? "/support/warranty-invoice-view.html" : p))
         .filter(Boolean)
         .filter((p) => !EXCLUDED_PAGES.has(p.toLowerCase()))
         .filter((p) => ACCESS_PATH_SET.has(p.toLowerCase()))
@@ -259,6 +261,7 @@ function normalizeActions(rawActions) {
     new Set(
       list
         .map((x) => String(x || "").trim().toLowerCase())
+        .map((x) => x.replace("/support/warrenty-invoice-view.html::", "/support/warranty-invoice-view.html::"))
         .filter(Boolean)
         .filter((x) => ACCESS_ACTION_SET.has(x))
     )
