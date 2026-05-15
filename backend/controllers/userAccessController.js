@@ -162,6 +162,8 @@ const ACCESS_MODULE_OPTIONS = [
       { path: "/finance/finance.html", label: "Finance", actions: ["view"] },
       { path: "/finance/payments.html", label: "Payments", actions: ["view"] },
       { path: "/finance/pendings.html", label: "Pendings", actions: ["view"] },
+      { path: "/finance/sup-tech-pay.html", label: "Sup.Tech Pay", actions: ["view"] },
+      { path: "/finance/sup-tech-pay-update.html", label: "Sup.Tech Pay Update", actions: ["view", "edit"] },
       { path: "/stock/stock.html", label: "Stock", actions: ["view", "edit"] },
     ],
   },

@@ -1,0 +1,41 @@
+.search-field {
+  min-width: min(360px, 100%);
+}
+
+#supTechPayTable td,
+#supTechPayTable th {
+  vertical-align: middle;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-paid {
+  background: #d9f5e2;
+  color: #177245;
+}
+
+.status-pending {
+  background: #ffe8cc;
+  color: #a24f00;
+}
+
+.action-link-btn {
+  border: 0;
+  background: transparent;
+  color: #0f6abf;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.action-link-btn:hover {
+  text-decoration: underline;
+}

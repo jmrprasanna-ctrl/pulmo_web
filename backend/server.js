@@ -27,6 +27,7 @@ const RentalMachineConsumable = require("./models/RentalMachineConsumable");
 const RentalMachineCount = require("./models/RentalMachineCount");
 const Technician = require("./models/Technician");
 const SupportImportant = require("./models/SupportImportant");
+const SupportTechPay = require("./models/SupportTechPay");
 const CategoryModelOption = require("./models/CategoryModelOption");
 const UiSetting = require("./models/UiSetting");
 const EmailSetup = require("./models/EmailSetup");
@@ -54,6 +55,7 @@ const rentalMachineConsumableRoutes = require("./routes/rentalMachineConsumableR
 const rentalMachineCountRoutes = require("./routes/rentalMachineCountRoutes");
 const technicianRoutes = require("./routes/technicianRoutes");
 const supportImportantRoutes = require("./routes/supportImportantRoutes");
+const supportTechPayRoutes = require("./routes/supportTechPayRoutes");
 const categoryModelOptionRoutes = require("./routes/categoryModelOptionRoutes");
 const uiSettingsRoutes = require("./routes/uiSettingsRoutes");
 const emailSetupRoutes = require("./routes/emailSetupRoutes");
@@ -605,6 +607,67 @@ async function ensureSupportImportantSchema() {
   });
 }
 
+async function ensureSupportTechPaySchema() {
+  await runOnBusinessDatabases(async () => {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS support_tech_pays (
+        id SERIAL PRIMARY KEY,
+        invoice_id INTEGER NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+        vendor_pay_amount DOUBLE PRECISION DEFAULT 0,
+        support_tech_pay_amount DOUBLE PRECISION DEFAULT 0,
+        payment_method VARCHAR(30) DEFAULT 'Cash',
+        payment_status VARCHAR(30) DEFAULT 'Pending',
+        payment_proof_image_path VARCHAR(500),
+        paid_at DATE,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW(),
+        UNIQUE(invoice_id)
+      );
+    `);
+
+    await db.query(`
+      ALTER TABLE support_tech_pays
+      ADD COLUMN IF NOT EXISTS vendor_pay_amount DOUBLE PRECISION DEFAULT 0;
+    `);
+    await db.query(`
+      ALTER TABLE support_tech_pays
+      ADD COLUMN IF NOT EXISTS support_tech_pay_amount DOUBLE PRECISION DEFAULT 0;
+    `);
+    await db.query(`
+      ALTER TABLE support_tech_pays
+      ADD COLUMN IF NOT EXISTS payment_method VARCHAR(30) DEFAULT 'Cash';
+    `);
+    await db.query(`
+      ALTER TABLE support_tech_pays
+      ADD COLUMN IF NOT EXISTS payment_status VARCHAR(30) DEFAULT 'Pending';
+    `);
+    await db.query(`
+      ALTER TABLE support_tech_pays
+      ADD COLUMN IF NOT EXISTS payment_proof_image_path VARCHAR(500);
+    `);
+    await db.query(`
+      ALTER TABLE support_tech_pays
+      ADD COLUMN IF NOT EXISTS paid_at DATE;
+    `);
+
+    await db.query(`
+      UPDATE support_tech_pays
+      SET payment_status = 'Paid'
+      WHERE LOWER(COALESCE(payment_status, '')) = 'paid';
+    `);
+    await db.query(`
+      UPDATE support_tech_pays
+      SET payment_status = 'Pending'
+      WHERE payment_status IS NULL OR TRIM(payment_status) = '' OR LOWER(payment_status) <> 'paid';
+    `);
+
+    await db.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS support_tech_pays_invoice_unique_idx
+      ON support_tech_pays(invoice_id);
+    `);
+  });
+}
+
 async function ensureInvoiceImportantWarrantySchema() {
   await runOnBusinessDatabases(async () => {
     await db.query(`
@@ -983,6 +1046,7 @@ app.use("/api/rental-machine-consumables", rentalMachineConsumableRoutes);
 app.use("/api/rental-machine-counts", rentalMachineCountRoutes);
 app.use("/api/technicians", technicianRoutes);
 app.use("/api/support-importants", supportImportantRoutes);
+app.use("/api/support-tech-pay", supportTechPayRoutes);
 app.use("/api/category-model-options", categoryModelOptionRoutes);
 app.use("/api/ui-settings", uiSettingsRoutes);
 app.use("/api/email-setup", emailSetupRoutes);
@@ -1044,6 +1108,7 @@ async function startServer() {
     await ensureInvoiceNumberingSchema();
     await ensureInvoicePaymentSchema();
     await ensureSupportImportantSchema();
+    await ensureSupportTechPaySchema();
     await ensureInvoiceImportantWarrantySchema();
     await ensureDefaultCategories();
     await ensureDefaultCategoryModelOptions();

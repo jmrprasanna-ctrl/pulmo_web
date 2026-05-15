@@ -1,0 +1,61 @@
+.invoice-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.meta-box {
+  background: #f6f9fc;
+  border: 1px solid #e0e7f0;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.meta-label {
+  display: block;
+  font-size: 12px;
+  color: #607080;
+  margin-bottom: 6px;
+}
+
+.form-toolbar .field {
+  min-width: 220px;
+}
+
+.proof-toolbar {
+  margin-top: 10px;
+}
+
+.camera-btn {
+  color: #0f6abf;
+}
+
+.file-name {
+  font-size: 13px;
+  color: #4d6376;
+}
+
+.proof-preview {
+  margin-top: 10px;
+}
+
+#paymentProofPreview {
+  width: 180px;
+  max-width: 100%;
+  border-radius: 10px;
+  border: 1px solid #d5e2ef;
+}
+
+.save-row {
+  margin-top: 12px;
+}
+
+.items-section {
+  margin-top: 18px;
+}
+
+#supTechPayItemsTable td,
+#supTechPayItemsTable th {
+  vertical-align: middle;
+}
