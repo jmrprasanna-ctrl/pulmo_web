@@ -255,7 +255,7 @@ exports.listSupportTechPayInvoices = async (req, res) => {
     const rows = invoices.map((inv) => {
       const vendorPayAmountDefault = calculateVendorPayAmount(inv.InvoiceItems || []);
       const record = payMap.get(inv.id);
-      const status = record ? "Paid" : "Pending";
+      const status = record ? normalizePaymentStatus(record.payment_status) : "Pending";
       const vendorAmount = toAmount(record?.vendor_pay_amount, vendorPayAmountDefault);
       const supportAmount = calculateSupportTechPayAmount(inv, vendorAmount);
 
@@ -358,7 +358,7 @@ exports.getSupportTechPayInvoice = async (req, res) => {
         vendor_pay_amount: vendorPayAmount,
         support_tech_pay_amount: supportPayAmount,
         payment_method: normalizePaymentMethod(payRecord?.payment_method || "Cash"),
-        payment_status: payRecord ? "Paid" : "Pending",
+        payment_status: payRecord ? normalizePaymentStatus(payRecord.payment_status) : "Pending",
         payment_proof_image_url: toPublicImageUrl(payRecord?.payment_proof_image_path || ""),
         payment_proof_image_path: String(payRecord?.payment_proof_image_path || ""),
         payment_proof_pdf_url: toPublicImageUrl(payRecord?.payment_proof_pdf_path || ""),
@@ -497,7 +497,12 @@ exports.deleteSupportTechPayInvoice = async (req, res) => {
   }
 
   try {
-    const row = await SupportTechPay.findOne({ where: { invoice_id: invoiceId } });
+    const invoice = await loadInvoiceWithItems(invoiceId);
+    if (!invoice) {
+      return res.status(404).json({ message: "Invoice not found." });
+    }
+
+    const row = await SupportTechPay.findOne({ where: { invoice_id: invoice.id } });
     if (!row) {
       return res.status(404).json({ message: "Support technician payment not found." });
     }
@@ -511,9 +516,20 @@ exports.deleteSupportTechPayInvoice = async (req, res) => {
       deleteStoredFileIfExists(storedPdfPath);
     }
 
-    await row.destroy();
+    const vendorPayAmount = calculateVendorPayAmount(invoice.InvoiceItems || []);
+    const supportTechPayAmount = calculateSupportTechPayAmount(invoice, vendorPayAmount);
 
-    res.json({ message: "Support technician payment deleted successfully." });
+    await row.update({
+      vendor_pay_amount: vendorPayAmount,
+      support_tech_pay_amount: supportTechPayAmount,
+      payment_method: "Cash",
+      payment_status: "Pending",
+      payment_proof_image_path: null,
+      payment_proof_pdf_path: null,
+      paid_at: null,
+    });
+
+    res.json({ message: "Support technician payment reset to pending successfully." });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message || "Failed to delete support technician payment." });
