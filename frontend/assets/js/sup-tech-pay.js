@@ -69,6 +69,83 @@ function populateTechnicianFilter() {
   }
 }
 
+function exportSupTechPayTablePdf() {
+  const rows = getFilteredRows();
+  if (!rows.length) {
+    if (window.showMessageBox) {
+      showMessageBox("No entries available to export.", "error");
+    }
+    return;
+  }
+
+  const jspdfRef = window.jspdf;
+  if (!jspdfRef || !jspdfRef.jsPDF) {
+    if (window.showMessageBox) {
+      showMessageBox("PDF library not loaded.", "error");
+    }
+    return;
+  }
+
+  const { jsPDF } = jspdfRef;
+  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const left = 24;
+  const right = 818;
+  const rowHeight = 20;
+  let y = 56;
+
+  const columns = [
+    { title: "Invoice No", x: 26 },
+    { title: "Customer", x: 130 },
+    { title: "Invoice Date", x: 295 },
+    { title: "Support Technician", x: 400 },
+    { title: "Invoice Amount", x: 560 },
+    { title: "Sup.Tech Pay", x: 670 },
+    { title: "Status", x: 760 },
+  ];
+
+  const drawHeader = () => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    columns.forEach((col) => doc.text(col.title, col.x, y));
+    y += 8;
+    doc.line(left, y, right, y);
+    y += 14;
+  };
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("Sup.Tech Pay Entries", left, 32);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, left, 46);
+
+  drawHeader();
+
+  for (const row of rows) {
+    if (y > pageHeight - 36) {
+      doc.addPage();
+      y = 36;
+      drawHeader();
+    }
+
+    const status = String(row.payment_status || "Pending").trim().toLowerCase() === "paid" ? "Paid" : "Pending";
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(String(row.invoice_no || "-").slice(0, 18), columns[0].x, y);
+    doc.text(String(row.customer_name || "-").slice(0, 26), columns[1].x, y);
+    doc.text(formatDate(row.invoice_date), columns[2].x, y);
+    doc.text(String(row.support_technician || "-").slice(0, 20), columns[3].x, y);
+    doc.text(formatCurrency(row.total_amount), columns[4].x, y);
+    doc.text(formatCurrency(row.support_tech_pay_amount), columns[5].x, y);
+    doc.text(status, columns[6].x, y);
+    y += rowHeight;
+  }
+
+  const stamp = new Date().toISOString().slice(0, 10);
+  doc.save(`sup-tech-pay-entries-${stamp}.pdf`);
+}
+
 function renderSupTechPayRows() {
   const body = document.getElementById("supTechPayBody");
   if (!body) return;
@@ -129,8 +206,10 @@ async function loadSupTechPayRows() {
 window.addEventListener("DOMContentLoaded", () => {
   const searchInput = document.getElementById("supTechSearch");
   const technicianFilter = document.getElementById("supTechTechnicianFilter");
+  const saveTablePdfBtn = document.getElementById("saveSupTechPayTablePdfBtn");
 
   searchInput?.addEventListener("input", renderSupTechPayRows);
   technicianFilter?.addEventListener("change", renderSupTechPayRows);
+  saveTablePdfBtn?.addEventListener("click", exportSupTechPayTablePdf);
   loadSupTechPayRows();
 });

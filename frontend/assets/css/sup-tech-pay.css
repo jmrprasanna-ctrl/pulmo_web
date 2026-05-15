@@ -40,6 +40,15 @@
   max-width: 100%;
 }
 
+.toolbar-icon-btn {
+  margin-top: 0;
+  width: 40px;
+  min-width: 40px;
+  max-width: 40px;
+  padding: 0;
+  align-self: flex-end;
+}
+
 .table-scroll {
   width: 100%;
   overflow-x: auto;
