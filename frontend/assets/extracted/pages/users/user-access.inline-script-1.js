@@ -197,7 +197,9 @@ const userSelectEl = document.getElementById("userSelect");
             try{
                 const res = await request(`/users/access/${encodeURIComponent(selectedRef)}`, "GET");
                 const actions = Array.isArray(res.allowed_actions) ? res.allowed_actions : [];
-                setCheckedActions(actions);
+                const pages = Array.isArray(res.allowed_pages) ? res.allowed_pages : [];
+                const pageViewActions = pages.map((path) => `${String(path || "").trim().toLowerCase()}::view`);
+                setCheckedActions([...actions, ...pageViewActions]);
                 superUserCheckboxEl.checked = !!res.super_user;
                 superUserCheckboxEl.disabled = res.can_edit_super_user === false;
                 if(res.database_name){
