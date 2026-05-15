@@ -138,6 +138,11 @@ const userSelectEl = document.getElementById("userSelect");
                     label: "Edit Added Consumables",
                     actions: ["view"]
                 });
+                ensureMatrixItem("Finance", {
+                    path: "/support/warrenty-invoice-view.html",
+                    label: "Warranty Invoice View",
+                    actions: ["view"]
+                });
 
                 renderAccessMatrix();
             }catch(err){

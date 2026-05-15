@@ -400,7 +400,8 @@ function renderSidebarMenuByAccess(){
                 { path: "/finance/payments.html", label: "Payments" },
                 { path: "/finance/pendings.html", label: "Pendings" },
                 { path: "/finance/sup-tech-pay.html", label: "Sup.Tech Pay" },
-                { path: "/support/warrenty.html", label: "Warrenty" }
+                { path: "/support/warrenty.html", label: "Warrenty" },
+                { path: "/support/warrenty-invoice-view.html", label: "Warranty Invoice View" }
             ]
         },
         { path: "/support/support.html", label: "Support" },
