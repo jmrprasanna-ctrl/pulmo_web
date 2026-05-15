@@ -33,8 +33,15 @@
   font-size: 15px;
 }
 
+.form-toolbar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
 .form-toolbar .field {
-  min-width: 220px;
+  min-width: 0;
 }
 
 .proof-toolbar {
