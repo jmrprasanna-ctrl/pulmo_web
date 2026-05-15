@@ -57,11 +57,13 @@ function calculateVendorPayAmount(items) {
   return Number(sum.toFixed(2));
 }
 
-function calculateSupportTechPayAmount(invoice) {
+function calculateSupportTechPayAmount(invoice, vendorPayAmount = 0) {
   const total = Number(invoice?.total_amount || 0);
   const percentage = Number(invoice?.support_technician_percentage || 0);
-  if (!Number.isFinite(total) || !Number.isFinite(percentage)) return 0;
-  return Number(((total * percentage) / 100).toFixed(2));
+  const vendor = Number(vendorPayAmount || 0);
+  if (!Number.isFinite(total) || !Number.isFinite(percentage) || !Number.isFinite(vendor)) return 0;
+  const payableBase = Math.max(total - vendor, 0);
+  return Number(((payableBase * percentage) / 100).toFixed(2));
 }
 
 function getRequestDbName(req) {
@@ -232,12 +234,11 @@ exports.listSupportTechPayInvoices = async (req, res) => {
     const payMap = new Map(payRecords.map((row) => [row.invoice_id, row]));
 
     const rows = invoices.map((inv) => {
-      const vendorPayAmount = calculateVendorPayAmount(inv.InvoiceItems || []);
-      const defaultSupportAmount = calculateSupportTechPayAmount(inv);
+      const vendorPayAmountDefault = calculateVendorPayAmount(inv.InvoiceItems || []);
       const record = payMap.get(inv.id);
       const status = record ? "Paid" : "Pending";
-      const supportAmount = toAmount(record?.support_tech_pay_amount, defaultSupportAmount);
-      const vendorAmount = toAmount(record?.vendor_pay_amount, vendorPayAmount);
+      const vendorAmount = toAmount(record?.vendor_pay_amount, vendorPayAmountDefault);
+      const supportAmount = calculateSupportTechPayAmount(inv, vendorAmount);
 
       return {
         invoice_id: inv.id,
@@ -278,8 +279,9 @@ exports.getSupportTechPayInvoice = async (req, res) => {
     }
 
     const payRecord = await SupportTechPay.findOne({ where: { invoice_id: invoice.id } });
-    const vendorPayAmount = calculateVendorPayAmount(invoice.InvoiceItems || []);
-    const supportDefault = calculateSupportTechPayAmount(invoice);
+    const vendorPayAmountDefault = calculateVendorPayAmount(invoice.InvoiceItems || []);
+    const vendorPayAmount = toAmount(payRecord?.vendor_pay_amount, vendorPayAmountDefault);
+    const supportPayAmount = calculateSupportTechPayAmount(invoice, vendorPayAmount);
 
     let paymentProofImageBase64 = "";
     let paymentProofImageMime = "";
@@ -334,8 +336,8 @@ exports.getSupportTechPayInvoice = async (req, res) => {
       },
       items,
       payment: {
-        vendor_pay_amount: toAmount(payRecord?.vendor_pay_amount, vendorPayAmount),
-        support_tech_pay_amount: toAmount(payRecord?.support_tech_pay_amount, supportDefault),
+        vendor_pay_amount: vendorPayAmount,
+        support_tech_pay_amount: supportPayAmount,
         payment_method: normalizePaymentMethod(payRecord?.payment_method || "Cash"),
         payment_status: payRecord ? "Paid" : "Pending",
         payment_proof_image_url: toPublicImageUrl(payRecord?.payment_proof_image_path || ""),
@@ -367,15 +369,12 @@ exports.updateSupportTechPayInvoice = async (req, res) => {
     }
 
     const defaultVendor = calculateVendorPayAmount(invoice.InvoiceItems || []);
-    const defaultSupport = calculateSupportTechPayAmount(invoice);
     const existing = await SupportTechPay.findOne({ where: { invoice_id: invoice.id } });
 
     const vendorPayAmount = req.body.vendor_pay_amount !== undefined
       ? toAmount(req.body.vendor_pay_amount, defaultVendor)
       : toAmount(existing?.vendor_pay_amount, defaultVendor);
-    const supportTechPayAmount = req.body.support_tech_pay_amount !== undefined
-      ? toAmount(req.body.support_tech_pay_amount, defaultSupport)
-      : toAmount(existing?.support_tech_pay_amount, defaultSupport);
+    const supportTechPayAmount = calculateSupportTechPayAmount(invoice, vendorPayAmount);
     const paymentMethod = req.body.payment_method !== undefined
       ? normalizePaymentMethod(req.body.payment_method)
       : normalizePaymentMethod(existing?.payment_method || "Cash");
