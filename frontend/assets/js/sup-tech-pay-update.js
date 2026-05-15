@@ -39,6 +39,7 @@ function renderMeta(invoice) {
   const customerName = String(invoice.customer_name || "-").trim() || "-";
   const technician = String(invoice.support_technician || "-").trim() || "-";
   const invoiceDate = fmtDate(invoice.invoice_date);
+  const invoiceAmount = `Rs. ${fmtCurrency(invoice.total_amount)}`;
 
   const titleInput = document.getElementById("invoiceTitle");
   if (titleInput) {
@@ -53,6 +54,11 @@ function renderMeta(invoice) {
   const invoiceDateInput = document.getElementById("invoiceDate");
   if (invoiceDateInput) {
     invoiceDateInput.value = invoiceDate;
+  }
+
+  const invoiceAmountInput = document.getElementById("invoiceAmount");
+  if (invoiceAmountInput) {
+    invoiceAmountInput.value = invoiceAmount;
   }
 
   const customerInput = document.getElementById("customerName");
