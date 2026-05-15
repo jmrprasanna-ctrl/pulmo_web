@@ -41,6 +41,12 @@ function fmtMoney(value){
     return n.toFixed(2);
 }
 
+function openInvoiceRenderViewOnly(invoiceId){
+    const id = Number(invoiceId || 0);
+    if(!id) return;
+    window.location.href = `../invoices/view-invoice.html?id=${encodeURIComponent(id)}&viewOnly=1`;
+}
+
 async function loadWarrentyInvoices(){
     try{
         const rows = await request("/invoices/warranty-invoices","GET");
@@ -51,6 +57,7 @@ async function loadWarrentyInvoices(){
 
         list.forEach((inv) => {
             const tr = document.createElement("tr");
+            const invoiceId = Number(inv.id || inv.invoice_id || 0);
             tr.innerHTML = `
                 <td>${inv.warranty_period || ""}</td>
                 <td>${fmtDate(inv.invoice_date)}</td>
@@ -60,6 +67,11 @@ async function loadWarrentyInvoices(){
                 <td>${fmtMoney(inv.total)}</td>
                 <td>${inv.payment_status || ""}</td>
             `;
+            if(invoiceId){
+                tr.style.cursor = "pointer";
+                tr.title = "View invoice render";
+                tr.addEventListener("click", () => openInvoiceRenderViewOnly(invoiceId));
+            }
             tbody.appendChild(tr);
         });
 

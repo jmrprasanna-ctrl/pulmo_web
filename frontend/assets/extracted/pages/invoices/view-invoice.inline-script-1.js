@@ -5,7 +5,9 @@ const templateRenderCache = {};
 const BASE_W = 1240;
 const BASE_H = 1754;
 const currentRole = String(localStorage.getItem("role") || "").trim().toLowerCase();
-const canConfigurePreview = currentRole === "admin" || currentRole === "manager";
+const viewOnlyParam = String(new URLSearchParams(window.location.search).get("viewOnly") || "").trim().toLowerCase();
+const isViewOnlyMode = viewOnlyParam === "1" || viewOnlyParam === "true" || viewOnlyParam === "yes";
+const canConfigurePreview = !isViewOnlyMode && (currentRole === "admin" || currentRole === "manager");
 let invMapFlags = null;
 
 function hasMappedFeature(featureKey){
@@ -1457,7 +1459,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
     const deleteBtn = document.getElementById("deleteInvoiceBtn");
     if(deleteBtn){
-        deleteBtn.style.display = currentRole === "admin" ? "inline-grid" : "none";
+        deleteBtn.style.display = (!isViewOnlyMode && currentRole === "admin") ? "inline-grid" : "none";
     }
     renderInvoice();
 });
