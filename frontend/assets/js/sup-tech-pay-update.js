@@ -35,10 +35,35 @@ function toDataUrlFromFile(file) {
 }
 
 function renderMeta(invoice) {
-  document.getElementById("invoiceNo").textContent = invoice.invoice_no || "-";
-  document.getElementById("invoiceDate").textContent = fmtDate(invoice.invoice_date);
-  document.getElementById("customerName").textContent = invoice.customer_name || "-";
-  document.getElementById("supportTechnician").textContent = invoice.support_technician || "-";
+  const invoiceNo = String(invoice.invoice_no || "-").trim() || "-";
+  const customerName = String(invoice.customer_name || "-").trim() || "-";
+  const technician = String(invoice.support_technician || "-").trim() || "-";
+  const invoiceDate = fmtDate(invoice.invoice_date);
+
+  const titleInput = document.getElementById("invoiceTitle");
+  if (titleInput) {
+    titleInput.value = `Invoice ${invoiceNo}`;
+  }
+
+  const detailInput = document.getElementById("invoiceDetail");
+  if (detailInput) {
+    detailInput.value = `No: ${invoiceNo} | Customer: ${customerName} | Technician: ${technician}`;
+  }
+
+  const invoiceDateInput = document.getElementById("invoiceDate");
+  if (invoiceDateInput) {
+    invoiceDateInput.value = invoiceDate;
+  }
+
+  const customerInput = document.getElementById("customerName");
+  if (customerInput) {
+    customerInput.value = customerName;
+  }
+
+  const technicianInput = document.getElementById("supportTechnician");
+  if (technicianInput) {
+    technicianInput.value = technician;
+  }
 }
 
 function renderItems(items) {

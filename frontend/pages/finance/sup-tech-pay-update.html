@@ -45,11 +45,31 @@
     </header>
 
     <div class="form-container">
-        <div class="invoice-meta-grid">
-            <div class="meta-box"><span class="meta-label">Invoice No</span><strong id="invoiceNo">-</strong></div>
-            <div class="meta-box"><span class="meta-label">Invoice Date</span><strong id="invoiceDate">-</strong></div>
-            <div class="meta-box"><span class="meta-label">Customer</span><strong id="customerName">-</strong></div>
-            <div class="meta-box"><span class="meta-label">Support Technician</span><strong id="supportTechnician">-</strong></div>
+        <div class="invoice-meta-panel">
+            <div class="field">
+                <label for="invoiceTitle">Invoice Title</label>
+                <input type="text" id="invoiceTitle" readonly>
+            </div>
+
+            <div class="invoice-meta-grid">
+                <div class="field">
+                    <label for="invoiceDate">Invoice Date</label>
+                    <input type="text" id="invoiceDate" readonly>
+                </div>
+                <div class="field">
+                    <label for="customerName">Customer</label>
+                    <input type="text" id="customerName" readonly>
+                </div>
+                <div class="field">
+                    <label for="supportTechnician">Support Technician</label>
+                    <input type="text" id="supportTechnician" readonly>
+                </div>
+            </div>
+
+            <div class="field">
+                <label for="invoiceDetail">Invoice Detail</label>
+                <textarea id="invoiceDetail" rows="2" readonly></textarea>
+            </div>
         </div>
 
         <form id="supTechPayForm">
