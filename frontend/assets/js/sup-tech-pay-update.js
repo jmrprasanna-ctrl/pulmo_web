@@ -3,6 +3,7 @@ const updatePageState = {
   selectedImageBase64: "",
   invoiceAmount: 0,
   supportTechnicianPercentage: 0,
+  proofObjectUrl: "",
 };
 
 function fmtCurrency(value) {
@@ -67,6 +68,16 @@ function setProofBitrateFromBytes(bytes) {
   bitrateLabel.textContent = `Bitrate: ${formatImageBitrateFromBytes(bytes)}`;
 }
 
+function revokeProofObjectUrl() {
+  if (updatePageState.proofObjectUrl) {
+    try {
+      URL.revokeObjectURL(updatePageState.proofObjectUrl);
+    } catch (_err) {
+    }
+    updatePageState.proofObjectUrl = "";
+  }
+}
+
 function buildProofUrlFromStoredPath(storedPath) {
   const raw = String(storedPath || "").trim();
   if (!raw) return "";
@@ -101,6 +112,46 @@ async function loadSavedImageBitrate(imageUrl) {
   }
 }
 
+function getAuthHeaders() {
+  const token = localStorage.getItem("token");
+  const headers = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const selectedDb = String(localStorage.getItem("selectedDatabaseName") || "").trim().toLowerCase();
+  if (selectedDb) headers["X-Database-Name"] = selectedDb;
+  return headers;
+}
+
+function buildProofImageApiUrl(invoiceId) {
+  const base = String(window.BASE_URL || "/api").replace(/\/+$/, "");
+  return `${base}/support-tech-pay/${invoiceId}/proof-image`;
+}
+
+async function loadProofImageFromApi(invoiceId) {
+  const numericInvoiceId = Number(invoiceId || 0);
+  if (!numericInvoiceId) return false;
+  try {
+    const res = await fetch(buildProofImageApiUrl(numericInvoiceId), {
+      headers: getAuthHeaders(),
+      cache: "no-store",
+    });
+    if (!res.ok) return false;
+    const blob = await res.blob();
+    if (!blob || !blob.size) return false;
+
+    revokeProofObjectUrl();
+    updatePageState.proofObjectUrl = URL.createObjectURL(blob);
+    const preview = document.getElementById("paymentProofPreview");
+    if (preview) {
+      preview.src = updatePageState.proofObjectUrl;
+      preview.hidden = false;
+    }
+    setProofBitrateFromBytes(blob.size);
+    return true;
+  } catch (_err) {
+    return false;
+  }
+}
+
 async function loadProofImageBase64Fallback() {
   const invoiceId = Number(updatePageState.invoiceId || 0);
   if (!invoiceId) return;
@@ -117,6 +168,7 @@ async function loadProofImageBase64Fallback() {
 
     const preview = document.getElementById("paymentProofPreview");
     if (!preview) return;
+    revokeProofObjectUrl();
     preview.src = `data:${imageMime};base64,${imageBase64}`;
     preview.hidden = false;
     setProofBitrateFromBytes(calculateBytesFromBase64(imageBase64));
@@ -223,36 +275,31 @@ function renderPayment(payment) {
 
   const preview = document.getElementById("paymentProofPreview");
   const fileNameLabel = document.getElementById("paymentProofName");
-  const imageUrl = String(payment.payment_proof_image_url || "").trim();
-  const fallbackImageUrl = buildProofUrlFromStoredPath(payment.payment_proof_image_path || "");
-  const resolvedImageUrl = imageUrl || fallbackImageUrl;
-  const imageBase64 = String(payment.payment_proof_image_base64 || "").trim();
-  const imageMime = String(payment.payment_proof_image_mime || "").trim() || "image/jpeg";
+  const hasStoredImage = String(payment.payment_proof_image_path || "").trim().length > 0;
 
-  if (imageBase64) {
-    preview.src = `data:${imageMime};base64,${imageBase64}`;
-    preview.hidden = false;
+  if (hasStoredImage) {
     const pathParts = String(payment.payment_proof_image_path || "").split("/");
     fileNameLabel.textContent = pathParts[pathParts.length - 1] || "Saved image";
-    setProofBitrateFromBytes(calculateBytesFromBase64(imageBase64));
-  } else if (resolvedImageUrl) {
-    preview.src = resolvedImageUrl;
-    preview.hidden = false;
-    const pathParts = String(payment.payment_proof_image_path || "").split("/");
-    fileNameLabel.textContent = pathParts[pathParts.length - 1] || "Saved image";
-    preview.onerror = () => {
-      if (resolvedImageUrl !== fallbackImageUrl && fallbackImageUrl) {
-        preview.src = fallbackImageUrl;
-        loadSavedImageBitrate(fallbackImageUrl);
-      } else {
-        loadProofImageBase64Fallback();
+    loadProofImageFromApi(updatePageState.invoiceId).then((ok) => {
+      if (!ok) {
+        const imageUrl = String(payment.payment_proof_image_url || "").trim();
+        const fallbackImageUrl = buildProofUrlFromStoredPath(payment.payment_proof_image_path || "");
+        const resolvedImageUrl = imageUrl || fallbackImageUrl;
+        if (resolvedImageUrl) {
+          preview.src = resolvedImageUrl;
+          preview.hidden = false;
+          preview.onerror = () => loadProofImageBase64Fallback();
+          preview.onload = () => {
+            preview.onerror = null;
+          };
+          loadSavedImageBitrate(resolvedImageUrl);
+        } else {
+          loadProofImageBase64Fallback();
+        }
       }
-    };
-    preview.onload = () => {
-      preview.onerror = null;
-    };
-    loadSavedImageBitrate(resolvedImageUrl);
+    });
   } else {
+    revokeProofObjectUrl();
     preview.src = "";
     preview.hidden = true;
     fileNameLabel.textContent = "No image selected";
@@ -285,6 +332,7 @@ async function onImageSelected(event) {
     const dataUrl = await toDataUrlFromFile(file);
     updatePageState.selectedImageBase64 = dataUrl;
     const preview = document.getElementById("paymentProofPreview");
+    revokeProofObjectUrl();
     preview.src = dataUrl;
     preview.hidden = false;
     document.getElementById("paymentProofName").textContent = file.name || "Captured image";
@@ -362,4 +410,8 @@ window.addEventListener("DOMContentLoaded", () => {
   form?.addEventListener("submit", onSavePayment);
 
   loadSupportTechPayDetail();
+});
+
+window.addEventListener("beforeunload", () => {
+  revokeProofObjectUrl();
 });

@@ -11,6 +11,12 @@ router.get(
   supportTechPayController.listSupportTechPayInvoices
 );
 router.get(
+  "/:invoiceId/proof-image",
+  authMiddleware,
+  roleMiddleware(["admin", "manager", "user"]),
+  supportTechPayController.getSupportTechPayProofImage
+);
+router.get(
   "/:invoiceId",
   authMiddleware,
   roleMiddleware(["admin", "manager", "user"]),

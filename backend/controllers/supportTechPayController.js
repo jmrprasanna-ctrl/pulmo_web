@@ -447,3 +447,34 @@ exports.updateSupportTechPayInvoice = async (req, res) => {
     res.status(500).json({ message: err.message || "Failed to update support technician payment." });
   }
 };
+
+exports.getSupportTechPayProofImage = async (req, res) => {
+  const invoiceId = Number(req.params.invoiceId);
+  if (!Number.isFinite(invoiceId) || invoiceId <= 0) {
+    return res.status(400).json({ message: "Invalid invoice id." });
+  }
+
+  try {
+    const row = await SupportTechPay.findOne({ where: { invoice_id: invoiceId } });
+    if (!row) {
+      return res.status(404).json({ message: "Support technician payment not found." });
+    }
+
+    const storedPath = String(row.payment_proof_image_path || "").trim();
+    if (!storedPath) {
+      return res.status(404).json({ message: "Payment proof image not found." });
+    }
+
+    const absPath = resolveStoredImageAbsolutePath(storedPath);
+    if (!absPath || !fs.existsSync(absPath)) {
+      return res.status(404).json({ message: "Payment proof image file is missing." });
+    }
+
+    res.setHeader("Content-Type", getMimeTypeFromPath(absPath));
+    res.setHeader("Cache-Control", "no-cache");
+    res.sendFile(absPath);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message || "Failed to load payment proof image." });
+  }
+};
