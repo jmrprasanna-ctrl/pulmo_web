@@ -52,6 +52,26 @@ function setProofBitrateFromBytes(bytes) {
   bitrateLabel.textContent = `Bitrate: ${formatImageBitrateFromBytes(bytes)}`;
 }
 
+function buildProofUrlFromStoredPath(storedPath) {
+  const raw = String(storedPath || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+
+  const normalized = raw.replace(/\\/g, "/");
+  const lower = normalized.toLowerCase();
+  const marker = "/storage/";
+  const markerIndex = lower.lastIndexOf(marker);
+
+  let relPath = normalized.replace(/^\/+/, "");
+  if (markerIndex !== -1) {
+    relPath = normalized.slice(markerIndex + marker.length).replace(/^\/+/, "");
+  } else if (relPath.toLowerCase().startsWith("storage/")) {
+    relPath = relPath.slice("storage/".length);
+  }
+
+  return relPath ? `/storage/${relPath}` : "";
+}
+
 async function loadSavedImageBitrate(imageUrl) {
   try {
     const response = await fetch(imageUrl, { cache: "no-store" });
@@ -161,13 +181,26 @@ function renderPayment(payment) {
   const preview = document.getElementById("paymentProofPreview");
   const fileNameLabel = document.getElementById("paymentProofName");
   const imageUrl = String(payment.payment_proof_image_url || "").trim();
+  const fallbackImageUrl = buildProofUrlFromStoredPath(payment.payment_proof_image_path || "");
+  const resolvedImageUrl = imageUrl || fallbackImageUrl;
 
-  if (imageUrl) {
-    preview.src = imageUrl;
+  if (resolvedImageUrl) {
+    preview.src = resolvedImageUrl;
     preview.hidden = false;
     const pathParts = String(payment.payment_proof_image_path || "").split("/");
     fileNameLabel.textContent = pathParts[pathParts.length - 1] || "Saved image";
-    loadSavedImageBitrate(imageUrl);
+    preview.onerror = () => {
+      if (resolvedImageUrl !== fallbackImageUrl && fallbackImageUrl) {
+        preview.src = fallbackImageUrl;
+        loadSavedImageBitrate(fallbackImageUrl);
+      } else {
+        setProofBitrateFromBytes(0);
+      }
+    };
+    preview.onload = () => {
+      preview.onerror = null;
+    };
+    loadSavedImageBitrate(resolvedImageUrl);
   } else {
     preview.src = "";
     preview.hidden = true;

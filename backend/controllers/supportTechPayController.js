@@ -100,7 +100,21 @@ function parseBase64Image(fileDataBase64) {
 function toPublicImageUrl(relPath) {
   const clean = String(relPath || "").trim().replace(/\\/g, "/");
   if (!clean) return "";
-  return `/storage/${clean.replace(/^\/+/, "")}`;
+
+  const lower = clean.toLowerCase();
+  const storageMarker = "/storage/";
+  const markerIndex = lower.lastIndexOf(storageMarker);
+  if (markerIndex !== -1) {
+    const tail = clean.slice(markerIndex + storageMarker.length).replace(/^\/+/, "");
+    return tail ? `/storage/${tail}` : "";
+  }
+
+  let normalized = clean.replace(/^\/+/, "");
+  if (normalized.toLowerCase().startsWith("storage/")) {
+    normalized = normalized.slice("storage/".length);
+  }
+
+  return normalized ? `/storage/${normalized}` : "";
 }
 
 function deleteStoredFileIfExists(relPath) {
