@@ -1,14 +1,3 @@
-.sup-tech-update-tile-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.sup-tech-update-tile-head h3 {
-  margin: 0;
-}
-
 .invoice-meta-panel {
   margin-bottom: 14px;
 }
