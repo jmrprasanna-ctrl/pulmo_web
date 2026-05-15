@@ -40,6 +40,8 @@ function renderMeta(invoice) {
   const technician = String(invoice.support_technician || "-").trim() || "-";
   const invoiceDate = fmtDate(invoice.invoice_date);
   const invoiceAmount = `Rs. ${fmtCurrency(invoice.total_amount)}`;
+  const techPercentage = Number(invoice.support_technician_percentage);
+  const techPercentageText = Number.isFinite(techPercentage) ? `${techPercentage.toFixed(2)}%` : "-";
 
   const titleInput = document.getElementById("invoiceTitle");
   if (titleInput) {
@@ -69,6 +71,11 @@ function renderMeta(invoice) {
   const technicianInput = document.getElementById("supportTechnician");
   if (technicianInput) {
     technicianInput.value = technician;
+  }
+
+  const technicianPercentageInput = document.getElementById("supportTechnicianPercentage");
+  if (technicianPercentageInput) {
+    technicianPercentageInput.value = techPercentageText;
   }
 }
 
