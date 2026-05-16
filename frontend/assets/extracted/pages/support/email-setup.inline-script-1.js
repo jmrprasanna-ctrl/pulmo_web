@@ -38,6 +38,19 @@ function setForm(setup){
     document.getElementById("body_template").value = setup.body_template || "Dear {{customer_name}},\n\nPlease find attached your invoice {{invoice_no}}.\n\nThank you.\nPULMO TECHNOLOGIES";
 }
 
+function applyTemplateByType(){
+    const typeEl = document.getElementById("emailTemplateType");
+    const subjectEl = document.getElementById("subject_template");
+    const bodyEl = document.getElementById("body_template");
+    if(!typeEl || !subjectEl || !bodyEl) return;
+
+    const selectedType = String(typeEl.value || "").trim();
+    if(selectedType !== "frogot_password") return;
+
+    subjectEl.value = "Password Recovery - PULMO TECHNOLOGIES";
+    bodyEl.value = "Dear {{customer_name}},\n\nYour email was matched successfully.\n\nEmail: {{customer_name}}\nPassword: {{invoice_no}}\n\nPULMO TECHNOLOGIES";
+}
+
 async function loadSetup(){
     try{
         const setup = await request("/email-setup", "GET");
@@ -55,6 +68,10 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     const form = document.getElementById("emailSetupForm");
+    const templateTypeEl = document.getElementById("emailTemplateType");
+    if(templateTypeEl){
+        templateTypeEl.addEventListener("change", applyTemplateByType);
+    }
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
         const payload = {
@@ -95,5 +112,7 @@ window.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    loadSetup();
+    loadSetup().then(() => {
+        applyTemplateByType();
+    });
 });

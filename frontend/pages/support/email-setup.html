@@ -99,6 +99,16 @@
                 Gmail: use <strong>App Password</strong> (not normal password). Recommended: <code>smtp.gmail.com</code>,
                 Port <code>587</code> with Secure <code>OFF</code> or Port <code>465</code> with Secure <code>ON</code>.
             </div>
+            <div style="margin-top:10px;max-width:380px;">
+                <label for="emailTemplateType">Email Type</label>
+                <select id="emailTemplateType">
+                    <option value="frogot_password">Frogot Password</option>
+                    <option value="quatation">Quatation</option>
+                    <option value="invoice">Invoice</option>
+                    <option value="support_technician">Support Technician</option>
+                    <option value="vender">Vender</option>
+                </select>
+            </div>
 
             <label for="subject_template" style="margin-top:12px;">Subject Template</label>
             <input type="text" id="subject_template" placeholder="Invoice {{invoice_no}} - PULMO TECHNOLOGIES">
