@@ -118,10 +118,6 @@ function hasSmtpConfig(payload){
 
 exports.getEmailSetup = async (req, res) => {
   try{
-    if(actionType === "forgot_password"){
-      return authController.forgotPassword({ body: { email: toEmail } }, res);
-    }
-
     const mappedProfile = await resolveMappedProfile(req);
     const defaults = buildDefaults(mappedProfile);
     let row = await EmailSetup.findOne({ order: [["id", "ASC"]] });
