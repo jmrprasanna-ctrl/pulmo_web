@@ -142,8 +142,8 @@ exports.checkIn = async (req, res) => {
     );
     const insertRs = await db.query(
       `INSERT INTO user_inout_logs
-       (user_id, username, role, check_in_at, check_in_lat, check_in_lng, check_in_accuracy, check_in_location_label, "createdAt", "updatedAt")
-       VALUES ($1, $2, $3, NOW(), $4, $5, $6, $7, NOW(), NOW())
+       (user_id, username, role, check_in_at, check_in_lat, check_in_lng, check_in_accuracy, check_in_location_label)
+       VALUES ($1, $2, $3, NOW(), $4, $5, $6, $7)
        RETURNING id, user_id, username, role, check_in_at, check_in_lat, check_in_lng, check_in_accuracy, check_in_location_label,
                  check_out_at, check_out_lat, check_out_lng, check_out_accuracy, check_out_location_label`,
       { bind: [userId, userName, role, lat, lng, accuracy, locationLabel] }
@@ -192,8 +192,7 @@ exports.checkOut = async (req, res) => {
            check_out_lat = $2,
            check_out_lng = $3,
            check_out_accuracy = $4,
-           check_out_location_label = $5,
-           "updatedAt" = NOW()
+           check_out_location_label = $5
        WHERE id = $1
        RETURNING id, user_id, username, role, check_in_at, check_in_lat, check_in_lng, check_in_accuracy, check_in_location_label,
                  check_out_at, check_out_lat, check_out_lng, check_out_accuracy, check_out_location_label`,
