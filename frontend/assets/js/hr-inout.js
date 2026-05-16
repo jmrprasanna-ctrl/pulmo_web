@@ -12,11 +12,21 @@ function gpsLabel(lat, lng) {
   return `${nLat.toFixed(6)}, ${nLng.toFixed(6)}`;
 }
 
+function isMobileDevice() {
+  const ua = String(navigator.userAgent || "").toLowerCase();
+  return /android|iphone|ipad|ipod|windows phone|mobile/.test(ua);
+}
+
 async function getGpsPayload() {
   const hint = document.getElementById("gpsHint");
+  const mobile = isMobileDevice();
+  if (!mobile) {
+    if (hint) hint.textContent = "Location: Computer";
+    return { lat: null, lng: null, accuracy: null, location_label: "Computer" };
+  }
   if (!navigator.geolocation) {
-    if (hint) hint.textContent = "Location: GPS not available on this device/browser.";
-    return { lat: null, lng: null, accuracy: null };
+    if (hint) hint.textContent = "Location: Mobile (GPS not available).";
+    return { lat: null, lng: null, accuracy: null, location_label: "Mobile" };
   }
   if (hint) hint.textContent = "Location: Getting GPS...";
   return new Promise((resolve) => {
@@ -30,11 +40,12 @@ async function getGpsPayload() {
           lat: Number.isFinite(lat) ? lat : null,
           lng: Number.isFinite(lng) ? lng : null,
           accuracy: Number.isFinite(accuracy) ? accuracy : null,
+          location_label: "GPS",
         });
       },
       (_err) => {
-        if (hint) hint.textContent = "Location: Unable to read GPS. Saving without location.";
-        resolve({ lat: null, lng: null, accuracy: null });
+        if (hint) hint.textContent = "Location: Mobile (GPS blocked/unavailable).";
+        resolve({ lat: null, lng: null, accuracy: null, location_label: "Mobile" });
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );

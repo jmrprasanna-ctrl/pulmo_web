@@ -5,7 +5,9 @@ function fmtDateTime(value) {
   return date.toLocaleString();
 }
 
-function gpsLabel(lat, lng) {
+function gpsLabel(lat, lng, label) {
+  const savedLabel = String(label || "").trim();
+  if (savedLabel) return savedLabel;
   const nLat = Number(lat);
   const nLng = Number(lng);
   if (!Number.isFinite(nLat) || !Number.isFinite(nLng)) return "-";
@@ -34,9 +36,9 @@ function renderRows(rows) {
       <td>${String(row.username || "-")}</td>
       <td>${String(row.role || "-")}</td>
       <td>${fmtDateTime(row.check_in_at)}</td>
-      <td>${gpsLabel(row.check_in_lat, row.check_in_lng)}</td>
+      <td>${gpsLabel(row.check_in_lat, row.check_in_lng, row.check_in_location_label)}</td>
       <td>${fmtDateTime(row.check_out_at)}</td>
-      <td>${gpsLabel(row.check_out_lat, row.check_out_lng)}</td>
+      <td>${gpsLabel(row.check_out_lat, row.check_out_lng, row.check_out_location_label)}</td>
       <td>${row.duration_minutes == null ? "-" : Number(row.duration_minutes).toFixed(2)}</td>
     </tr>
   `).join("");

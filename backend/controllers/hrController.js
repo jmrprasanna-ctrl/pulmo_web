@@ -16,13 +16,23 @@ async function ensureInOutLogTable() {
       check_in_lat DOUBLE PRECISION,
       check_in_lng DOUBLE PRECISION,
       check_in_accuracy DOUBLE PRECISION,
+      check_in_location_label VARCHAR(120),
       check_out_at TIMESTAMP,
       check_out_lat DOUBLE PRECISION,
       check_out_lng DOUBLE PRECISION,
       check_out_accuracy DOUBLE PRECISION,
+      check_out_location_label VARCHAR(120),
       createdAt TIMESTAMP DEFAULT NOW(),
       updatedAt TIMESTAMP DEFAULT NOW()
     );
+  `);
+  await db.query(`
+    ALTER TABLE user_inout_logs
+    ADD COLUMN IF NOT EXISTS check_in_location_label VARCHAR(120);
+  `);
+  await db.query(`
+    ALTER TABLE user_inout_logs
+    ADD COLUMN IF NOT EXISTS check_out_location_label VARCHAR(120);
   `);
   await db.query(`
     CREATE INDEX IF NOT EXISTS user_inout_logs_user_date_idx
@@ -39,6 +49,13 @@ async function ensureInOutLogTable() {
 function toNullableFloat(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function toLocationLabel(value, fallback = "") {
+  const raw = String(value || "").trim();
+  if (raw) return raw.slice(0, 120);
+  const normalizedFallback = String(fallback || "").trim();
+  return normalizedFallback ? normalizedFallback.slice(0, 120) : null;
 }
 
 function parseMonthRange(monthRaw) {
@@ -73,7 +90,8 @@ exports.getInOutStatus = async (req, res) => {
     await ensureInOutLogTable();
     const rs = await db.query(
       `SELECT id, user_id, username, role, check_in_at, check_in_lat, check_in_lng, check_in_accuracy,
-              check_out_at, check_out_lat, check_out_lng, check_out_accuracy
+              check_in_location_label,
+              check_out_at, check_out_lat, check_out_lng, check_out_accuracy, check_out_location_label
        FROM user_inout_logs
        WHERE user_id = $1
        ORDER BY check_in_at DESC, id DESC
@@ -118,13 +136,17 @@ exports.checkIn = async (req, res) => {
     const lat = toNullableFloat(req.body?.lat);
     const lng = toNullableFloat(req.body?.lng);
     const accuracy = toNullableFloat(req.body?.accuracy);
+    const locationLabel = toLocationLabel(
+      req.body?.location_label,
+      Number.isFinite(lat) && Number.isFinite(lng) ? "GPS" : "Computer"
+    );
     const insertRs = await db.query(
       `INSERT INTO user_inout_logs
-       (user_id, username, role, check_in_at, check_in_lat, check_in_lng, check_in_accuracy, "createdAt", "updatedAt")
-       VALUES ($1, $2, $3, NOW(), $4, $5, $6, NOW(), NOW())
-       RETURNING id, user_id, username, role, check_in_at, check_in_lat, check_in_lng, check_in_accuracy,
-                 check_out_at, check_out_lat, check_out_lng, check_out_accuracy`,
-      { bind: [userId, userName, role, lat, lng, accuracy] }
+       (user_id, username, role, check_in_at, check_in_lat, check_in_lng, check_in_accuracy, check_in_location_label, "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, NOW(), $4, $5, $6, $7, NOW(), NOW())
+       RETURNING id, user_id, username, role, check_in_at, check_in_lat, check_in_lng, check_in_accuracy, check_in_location_label,
+                 check_out_at, check_out_lat, check_out_lng, check_out_accuracy, check_out_location_label`,
+      { bind: [userId, userName, role, lat, lng, accuracy, locationLabel] }
     );
     const rows = Array.isArray(insertRs?.[0]) ? insertRs[0] : [];
     return res.json({
@@ -160,17 +182,22 @@ exports.checkOut = async (req, res) => {
     const lat = toNullableFloat(req.body?.lat);
     const lng = toNullableFloat(req.body?.lng);
     const accuracy = toNullableFloat(req.body?.accuracy);
+    const locationLabel = toLocationLabel(
+      req.body?.location_label,
+      Number.isFinite(lat) && Number.isFinite(lng) ? "GPS" : "Computer"
+    );
     const updateRs = await db.query(
       `UPDATE user_inout_logs
        SET check_out_at = NOW(),
            check_out_lat = $2,
            check_out_lng = $3,
            check_out_accuracy = $4,
+           check_out_location_label = $5,
            "updatedAt" = NOW()
        WHERE id = $1
-       RETURNING id, user_id, username, role, check_in_at, check_in_lat, check_in_lng, check_in_accuracy,
-                 check_out_at, check_out_lat, check_out_lng, check_out_accuracy`,
-      { bind: [Number(openRows[0].id || 0), lat, lng, accuracy] }
+       RETURNING id, user_id, username, role, check_in_at, check_in_lat, check_in_lng, check_in_accuracy, check_in_location_label,
+                 check_out_at, check_out_lat, check_out_lng, check_out_accuracy, check_out_location_label`,
+      { bind: [Number(openRows[0].id || 0), lat, lng, accuracy, locationLabel] }
     );
     const rows = Array.isArray(updateRs?.[0]) ? updateRs[0] : [];
     return res.json({
@@ -207,8 +234,8 @@ exports.getMonthlyTimeSheet = async (req, res) => {
 
     const rs = await db.query(
       `SELECT id, user_id, username, role,
-              check_in_at, check_in_lat, check_in_lng, check_in_accuracy,
-              check_out_at, check_out_lat, check_out_lng, check_out_accuracy,
+              check_in_at, check_in_lat, check_in_lng, check_in_accuracy, check_in_location_label,
+              check_out_at, check_out_lat, check_out_lng, check_out_accuracy, check_out_location_label,
               CASE
                 WHEN check_out_at IS NULL THEN NULL
                 ELSE ROUND(EXTRACT(EPOCH FROM (check_out_at - check_in_at)) / 60.0, 2)
