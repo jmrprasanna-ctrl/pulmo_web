@@ -47,7 +47,7 @@ function applyTemplateByType(){
     const selectedType = String(typeEl.value || "").trim();
     if(selectedType === "frogot_password"){
         subjectEl.value = "Password Recovery - PULMO TECHNOLOGIES";
-        bodyEl.value = "Dear {{customer_name}},\n\nYour email was matched successfully.\n\nEmail: {{customer_name}}\nPassword: {{invoice_no}}\n\nPULMO TECHNOLOGIES";
+        bodyEl.value = "Dear {{user_name}},\n\nYour email was matched successfully.\n\nEmail: {{email}}\nPassword: {{password}}\n\nPULMO TECHNOLOGIES";
         return;
     }
     if(selectedType === "quatation"){
