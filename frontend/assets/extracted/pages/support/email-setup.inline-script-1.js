@@ -45,10 +45,30 @@ function applyTemplateByType(){
     if(!typeEl || !subjectEl || !bodyEl) return;
 
     const selectedType = String(typeEl.value || "").trim();
-    if(selectedType !== "frogot_password") return;
-
-    subjectEl.value = "Password Recovery - PULMO TECHNOLOGIES";
-    bodyEl.value = "Dear {{customer_name}},\n\nYour email was matched successfully.\n\nEmail: {{customer_name}}\nPassword: {{invoice_no}}\n\nPULMO TECHNOLOGIES";
+    if(selectedType === "frogot_password"){
+        subjectEl.value = "Password Recovery - PULMO TECHNOLOGIES";
+        bodyEl.value = "Dear {{customer_name}},\n\nYour email was matched successfully.\n\nEmail: {{customer_name}}\nPassword: {{invoice_no}}\n\nPULMO TECHNOLOGIES";
+        return;
+    }
+    if(selectedType === "quatation"){
+        subjectEl.value = "Quatation {{invoice_no}} - PULMO TECHNOLOGIES";
+        bodyEl.value = "Dear {{customer_name}},\n\nPlease find attached your quatation {{invoice_no}}.\n\nTotal Amount: {{total_amount}}\nDate: {{invoice_date}}\n\nThank you.\nPULMO TECHNOLOGIES";
+        return;
+    }
+    if(selectedType === "invoice"){
+        subjectEl.value = "Invoice {{invoice_no}} - PULMO TECHNOLOGIES";
+        bodyEl.value = "Dear {{customer_name}},\n\nPlease find attached your invoice {{invoice_no}}.\n\nTotal Amount: {{total_amount}}\nDate: {{invoice_date}}\n\nThank you.\nPULMO TECHNOLOGIES";
+        return;
+    }
+    if(selectedType === "support_technician"){
+        subjectEl.value = "Support Technician Payment Detail - {{invoice_no}}";
+        bodyEl.value = "Dear {{customer_name}},\n\nPlease find attached support technician payment details for invoice {{invoice_no}}.\n\nTotal Amount: {{total_amount}}\nDate: {{invoice_date}}\n\nThank you.\nPULMO TECHNOLOGIES";
+        return;
+    }
+    if(selectedType === "vender"){
+        subjectEl.value = "Vender Stock Report - {{invoice_no}}";
+        bodyEl.value = "Dear {{customer_name}},\n\nPlease find attached vender stock report.\n\nReference: {{invoice_no}}\nDate: {{invoice_date}}\n\nThank you.\nPULMO TECHNOLOGIES";
+    }
 }
 
 async function loadSetup(){
