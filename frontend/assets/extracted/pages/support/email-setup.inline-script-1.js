@@ -51,8 +51,8 @@ function applyTemplateByType(){
         return;
     }
     if(selectedType === "quatation"){
-        subjectEl.value = "Quatation {{invoice_no}} - PULMO TECHNOLOGIES";
-        bodyEl.value = "Dear {{customer_name}},\n\nPlease find attached your quatation {{invoice_no}}.\n\nTotal Amount: {{total_amount}}\nDate: {{invoice_date}}\n\nThank you.\nPULMO TECHNOLOGIES";
+        subjectEl.value = "Quatation {{quotation_no}} - PULMO TECHNOLOGIES";
+        bodyEl.value = "Dear {{customer_name}},\n\nPlease find attached your quatation {{quotation_no}}.\n\nTotal Amount: {{quotation_amount}}\nDate: {{quotation_date}}\n\nThank you.\nPULMO TECHNOLOGIES";
         return;
     }
     if(selectedType === "invoice"){

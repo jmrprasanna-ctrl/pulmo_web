@@ -1356,7 +1356,10 @@ exports.sendInvoiceEmail = async (req, res) => {
             invoice_no: String(invoice.invoice_no || ""),
             customer_name: String(customer.name || "Customer"),
             total_amount: Number(invoice.total_amount || 0).toFixed(2),
-            invoice_date: new Date(invoice.invoice_date || invoice.createdAt || Date.now()).toLocaleDateString("en-GB")
+            invoice_date: new Date(invoice.invoice_date || invoice.createdAt || Date.now()).toLocaleDateString("en-GB"),
+            quotation_no: String(invoice.invoice_no || ""),
+            quotation_amount: Number(invoice.total_amount || 0).toFixed(2),
+            quotation_date: new Date(invoice.quotation_date || invoice.invoice_date || invoice.createdAt || Date.now()).toLocaleDateString("en-GB")
         };
 
         const templateSetup = currentSetupResolved || inventorySetupResolved || null;
