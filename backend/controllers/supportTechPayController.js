@@ -6,6 +6,9 @@ const InvoiceItem = require("../models/InvoiceItem");
 const Product = require("../models/Product");
 const Customer = require("../models/Customer");
 const SupportTechPay = require("../models/SupportTechPay");
+const Technician = require("../models/Technician");
+const EmailSetup = require("../models/EmailSetup");
+const { sendEmail } = require("../services/emailService");
 const db = require("../config/database");
 
 const Op = Sequelize.Op;
@@ -124,6 +127,32 @@ function parseBase64Pdf(fileDataBase64) {
   }
 
   return { buffer, ext: ".pdf" };
+}
+
+function buildSmtpPayload(setup) {
+  const smtpHost = String(setup?.smtp_host || process.env.SMTP_HOST || "").trim();
+  const smtpPort = Number(setup?.smtp_port || process.env.SMTP_PORT || 587);
+  const smtpSecure = !!(setup?.smtp_secure || String(process.env.SMTP_SECURE || "").toLowerCase() === "true");
+  const smtpUser = String(setup?.smtp_user || process.env.SMTP_USER || "").trim();
+  const smtpPass = String(setup?.smtp_pass || process.env.SMTP_PASS || "").trim();
+  const fromName = String(setup?.from_name || "PULMO TECHNOLOGIES").trim() || "PULMO TECHNOLOGIES";
+  const fromEmail = String(setup?.from_email || smtpUser || process.env.SMTP_FROM || "").trim();
+  const from = fromEmail.includes("<") ? fromEmail : `"${fromName}" <${fromEmail || "noreply@company.com"}>`;
+  return {
+    smtpConfig: {
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      user: smtpUser,
+      pass: smtpPass,
+    },
+    from,
+  };
+}
+
+function hasSmtpConfig(payload) {
+  const cfg = payload?.smtpConfig || {};
+  return !!String(cfg.host || "").trim() && !!String(cfg.user || "").trim() && !!String(cfg.pass || "").trim();
 }
 
 function toPublicImageUrl(relPath) {
@@ -533,6 +562,92 @@ exports.deleteSupportTechPayInvoice = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message || "Failed to delete support technician payment." });
+  }
+};
+
+exports.sendSupportTechPayEmail = async (req, res) => {
+  const invoiceId = Number(req.params.invoiceId);
+  if (!Number.isFinite(invoiceId) || invoiceId <= 0) {
+    return res.status(400).json({ message: "Invalid invoice id." });
+  }
+
+  try {
+    const invoice = await loadInvoiceWithItems(invoiceId);
+    if (!invoice) {
+      return res.status(404).json({ message: "Invoice not found." });
+    }
+
+    const technicianName = String(invoice.support_technician || "").trim();
+    if (!technicianName) {
+      return res.status(400).json({ message: "This invoice has no support technician assigned." });
+    }
+
+    const technician = await Technician.findOne({
+      where: Sequelize.where(
+        Sequelize.fn("LOWER", Sequelize.fn("TRIM", Sequelize.col("technician_name"))),
+        technicianName.toLowerCase()
+      ),
+      order: [["id", "ASC"]],
+    });
+    const recipient = String(technician?.email || "").trim();
+    if (!recipient) {
+      return res.status(404).json({ message: `Technician email not found for "${technicianName}".` });
+    }
+
+    const parsedPdf = parseBase64Pdf(req.body?.attachment_pdf_base64);
+    if (!parsedPdf || !parsedPdf.buffer || !parsedPdf.buffer.length) {
+      return res.status(400).json({ message: "Payment detail PDF attachment is required." });
+    }
+    const signature = parsedPdf.buffer.slice(0, 4).toString("utf8");
+    if (signature !== "%PDF") {
+      return res.status(400).json({ message: "Invalid PDF attachment." });
+    }
+
+    const setup = await EmailSetup.findOne({ order: [["id", "ASC"]] });
+    const smtpPayload = buildSmtpPayload(setup);
+    if (!hasSmtpConfig(smtpPayload)) {
+      return res.status(400).json({ message: "Email setup is incomplete. Please configure Support > Email Setup." });
+    }
+
+    const invoiceNo = String(invoice.invoice_no || `INV-${invoice.id}`).trim();
+    const attachmentNameRaw = String(req.body?.attachment_file_name || "").trim();
+    const attachmentFileName = attachmentNameRaw || `sup-tech-pay-${invoiceNo}.pdf`;
+    const subject = `Support Technician Payment Detail - ${invoiceNo}`;
+    const textBody = [
+      `Dear ${technicianName},`,
+      "",
+      `Please find attached your payment detail for invoice ${invoiceNo}.`,
+      "",
+      "Thank you.",
+      "PULMO TECHNOLOGIES",
+    ].join("\n");
+    const htmlBody = textBody.split("\n").map((line) => line.trim()).join("<br>");
+
+    await sendEmail({
+      to: recipient,
+      subject,
+      text: textBody,
+      html: htmlBody,
+      attachments: [
+        {
+          filename: attachmentFileName.toLowerCase().endsWith(".pdf") ? attachmentFileName : `${attachmentFileName}.pdf`,
+          content: parsedPdf.buffer,
+          contentType: "application/pdf",
+        },
+      ],
+      smtpConfig: smtpPayload.smtpConfig,
+      from: smtpPayload.from,
+    });
+
+    return res.json({
+      message: `Payment detail email sent to ${recipient}.`,
+      recipient,
+      technician_name: technicianName,
+      invoice_no: invoiceNo,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: err.message || "Failed to send support technician payment email." });
   }
 };
 

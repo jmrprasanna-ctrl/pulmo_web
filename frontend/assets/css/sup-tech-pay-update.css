@@ -99,6 +99,18 @@
   background: #ffefed;
 }
 
+.email-btn {
+  color: #0f6abf;
+  border-color: #c6def6;
+  background: #f1f7ff;
+}
+
+.email-btn:hover {
+  color: #0c4f8f;
+  border-color: #9cc6ec;
+  background: #e8f2ff;
+}
+
 .items-section {
   margin-top: 18px;
 }

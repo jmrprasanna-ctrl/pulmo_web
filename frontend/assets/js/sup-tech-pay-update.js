@@ -5,6 +5,7 @@ const updatePageState = {
   supportTechnicianPercentage: 0,
   proofObjectUrl: "",
   hasSavedPayment: false,
+  detail: null,
 };
 
 function fmtCurrency(value) {
@@ -384,6 +385,139 @@ function buildPaymentPayload() {
   };
 }
 
+function buildCurrentPaymentSnapshot() {
+  return {
+    vendor_pay_amount: Number(document.getElementById("vendorPayAmount")?.value || 0),
+    support_tech_pay_amount: Number(document.getElementById("supportTechPayAmount")?.value || 0),
+    payment_method: String(document.getElementById("paymentMethod")?.value || "Cash"),
+    paid_at: String(document.getElementById("paymentDate")?.value || ""),
+    payment_status: updatePageState.hasSavedPayment ? "Paid" : "Pending",
+  };
+}
+
+function generateSupportTechPayDetailPdf() {
+  const jspdfRef = window.jspdf;
+  if (!jspdfRef || !jspdfRef.jsPDF) {
+    throw new Error("PDF library not loaded.");
+  }
+  const { jsPDF } = jspdfRef;
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+
+  const detail = updatePageState.detail || {};
+  const invoice = detail.invoice || {};
+  const items = Array.isArray(detail.items) ? detail.items : [];
+  const paymentSnapshot = buildCurrentPaymentSnapshot();
+
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const left = 40;
+  const right = 555;
+  const rowHeight = 16;
+  let y = 42;
+
+  const ensureSpace = (required = 24) => {
+    if (y + required > pageHeight - 32) {
+      doc.addPage();
+      y = 42;
+    }
+  };
+
+  const writeLine = (label, value) => {
+    ensureSpace(rowHeight + 4);
+    doc.setFont("helvetica", "bold");
+    doc.text(`${label}:`, left, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(String(value || "-"), left + 170, y);
+    y += rowHeight;
+  };
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("Support Technician Payment Detail", left, y);
+  y += 18;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, left, y);
+  y += 20;
+
+  writeLine("Invoice No", invoice.invoice_no || "-");
+  writeLine("Invoice Date", fmtDate(invoice.invoice_date));
+  writeLine("Customer", invoice.customer_name || "-");
+  writeLine("Support Technician", invoice.support_technician || "-");
+  writeLine("Support Technician %", `${Number(invoice.support_technician_percentage || 0).toFixed(2)}%`);
+  writeLine("Invoice Amount", fmtCurrency(invoice.total_amount));
+  writeLine("Vendor Pay Amount", fmtCurrency(paymentSnapshot.vendor_pay_amount));
+  writeLine("Support Tech Pay Amount", fmtCurrency(paymentSnapshot.support_tech_pay_amount));
+  writeLine("Payment Method", paymentSnapshot.payment_method || "-");
+  writeLine("Payment Date", paymentSnapshot.paid_at || "-");
+  writeLine("Payment Status", paymentSnapshot.payment_status || "Pending");
+
+  y += 8;
+  ensureSpace(30);
+  doc.setFont("helvetica", "bold");
+  doc.text("Items", left, y);
+  y += 10;
+  doc.line(left, y, right, y);
+  y += 14;
+  doc.text("Item", left, y);
+  doc.text("Qty", 380, y);
+  doc.text("Sell Rate", 450, y);
+  y += 8;
+  doc.line(left, y, right, y);
+  y += 14;
+
+  doc.setFont("helvetica", "normal");
+  if (!items.length) {
+    doc.text("No items found.", left, y);
+  } else {
+    items.forEach((item) => {
+      ensureSpace(rowHeight + 4);
+      const itemLabel = `${item.product_id || ""} ${item.description || item.model || ""}`.trim() || "-";
+      doc.text(itemLabel.slice(0, 55), left, y);
+      doc.text(String(Number(item.qty || 0)), 380, y);
+      doc.text(fmtCurrency(item.sell_rate), 450, y);
+      y += rowHeight;
+    });
+  }
+
+  const dataUri = doc.output("datauristring");
+  const commaIndex = dataUri.indexOf(",");
+  const base64 = commaIndex === -1 ? "" : dataUri.slice(commaIndex + 1);
+  if (!base64) {
+    throw new Error("Failed to generate payment detail PDF.");
+  }
+  return {
+    base64,
+    fileName: `sup-tech-pay-${String(invoice.invoice_no || updatePageState.invoiceId || "detail")}.pdf`,
+  };
+}
+
+async function onSendPaymentEmail() {
+  const { invoiceId } = updatePageState;
+  if (!invoiceId) return;
+
+  const sendButton = document.getElementById("sendSupTechPayEmailBtn");
+  if (sendButton) sendButton.disabled = true;
+
+  try {
+    const pdf = generateSupportTechPayDetailPdf();
+    const response = await request(`/support-tech-pay/${invoiceId}/send-email`, "POST", {
+      attachment_pdf_base64: `data:application/pdf;base64,${pdf.base64}`,
+      attachment_file_name: pdf.fileName,
+    });
+    if (window.showMessageBox) {
+      showMessageBox(response?.message || "Payment detail email sent successfully.");
+    }
+  } catch (err) {
+    if (window.showMessageBox) {
+      showMessageBox(err.message || "Failed to send payment detail email.", "error");
+    } else {
+      alert(err.message || "Failed to send payment detail email.");
+    }
+  } finally {
+    if (sendButton) sendButton.disabled = false;
+  }
+}
+
 async function onDeletePayment() {
   const { invoiceId, hasSavedPayment } = updatePageState;
   if (!invoiceId) return;
@@ -427,6 +561,7 @@ async function loadSupportTechPayDetail() {
   if (!invoiceId) return;
   try {
     const data = await request(`/support-tech-pay/${invoiceId}`, "GET");
+    updatePageState.detail = data || null;
     renderMeta(data.invoice || {});
     renderItems(data.items || []);
     renderPayment(data.payment || {});
@@ -515,11 +650,13 @@ window.addEventListener("DOMContentLoaded", () => {
   const fileInput = document.getElementById("paymentProofFile");
   const captureButton = document.getElementById("captureProofBtn");
   const deleteButton = document.getElementById("deleteSupTechPayBtn");
+  const sendEmailButton = document.getElementById("sendSupTechPayEmailBtn");
   const vendorPayInput = document.getElementById("vendorPayAmount");
   const form = document.getElementById("supTechPayForm");
 
   captureButton?.addEventListener("click", () => fileInput?.click());
   deleteButton?.addEventListener("click", onDeletePayment);
+  sendEmailButton?.addEventListener("click", onSendPaymentEmail);
   fileInput?.addEventListener("change", onImageSelected);
   vendorPayInput?.addEventListener("input", updatePayableFromVendorInput);
   form?.addEventListener("submit", onSavePayment);

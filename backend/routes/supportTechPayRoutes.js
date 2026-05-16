@@ -28,6 +28,12 @@ router.put(
   roleMiddleware(["admin", "manager", "user"]),
   supportTechPayController.updateSupportTechPayInvoice
 );
+router.post(
+  "/:invoiceId/send-email",
+  authMiddleware,
+  roleMiddleware(["admin", "manager", "user"]),
+  supportTechPayController.sendSupportTechPayEmail
+);
 router.delete(
   "/:invoiceId",
   authMiddleware,
