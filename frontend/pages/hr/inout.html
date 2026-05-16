@@ -11,6 +11,47 @@
 <title>INOUT - PULMO TECHNOLOGIES</title>
 <link rel="stylesheet" href="../../assets/css/style.css">
 <link rel="stylesheet" href="../../assets/css/dashboard.css">
+<style>
+    .main-content .page-head{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:12px;
+        flex-wrap:nowrap;
+        width:100%;
+    }
+    .main-content .page-head h2{
+        margin:0;
+        flex:1 1 auto;
+        min-width:0;
+    }
+    .main-content .page-head .icon-btn{
+        margin-left:auto;
+        flex:0 0 auto;
+    }
+    .inout-grid{
+        display:grid;
+        grid-template-columns:repeat(2,minmax(260px,1fr));
+        gap:12px;
+    }
+    .inout-grid .field label{
+        margin-top:0;
+    }
+    .inout-actions{
+        display:flex;
+        align-items:center;
+        gap:10px;
+        flex-wrap:wrap;
+    }
+    .inout-actions button{
+        margin-top:0;
+    }
+    @media (max-width: 900px){
+        .inout-grid{
+            grid-template-columns:1fr;
+        }
+    }
+</style>
 </head>
 <body>
 <div class="sidebar">
@@ -47,7 +88,7 @@
     </header>
 
     <div class="form-container">
-        <div class="toolbar">
+        <div class="inout-grid">
             <div class="field">
                 <label>User</label>
                 <input type="text" id="inoutUserName" readonly>
@@ -66,7 +107,7 @@
             </div>
         </div>
 
-        <div class="toolbar">
+        <div class="inout-actions">
             <button type="button" id="checkInBtn">Log In</button>
             <button type="button" class="btn-danger" id="checkOutBtn">Time Out</button>
         </div>
