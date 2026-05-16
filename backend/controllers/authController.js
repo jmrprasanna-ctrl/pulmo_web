@@ -28,6 +28,14 @@ function buildAuthEmailFrom(setupRow = {}) {
   return `"${fromName}" <${fromEmail}>`;
 }
 
+function applyTemplate(template, data = {}) {
+  const raw = String(template || "");
+  return raw.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_m, key) => {
+    const value = data[key];
+    return value === undefined || value === null ? "" : String(value);
+  });
+}
+
 function generateTemporaryPassword() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
   let out = "PT-";
@@ -248,10 +256,24 @@ exports.forgotPassword = async (req, res) => {
       user: String(setup.smtp_user || "").trim() || undefined,
       pass: String(setup.smtp_pass || "").trim() || undefined,
     };
-    const subject = "Password Recovery - PULMO TECHNOLOGIES";
-    const textBody = generatedTemporary
-      ? `Dear ${user.username || "User"},\n\nYour email was matched successfully. A temporary password has been generated for your account.\n\nEmail: ${user.email}\nPassword: ${plainPassword}\n\nPlease login and update your password.\n\nPULMO TECHNOLOGIES`
-      : `Dear ${user.username || "User"},\n\nYour email was matched successfully.\n\nEmail: ${user.email}\nPassword: ${plainPassword}\n\nPULMO TECHNOLOGIES`;
+    const templateData = {
+      user_name: String(user.username || "User"),
+      username: String(user.username || "User"),
+      customer_name: String(user.username || "User"),
+      email: String(user.email || ""),
+      password: String(plainPassword || ""),
+      invoice_no: String(plainPassword || ""),
+      total_amount: "",
+      invoice_date: new Date().toISOString().slice(0, 10),
+    };
+    const defaultSubjectTemplate = "Password Recovery - PULMO TECHNOLOGIES";
+    const defaultBodyTemplate = generatedTemporary
+      ? "Dear {{user_name}},\n\nYour email was matched successfully. A temporary password has been generated for your account.\n\nEmail: {{email}}\nPassword: {{password}}\n\nPlease login and update your password.\n\nPULMO TECHNOLOGIES"
+      : "Dear {{user_name}},\n\nYour email was matched successfully.\n\nEmail: {{email}}\nPassword: {{password}}\n\nPULMO TECHNOLOGIES";
+    const subjectTemplate = String(setup.subject_template || "").trim() || defaultSubjectTemplate;
+    const bodyTemplate = String(setup.body_template || "").trim() || defaultBodyTemplate;
+    const subject = applyTemplate(subjectTemplate, templateData) || defaultSubjectTemplate;
+    const textBody = applyTemplate(bodyTemplate, templateData) || applyTemplate(defaultBodyTemplate, templateData);
     const htmlBody = textBody.split("\n").map((line) => line.trim()).join("<br>");
 
     await sendEmail({
