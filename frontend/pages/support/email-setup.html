@@ -119,40 +119,6 @@
             </div>
         </form>
 
-        <hr style="margin:18px 0;border:none;border-top:1px solid #d6e1ef;">
-        <div>
-            <h3 style="margin:0 0 10px;">Email Actions</h3>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
-                <div>
-                    <label for="email_action_type">Action Type</label>
-                    <select id="email_action_type">
-                        <option value="forgot_password">Forgot Password</option>
-                        <option value="quotation">Quotation</option>
-                        <option value="invoice">Invoice</option>
-                        <option value="support_technician">Support Technician</option>
-                        <option value="vendor">Vendor</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="action_to_email">To Email</label>
-                    <input type="email" id="action_to_email" placeholder="receiver@domain.com">
-                </div>
-                <div>
-                    <label for="action_invoice_id">Invoice ID (if needed)</label>
-                    <input type="number" id="action_invoice_id" min="1" placeholder="Required for Support Technician">
-                </div>
-            </div>
-            <div class="path-hint" id="emailActionHint" style="margin-top:8px;">
-                Quotation and Invoice sending is already handled from Invoice page.
-            </div>
-            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;">
-                <button class="icon-btn" type="button" id="sendEmailActionBtn" aria-label="Send selected email action" title="Send selected email action">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M3 11.5 21 3l-8.5 18-2.3-7.2L3 11.5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
     </div>
 </div>
 

@@ -1,12 +1,5 @@
 const EmailSetup = require("../models/EmailSetup");
 const db = require("../config/database");
-const { sendEmail } = require("../services/emailService");
-const Product = require("../models/Product");
-const Vendor = require("../models/Vendor");
-const SupportTechPay = require("../models/SupportTechPay");
-const Invoice = require("../models/Invoice");
-const Customer = require("../models/Customer");
-const authController = require("./authController");
 
 function buildDefaults(mappedProfile = {}){
   const companyName = String(mappedProfile.company_name || "").trim() || "PULMO TECHNOLOGIES";
@@ -88,32 +81,6 @@ function normalizeBody(body = {}, defaults = {}){
       String(defaults.body_template || "").trim() ||
       "Dear {{customer_name}},\n\nPlease find attached your invoice {{invoice_no}}.\n\nThank you.\nPULMO TECHNOLOGIES"
   };
-}
-
-function buildSmtpPayload(setup){
-  const smtpHost = String(setup?.smtp_host || "").trim();
-  const smtpPort = Number(setup?.smtp_port || 587);
-  const smtpSecure = !!setup?.smtp_secure;
-  const smtpUser = String(setup?.smtp_user || "").trim();
-  const smtpPass = String(setup?.smtp_pass || "").trim();
-  const fromName = String(setup?.from_name || "PULMO TECHNOLOGIES").trim() || "PULMO TECHNOLOGIES";
-  const fromEmail = String(setup?.from_email || smtpUser || "").trim();
-  const from = fromEmail ? `"${fromName}" <${fromEmail}>` : `"${fromName}" <noreply@company.com>`;
-  return {
-    smtpConfig: {
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpSecure,
-      user: smtpUser,
-      pass: smtpPass,
-    },
-    from,
-  };
-}
-
-function hasSmtpConfig(payload){
-  const cfg = payload?.smtpConfig || {};
-  return !!String(cfg.host || "").trim() && !!String(cfg.user || "").trim() && !!String(cfg.pass || "").trim();
 }
 
 exports.getEmailSetup = async (req, res) => {
@@ -238,133 +205,5 @@ exports.saveEmailSetup = async (req, res) => {
   }catch(err){
     console.error(err);
     res.status(500).json({ message: err.message || "Failed to save email setup." });
-  }
-};
-
-exports.sendEmailAction = async (req, res) => {
-  const actionType = String(req.body?.action_type || "").trim().toLowerCase();
-  const toEmail = String(req.body?.to_email || "").trim();
-  const invoiceId = Number(req.body?.invoice_id || 0);
-  if(!actionType){
-    return res.status(400).json({ message: "Action type is required." });
-  }
-  if(!toEmail){
-    return res.status(400).json({ message: "Recipient email is required." });
-  }
-
-  try{
-    const mappedProfile = await resolveMappedProfile(req);
-    const defaults = buildDefaults(mappedProfile);
-    let row = await EmailSetup.findOne({ order: [["id", "ASC"]] });
-    if(!row){
-      row = await EmailSetup.create({
-        smtp_user: defaults.smtp_user,
-        from_name: defaults.from_name,
-        from_email: defaults.from_email,
-        subject_template: defaults.subject_template,
-        body_template: defaults.body_template
-      });
-    }
-    const setup = applyMappedCompanyBranding(row.toJSON(), mappedProfile);
-    const smtpPayload = buildSmtpPayload(setup);
-    if(!hasSmtpConfig(smtpPayload)){
-      return res.status(400).json({ message: "Email setup is incomplete. Please configure SMTP first." });
-    }
-
-    if(actionType === "invoice" || actionType === "quotation"){
-      return res.status(400).json({
-        message: "Invoice/Quotation email is already available from the Invoice page send-email action."
-      });
-    }
-
-    if(actionType === "support_technician"){
-      if(!Number.isFinite(invoiceId) || invoiceId <= 0){
-        return res.status(400).json({ message: "Invoice ID is required for Support Technician email." });
-      }
-      const invoice = await Invoice.findByPk(invoiceId, {
-        include: [{ model: Customer, attributes: ["id", "name"] }]
-      });
-      if(!invoice){
-        return res.status(404).json({ message: "Invoice not found." });
-      }
-      const payment = await SupportTechPay.findOne({ where: { invoice_id: invoiceId } });
-      if(!payment){
-        return res.status(404).json({ message: "Support technician payment record not found for this invoice." });
-      }
-      const csv = [
-        "Invoice No,Invoice Date,Customer,Support Technician,Total Amount,Vendor Pay,Support Tech Pay,Payment Method,Payment Status,Paid At",
-        [
-          String(invoice.invoice_no || ""),
-          String(invoice.invoice_date || "").slice(0, 10),
-          String(invoice.Customer?.name || ""),
-          String(invoice.support_technician || ""),
-          Number(invoice.total_amount || 0).toFixed(2),
-          Number(payment.vendor_pay_amount || 0).toFixed(2),
-          Number(payment.support_tech_pay_amount || 0).toFixed(2),
-          String(payment.payment_method || ""),
-          String(payment.payment_status || ""),
-          String(payment.paid_at || "").slice(0, 10)
-        ].map((x) => `"${String(x).replace(/"/g, '""')}"`).join(",")
-      ].join("\n");
-
-      await sendEmail({
-        to: toEmail,
-        subject: `Support Technician Payment Detail - ${invoice.invoice_no || "Invoice"}`,
-        text: `Please find attached support technician payment detail for invoice ${invoice.invoice_no || invoiceId}.`,
-        html: `Please find attached support technician payment detail for invoice <b>${String(invoice.invoice_no || invoiceId)}</b>.`,
-        attachments: [{
-          filename: `support_technician_payment_${String(invoice.invoice_no || invoiceId)}.csv`,
-          content: Buffer.from(csv, "utf8"),
-          contentType: "text/csv"
-        }],
-        smtpConfig: smtpPayload.smtpConfig,
-        from: smtpPayload.from
-      });
-
-      return res.json({ message: "Support technician payment detail email sent." });
-    }
-
-    if(actionType === "vendor"){
-      const rows = await Product.findAll({
-        include: [{ model: Vendor, attributes: ["id", "name"] }],
-        order: [["id", "ASC"]]
-      });
-      const lowStockRows = (rows || []).filter((row) => Number(row.count || 0) <= 1);
-      if(!lowStockRows.length){
-        return res.status(400).json({ message: "No stock items with count <= 1 found." });
-      }
-      const csvLines = [
-        "Product ID,Description,Model,Vendor,Stock Count,Category ID"
-      ];
-      lowStockRows.forEach((row) => {
-        csvLines.push([
-          String(row.product_id || ""),
-          String(row.description || ""),
-          String(row.model || ""),
-          String(row.Vendor?.name || ""),
-          String(Number(row.count || 0)),
-          String(row.category_id || "")
-        ].map((x) => `"${String(x).replace(/"/g, '""')}"`).join(","));
-      });
-      await sendEmail({
-        to: toEmail,
-        subject: "Vendor Stock Report - Items With Stock <= 1",
-        text: "Please find attached low stock report (stock count <= 1).",
-        html: "Please find attached low stock report (stock count <= 1).",
-        attachments: [{
-          filename: "vendor_stock_report_count_lte_1.csv",
-          content: Buffer.from(csvLines.join("\n"), "utf8"),
-          contentType: "text/csv"
-        }],
-        smtpConfig: smtpPayload.smtpConfig,
-        from: smtpPayload.from
-      });
-      return res.json({ message: "Vendor stock report email sent." });
-    }
-
-    return res.status(400).json({ message: "Unsupported action type." });
-  }catch(err){
-    console.error(err);
-    return res.status(500).json({ message: err.message || "Failed to send action email." });
   }
 };

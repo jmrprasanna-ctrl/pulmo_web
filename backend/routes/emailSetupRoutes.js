@@ -6,6 +6,5 @@ const roleMiddleware = require("../middleware/roleMiddleware");
 
 router.get("/", authMiddleware, roleMiddleware(["admin", "manager", "user"]), emailSetupController.getEmailSetup);
 router.post("/", authMiddleware, roleMiddleware(["admin", "manager", "user"]), emailSetupController.saveEmailSetup);
-router.post("/send-action", authMiddleware, roleMiddleware(["admin", "manager", "user"]), emailSetupController.sendEmailAction);
 
 module.exports = router;
