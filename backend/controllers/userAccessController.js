@@ -159,12 +159,17 @@ const ACCESS_MODULE_OPTIONS = [
     items: [
       { path: "/reports/sales-report.html", label: "Sales Report", actions: ["view"] },
       { path: "/analytics/sales-chart.html", label: "Sales Chart", actions: ["view"] },
+      { path: "/stock/stock.html", label: "Stock", actions: ["view", "edit"] },
+    ],
+  },
+  {
+    module: "Finance",
+    items: [
       { path: "/finance/finance.html", label: "Finance", actions: ["view"] },
       { path: "/finance/payments.html", label: "Payments", actions: ["view"] },
       { path: "/finance/pendings.html", label: "Pendings", actions: ["view"] },
       { path: "/finance/sup-tech-pay.html", label: "Sup.Tech Pay", actions: ["view"] },
       { path: "/finance/sup-tech-pay-update.html", label: "Sup.Tech Pay Update", actions: ["view", "edit"] },
-      { path: "/stock/stock.html", label: "Stock", actions: ["view", "edit"] },
     ],
   },
   {
