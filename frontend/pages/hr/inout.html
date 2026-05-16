@@ -1,0 +1,103 @@
+<!--
+  System: PULMO WEB SYSTEM
+  Owner : CRONIT SOLLUTIONS
+  Author: JMR Prasanna
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INOUT - PULMO TECHNOLOGIES</title>
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="../../assets/css/dashboard.css">
+</head>
+<body>
+<div class="sidebar">
+    <div class="logo">
+        <img src="../../assets/images/logo.png" alt="Company Logo">
+        <span>PULMO TECHNOLOGIES</span>
+    </div>
+    <ul class="nav-links">
+        <li><a href="../dashboard.html">Dashboard</a></li>
+        <li><a href="../products/product-list.html">Products</a></li>
+        <li><a href="../products/general-machine.html">Machines</a></li>
+        <li><a href="../customers/customer-list.html">Customers</a></li>
+        <li><a href="../invoices/invoice-list.html">Invoices</a></li>
+        <li><a href="../vendors/list-vendor.html">Vendors</a></li>
+        <li><a href="../expenses/expense-list.html">Expenses</a></li>
+        <li><a href="../reports/sales-report.html">Reports</a></li>
+        <li><a href="../analytics/sales-chart.html">Analytics</a></li>
+        <li><a href="../finance/finance.html">Finance</a></li>
+        <li><a href="../support/support.html">Support</a></li>
+        <li><a href="../stock/stock.html">Stock</a></li>
+        <li><a href="inout.html">INOUT</a></li>
+        <li><a href="time-sheet.html">Time Sheet</a></li>
+    </ul>
+</div>
+
+<div class="main-content">
+    <header class="page-head">
+        <h2>INOUT</h2>
+        <a class="icon-btn" href="../dashboard.html" aria-label="Back to dashboard" title="Back to dashboard">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+    </header>
+
+    <div class="form-container">
+        <div class="toolbar">
+            <div class="field">
+                <label>User</label>
+                <input type="text" id="inoutUserName" readonly>
+            </div>
+            <div class="field">
+                <label>Status</label>
+                <input type="text" id="inoutStatus" readonly>
+            </div>
+            <div class="field">
+                <label>Last In</label>
+                <input type="text" id="lastCheckInAt" readonly>
+            </div>
+            <div class="field">
+                <label>Last Out</label>
+                <input type="text" id="lastCheckOutAt" readonly>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <button type="button" class="icon-btn" id="checkInBtn" aria-label="Check In" title="Check In">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m4 12 6 6 10-12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <button type="button" class="icon-btn btn-danger" id="checkOutBtn" aria-label="Time Out" title="Time Out">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
+        </div>
+        <div class="path-hint" id="gpsHint">Location: Waiting for action...</div>
+
+        <h3 style="margin-top:14px;">This Month Log</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Check In</th>
+                    <th>In GPS</th>
+                    <th>Check Out</th>
+                    <th>Out GPS</th>
+                    <th>Minutes</th>
+                </tr>
+            </thead>
+            <tbody id="inoutMonthBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script src="../../assets/js/api.js"></script>
+<script src="../../assets/js/hr-inout.js"></script>
+</body>
+</html>

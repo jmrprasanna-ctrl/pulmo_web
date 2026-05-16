@@ -1,0 +1,89 @@
+<!--
+  System: PULMO WEB SYSTEM
+  Owner : CRONIT SOLLUTIONS
+  Author: JMR Prasanna
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Time Sheet - PULMO TECHNOLOGIES</title>
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="../../assets/css/dashboard.css">
+</head>
+<body>
+<div class="sidebar">
+    <div class="logo">
+        <img src="../../assets/images/logo.png" alt="Company Logo">
+        <span>PULMO TECHNOLOGIES</span>
+    </div>
+    <ul class="nav-links">
+        <li><a href="../dashboard.html">Dashboard</a></li>
+        <li><a href="../products/product-list.html">Products</a></li>
+        <li><a href="../products/general-machine.html">Machines</a></li>
+        <li><a href="../customers/customer-list.html">Customers</a></li>
+        <li><a href="../invoices/invoice-list.html">Invoices</a></li>
+        <li><a href="../vendors/list-vendor.html">Vendors</a></li>
+        <li><a href="../expenses/expense-list.html">Expenses</a></li>
+        <li><a href="../reports/sales-report.html">Reports</a></li>
+        <li><a href="../analytics/sales-chart.html">Analytics</a></li>
+        <li><a href="../finance/finance.html">Finance</a></li>
+        <li><a href="../support/support.html">Support</a></li>
+        <li><a href="../stock/stock.html">Stock</a></li>
+        <li><a href="inout.html">INOUT</a></li>
+        <li><a href="time-sheet.html">Time Sheet</a></li>
+    </ul>
+</div>
+
+<div class="main-content">
+    <header class="page-head">
+        <h2>Time Sheet</h2>
+        <a class="icon-btn" href="../dashboard.html" aria-label="Back to dashboard" title="Back to dashboard">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+    </header>
+
+    <div class="form-container">
+        <div class="toolbar">
+            <div class="field">
+                <label for="tsMonth">Month</label>
+                <input type="month" id="tsMonth">
+            </div>
+            <div class="field">
+                <label for="tsUserFilter">User</label>
+                <select id="tsUserFilter">
+                    <option value="">All Users</option>
+                </select>
+            </div>
+            <button type="button" class="icon-btn" id="tsLoadBtn" aria-label="Load timesheet" title="Load timesheet">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Role</th>
+                    <th>Check In</th>
+                    <th>In GPS</th>
+                    <th>Check Out</th>
+                    <th>Out GPS</th>
+                    <th>Minutes</th>
+                </tr>
+            </thead>
+            <tbody id="tsBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script src="../../assets/js/api.js"></script>
+<script src="../../assets/js/hr-timesheet.js"></script>
+</body>
+</html>

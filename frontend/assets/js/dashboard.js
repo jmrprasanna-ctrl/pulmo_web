@@ -260,6 +260,14 @@ const DASHBOARD_MENU_ENTRIES = [
     { path: "/support/support.html", label: "Support" },
     { path: "/stock/stock.html", label: "Stock" },
     {
+        path: "/hr/inout.html",
+        label: "HR",
+        children: [
+            { path: "/hr/inout.html", label: "INOUT" },
+            { path: "/hr/time-sheet.html", label: "Time Sheet" }
+        ]
+    },
+    {
         path: "/users/user-list.html",
         label: "System",
         children: [

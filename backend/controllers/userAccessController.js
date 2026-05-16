@@ -173,6 +173,13 @@ const ACCESS_MODULE_OPTIONS = [
     ],
   },
   {
+    module: "HR",
+    items: [
+      { path: "/hr/inout.html", label: "INOUT", actions: ["view", "add", "edit"] },
+      { path: "/hr/time-sheet.html", label: "Time Sheet", actions: ["view"] },
+    ],
+  },
+  {
     module: "Communication",
     items: [
       { path: "/messages/messages.html", label: "Messages", actions: ["view", "add", "delete"] },
