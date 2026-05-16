@@ -12,10 +12,6 @@ function gpsLabel(lat, lng) {
   return `${nLat.toFixed(6)}, ${nLng.toFixed(6)}`;
 }
 
-function monthStart() {
-  return new Date().toISOString().slice(0, 7);
-}
-
 async function getGpsPayload() {
   const hint = document.getElementById("gpsHint");
   if (!navigator.geolocation) {
@@ -56,31 +52,9 @@ function renderStatusCard(latest, isCheckedIn) {
   if (checkOutBtn) checkOutBtn.disabled = !isCheckedIn;
 }
 
-function renderMonthRows(rows) {
-  const body = document.getElementById("inoutMonthBody");
-  if (!body) return;
-  const list = Array.isArray(rows) ? rows : [];
-  if (!list.length) {
-    body.innerHTML = `<tr><td colspan="6" style="text-align:center;">No logs found for this month.</td></tr>`;
-    return;
-  }
-  body.innerHTML = list.map((row) => `
-    <tr>
-      <td>${fmtDateTime(row.check_in_at).split(",")[0] || "-"}</td>
-      <td>${fmtDateTime(row.check_in_at)}</td>
-      <td>${gpsLabel(row.check_in_lat, row.check_in_lng)}</td>
-      <td>${fmtDateTime(row.check_out_at)}</td>
-      <td>${gpsLabel(row.check_out_lat, row.check_out_lng)}</td>
-      <td>${row.duration_minutes == null ? "-" : Number(row.duration_minutes).toFixed(2)}</td>
-    </tr>
-  `).join("");
-}
-
 async function loadInOutState() {
   const status = await request("/hr/inout/status", "GET");
   renderStatusCard(status?.latest || null, !!status?.is_checked_in);
-  const ts = await request(`/hr/timesheet/monthly?month=${encodeURIComponent(monthStart())}`, "GET");
-  renderMonthRows(ts?.rows || []);
 }
 
 async function performCheckInOut(mode) {
