@@ -133,6 +133,27 @@ exports.checkIn = async (req, res) => {
       });
     }
 
+    const todayRs = await db.query(
+      `SELECT id, check_in_at, check_out_at
+       FROM user_inout_logs
+       WHERE user_id = $1
+         AND DATE(check_in_at) = CURRENT_DATE
+       ORDER BY check_in_at DESC, id DESC
+       LIMIT 1`,
+      { bind: [userId] }
+    );
+    const todayRows = Array.isArray(todayRs?.[0]) ? todayRs[0] : [];
+    if (todayRows.length) {
+      if (todayRows[0].check_out_at) {
+        return res.status(400).json({
+          message: "Today Time In and Time Out already saved.",
+        });
+      }
+      return res.status(400).json({
+        message: `Today Time In already saved at ${new Date(todayRows[0].check_in_at).toLocaleString()}.`,
+      });
+    }
+
     const lat = toNullableFloat(req.body?.lat);
     const lng = toNullableFloat(req.body?.lng);
     const accuracy = toNullableFloat(req.body?.accuracy);
@@ -166,17 +187,23 @@ exports.checkOut = async (req, res) => {
 
   try {
     await ensureInOutLogTable();
-    const openRs = await db.query(
-      `SELECT id
+    const todayRs = await db.query(
+      `SELECT id, check_in_at, check_out_at
        FROM user_inout_logs
-       WHERE user_id = $1 AND check_out_at IS NULL
+       WHERE user_id = $1
+         AND DATE(check_in_at) = CURRENT_DATE
        ORDER BY check_in_at DESC, id DESC
        LIMIT 1`,
       { bind: [userId] }
     );
-    const openRows = Array.isArray(openRs?.[0]) ? openRs[0] : [];
-    if (!openRows.length) {
-      return res.status(400).json({ message: "No open Check In found. Please Check In first." });
+    const todayRows = Array.isArray(todayRs?.[0]) ? todayRs[0] : [];
+    if (!todayRows.length) {
+      return res.status(400).json({ message: "No Time In found for today." });
+    }
+    if (todayRows[0].check_out_at) {
+      return res.status(400).json({
+        message: `Today Time Out already saved at ${new Date(todayRows[0].check_out_at).toLocaleString()}.`,
+      });
     }
 
     const lat = toNullableFloat(req.body?.lat);
@@ -196,7 +223,7 @@ exports.checkOut = async (req, res) => {
        WHERE id = $1
        RETURNING id, user_id, username, role, check_in_at, check_in_lat, check_in_lng, check_in_accuracy, check_in_location_label,
                  check_out_at, check_out_lat, check_out_lng, check_out_accuracy, check_out_location_label`,
-      { bind: [Number(openRows[0].id || 0), lat, lng, accuracy, locationLabel] }
+      { bind: [Number(todayRows[0].id || 0), lat, lng, accuracy, locationLabel] }
     );
     const rows = Array.isArray(updateRs?.[0]) ? updateRs[0] : [];
     return res.json({
