@@ -52,6 +52,8 @@ async function loadDashboardProfileName(){
     };
 
     const userId = Number(localStorage.getItem("userId") || 0);
+    const normalizedStoredName = String(storedName || "").trim().toLowerCase();
+    const normalizedStoredEmail = String(storedEmail || "").trim().toLowerCase();
     try{
         if(Number.isFinite(userId) && userId > 0){
             const profile = await request(`/users/profiles/${userId}`,"GET");
@@ -64,12 +66,33 @@ async function loadDashboardProfileName(){
         }
 
         const profiles = await request("/users/profiles","GET");
-        const firstProfile = Array.isArray(profiles) ? profiles[0] : profiles;
-        const fallbackName = pickProfileDisplayName(firstProfile);
-        if(fallbackName.length >= 2){
-            localStorage.setItem("profileName", fallbackName);
-            applyDashboardIdentity(fallbackName);
+        const rows = Array.isArray(profiles) ? profiles : [];
+        const matched = rows.find((row) => {
+            const rowUserId = Number(row?.user_id || 0);
+            if(Number.isFinite(userId) && userId > 0 && rowUserId === userId){
+                return true;
+            }
+            const rowLoginUser = String(row?.login_user || "").trim().toLowerCase();
+            const rowEmail = String(row?.email || "").trim().toLowerCase();
+            if(normalizedStoredName && rowLoginUser && rowLoginUser === normalizedStoredName){
+                return true;
+            }
+            if(normalizedStoredEmail && rowEmail && rowEmail === normalizedStoredEmail){
+                return true;
+            }
+            return false;
+        });
+
+        if(matched){
+            const fallbackName = pickProfileDisplayName(matched);
+            if(fallbackName.length >= 2){
+                localStorage.setItem("profileName", fallbackName);
+                applyDashboardIdentity(fallbackName);
+                return;
+            }
         }
+
+        applyDashboardIdentity(resolveDashboardDisplayName("", storedName, storedEmail, storedRole));
     }catch(_err){
     }
 }
