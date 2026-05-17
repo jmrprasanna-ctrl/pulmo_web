@@ -750,20 +750,20 @@ body {
   .topbar-attendance {
     gap: 6px;
     position: absolute;
-    top: 96px;
-    right: 44px;
+    top: 68px;
+    right: 40px;
     z-index: 3;
   }
 
   .attendance-btn {
-    width: 72px;
-    min-width: 72px;
-    height: 30px;
-    min-height: 30px;
+    width: 66px;
+    min-width: 66px;
+    height: 28px;
+    min-height: 28px;
     border-radius: 7px;
-    font-size: 0.68rem;
+    font-size: 0.64rem;
     font-weight: 700;
-    padding: 0 6px;
+    padding: 0 5px;
   }
 
   .user-chip {
