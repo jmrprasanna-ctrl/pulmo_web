@@ -157,8 +157,9 @@ body {
 
 .topbar-left .welcome-name {
   display: inline-block;
+  flex: 1 1 auto;
   min-width: 0;
-  max-width: 100%;
+  max-width: none;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -627,7 +628,7 @@ body {
   .topbar-left {
     width: 100%;
     min-width: 0;
-    padding-right: 84px;
+    padding-right: 72px;
   }
 
   .topbar-left .welcome-line {
@@ -636,8 +637,8 @@ body {
   }
 
   .topbar-left .welcome-name {
-    min-width: 1.5ch;
-    max-width: 100%;
+    min-width: 0;
+    max-width: none;
     text-overflow: ellipsis;
   }
 
