@@ -627,7 +627,7 @@ body {
   .topbar-left {
     width: 100%;
     min-width: 0;
-    padding-right: 96px;
+    padding-right: 84px;
   }
 
   .topbar-left .welcome-line {
@@ -637,8 +637,8 @@ body {
 
   .topbar-left .welcome-name {
     min-width: 1.5ch;
-    max-width: calc(100% - 74px);
-    text-overflow: clip;
+    max-width: 100%;
+    text-overflow: ellipsis;
   }
 
   .topbar-right {
