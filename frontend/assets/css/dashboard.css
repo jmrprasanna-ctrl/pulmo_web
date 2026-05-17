@@ -745,19 +745,24 @@ body {
     overflow-y: visible;
     -webkit-overflow-scrolling: touch;
     gap: 6px;
+    position: relative;
   }
 
   .topbar-attendance {
-    gap: 6px;
+    gap: 8px;
+    position: absolute;
+    top: -58px;
+    right: 52px;
+    z-index: 3;
   }
 
   .attendance-btn {
-    width: 74px;
-    min-width: 74px;
-    height: 32px;
-    min-height: 32px;
-    border-radius: 10px;
-    font-size: 0.74rem;
+    width: 92px;
+    min-width: 92px;
+    height: 36px;
+    min-height: 36px;
+    border-radius: 9px;
+    font-size: 0.78rem;
   }
 
   .user-chip {
