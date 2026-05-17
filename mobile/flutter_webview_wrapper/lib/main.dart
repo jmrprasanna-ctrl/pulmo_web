@@ -19,7 +19,7 @@ class PulmoWebMobileApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Pulmo Web Mobile',
+      title: 'AXIS CMS PULMO',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0F6ABF)),
@@ -143,7 +143,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Pulmo Web Mobile'),
+          title: const Text('AXIS CMS PULMO'),
           actions: [
             IconButton(
               tooltip: 'Refresh',
