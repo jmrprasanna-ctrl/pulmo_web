@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
-        android:label="Pulmo Web Mobile"
+        android:label="AXIS CMS PULMO"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
@@ -48,3 +48,4 @@
         </intent>
     </queries>
 </manifest>
+
