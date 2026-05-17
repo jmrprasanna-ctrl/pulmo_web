@@ -737,6 +737,13 @@ body {
     padding-right: 66px;
   }
 
+  .topbar-left p {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: 162px;
+  }
+
   .topbar-right {
     width: 100%;
     justify-content: flex-start;
@@ -853,7 +860,7 @@ body {
   }
 
   .cards {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .health-grid {
