@@ -408,8 +408,9 @@ body {
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(4, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(185px, 230px));
   gap: 14px;
+  justify-content: start;
 }
 
 .cards.cards-access-pending .card {
@@ -624,7 +625,7 @@ body {
 
 @media (max-width: 1200px) {
   .cards {
-    grid-template-columns: repeat(3, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(175px, 215px));
   }
 
   .health-grid {
@@ -648,7 +649,8 @@ body {
   }
 
   .cards {
-    grid-template-columns: repeat(2, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    justify-content: stretch;
   }
 
   .health-grid {
