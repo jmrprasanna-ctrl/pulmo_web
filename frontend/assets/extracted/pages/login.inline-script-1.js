@@ -102,6 +102,13 @@ const loginBtn = document.getElementById("loginBtn");
 if(loginBtn){
     loginBtn.addEventListener("click", login);
 }
+const loginForm = document.getElementById("loginForm");
+if(loginForm){
+    loginForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        login();
+    });
+}
 const forgotPasswordLink = document.getElementById("forgotPasswordLink");
 if(forgotPasswordLink){
     forgotPasswordLink.addEventListener("click", (e) => {
@@ -119,6 +126,7 @@ if(passwordToggle){
     el.addEventListener("keydown", (e) => {
         if(e.key === "Enter"){
             e.preventDefault();
+            login();
         }
     });
 });
