@@ -3,7 +3,15 @@ const storedRole = localStorage.getItem("role") || "";
 const storedEmail = localStorage.getItem("userEmail") || "";
 const storedName = localStorage.getItem("userName") || "";
 const storedProfileName = localStorage.getItem("profileName") || "";
-let displayName = storedProfileName || storedName || storedEmail || storedRole || "User";
+function resolveDashboardDisplayName(profileName, userName, userEmail, userRole){
+    const cleanProfile = String(profileName || "").trim();
+    if(cleanProfile.length >= 2){
+        return cleanProfile;
+    }
+    return String(userName || userEmail || userRole || "User").trim() || "User";
+}
+
+let displayName = resolveDashboardDisplayName(storedProfileName, storedName, storedEmail, storedRole);
 const accountName = storedName || storedEmail || storedRole || "User";
 
 const roleEl = document.getElementById("userRole");
@@ -19,7 +27,10 @@ if (initialEl) {
 }
 
 function applyDashboardIdentity(name){
-    const safeName = String(name || "").trim() || displayName || "User";
+    const incoming = String(name || "").trim();
+    const safeName = incoming.length >= 2
+        ? incoming
+        : resolveDashboardDisplayName("", storedName, storedEmail, storedRole);
     displayName = safeName;
     const welcomeEl = document.getElementById("userRole");
     if(welcomeEl) welcomeEl.innerText = safeName;
@@ -31,7 +42,7 @@ async function loadDashboardProfileName(){
     try{
         const profile = await request(`/users/profiles/${userId}`,"GET");
         const profileName = String(profile?.profile_name || "").trim();
-        if(profileName){
+        if(profileName.length >= 2){
             localStorage.setItem("profileName", profileName);
             applyDashboardIdentity(profileName);
         }

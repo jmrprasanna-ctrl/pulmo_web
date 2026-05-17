@@ -629,7 +629,7 @@ body {
   .topbar-attendance {
     gap: 6px;
     position: absolute;
-    top: 58px;
+    top: 52px;
     right: 36px;
     z-index: 3;
   }
