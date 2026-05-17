@@ -65,6 +65,9 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
               _errorText = '';
             });
           },
+          onPageFinished: (String url) {
+            _enhanceLoginAutofill(url);
+          },
           onWebResourceError: (WebResourceError error) {
             if (error.isForMainFrame ?? true) {
               setState(() {
@@ -98,6 +101,55 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     }
 
     _controller = controller;
+  }
+
+  bool _isLoginPageUrl(String url) {
+    final String lower = url.toLowerCase();
+    return lower.contains('/pages/login.html') || lower.endsWith('/login.html');
+  }
+
+  Future<void> _enhanceLoginAutofill(String url) async {
+    if (!_isLoginPageUrl(url)) return;
+    const String js = '''
+      (function () {
+        try {
+          var form = document.getElementById('loginForm');
+          var user = document.getElementById('User') || document.getElementById('user') || document.getElementById('email');
+          var pass = document.getElementById('password');
+          var loginBtn = document.getElementById('loginBtn');
+
+          if (form) {
+            form.setAttribute('method', 'post');
+            form.setAttribute('autocomplete', 'on');
+          }
+          if (user) {
+            user.setAttribute('name', user.getAttribute('name') || 'username');
+            user.setAttribute('autocomplete', 'username');
+            user.setAttribute('autocapitalize', 'none');
+            user.setAttribute('autocorrect', 'off');
+            user.setAttribute('spellcheck', 'false');
+          }
+          if (pass) {
+            pass.setAttribute('name', pass.getAttribute('name') || 'password');
+            pass.setAttribute('autocomplete', 'current-password');
+          }
+          if (loginBtn && loginBtn.tagName === 'BUTTON') {
+            loginBtn.setAttribute('type', 'submit');
+          }
+
+          if (user) {
+            window.setTimeout(function () {
+              try { user.focus(); } catch (_) {}
+            }, 120);
+          }
+        } catch (_) {}
+      })();
+    ''';
+    try {
+      await _controller.runJavaScript(js);
+    } catch (_) {
+      // Keep app stable even if injected script fails on some pages.
+    }
   }
 
   Future<void> _reload() async {
