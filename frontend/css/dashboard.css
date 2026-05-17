@@ -143,6 +143,27 @@ body {
   margin: 0 0 2px;
 }
 
+.topbar-left .welcome-line {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.topbar-left .welcome-prefix {
+  flex: 0 0 auto;
+}
+
+.topbar-left .welcome-name {
+  display: inline-block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .topbar-right {
   display: flex;
   align-items: center;
@@ -609,14 +630,9 @@ body {
     padding-right: 0;
   }
 
-  .topbar-left p {
-    display: block;
-    width: 100%;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding-right: 166px;
-    margin: -4px 0 0;
+  .topbar-left .welcome-line {
+    max-width: calc(100% - 164px);
+    margin-top: -2px;
   }
 
   .topbar-right {
@@ -627,13 +643,13 @@ body {
     overflow-y: visible;
     -webkit-overflow-scrolling: touch;
     gap: 6px;
-    margin-top: 20px;
+    margin-top: 22px;
   }
 
   .topbar-attendance {
     gap: 6px;
     position: absolute;
-    top: 68px;
+    top: 60px;
     right: 36px;
     z-index: 3;
   }
