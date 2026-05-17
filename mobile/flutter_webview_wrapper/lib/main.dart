@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
@@ -8,6 +11,9 @@ const String kWebAppUrl = String.fromEnvironment(
   'WEB_APP_URL',
   defaultValue: 'http://54.242.44.172/pages/login.html',
 );
+const String _credentialsChannelName = 'AxisCredentialsBridge';
+const String _usernameStorageKey = 'axis_saved_username';
+const String _passwordStorageKey = 'axis_saved_password';
 
 void main() {
   runApp(const PulmoWebMobileApp());
@@ -38,20 +44,36 @@ class WebWrapperPage extends StatefulWidget {
 }
 
 class _WebWrapperPageState extends State<WebWrapperPage> {
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+
   late final WebViewController _controller;
   late final Uri _startUri;
+  Future<void>? _credentialsLoadFuture;
 
   int _loadingProgress = 0;
   bool _hasMainFrameError = false;
   String _errorText = '';
+  String _savedUsername = '';
+  String _savedPassword = '';
+  String _pendingUsername = '';
+  String _pendingPassword = '';
 
   @override
   void initState() {
     super.initState();
     _startUri = Uri.tryParse(kWebAppUrl) ?? Uri.parse('about:blank');
+    _credentialsLoadFuture = _loadSavedCredentials();
 
     final WebViewController controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..addJavaScriptChannel(
+        _credentialsChannelName,
+        onMessageReceived: (JavaScriptMessage message) {
+          _handleCredentialsBridgeMessage(message.message);
+        },
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
@@ -66,7 +88,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
             });
           },
           onPageFinished: (String url) {
-            _enhanceLoginAutofill(url);
+            _handlePageFinished(url);
           },
           onWebResourceError: (WebResourceError error) {
             if (error.isForMainFrame ?? true) {
@@ -108,15 +130,77 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     return lower.contains('/pages/login.html') || lower.endsWith('/login.html');
   }
 
+  bool _isDashboardPageUrl(String url) {
+    final String lower = url.toLowerCase();
+    return lower.contains('/pages/dashboard.html') ||
+        lower.endsWith('/dashboard.html');
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    try {
+      _savedUsername = (await _secureStorage.read(key: _usernameStorageKey) ?? '')
+          .trim();
+      _savedPassword =
+          await _secureStorage.read(key: _passwordStorageKey) ?? '';
+    } catch (_) {
+      _savedUsername = '';
+      _savedPassword = '';
+    }
+  }
+
+  Future<void> _saveCredentials(String username, String password) async {
+    final String cleanUsername = username.trim();
+    if (cleanUsername.isEmpty || password.isEmpty) return;
+    try {
+      await _secureStorage.write(key: _usernameStorageKey, value: cleanUsername);
+      await _secureStorage.write(key: _passwordStorageKey, value: password);
+      _savedUsername = cleanUsername;
+      _savedPassword = password;
+    } catch (_) {
+      // Ignore storage errors to keep login flow stable.
+    }
+  }
+
+  void _handleCredentialsBridgeMessage(String rawMessage) {
+    try {
+      final dynamic payload = jsonDecode(rawMessage);
+      if (payload is! Map) return;
+      final String username = String(payload['username'] ?? '').trim();
+      final String password = String(payload['password'] ?? '');
+      if (username.isEmpty || password.isEmpty) return;
+      _pendingUsername = username;
+      _pendingPassword = password;
+    } catch (_) {
+      // Ignore malformed bridge messages.
+    }
+  }
+
+  Future<void> _handlePageFinished(String url) async {
+    if (_isDashboardPageUrl(url) &&
+        _pendingUsername.isNotEmpty &&
+        _pendingPassword.isNotEmpty) {
+      await _saveCredentials(_pendingUsername, _pendingPassword);
+      _pendingUsername = '';
+      _pendingPassword = '';
+    }
+    await _enhanceLoginAutofill(url);
+  }
+
   Future<void> _enhanceLoginAutofill(String url) async {
     if (!_isLoginPageUrl(url)) return;
-    const String js = '''
+    await (_credentialsLoadFuture ?? Future<void>.value());
+    final String savedUserJs = jsonEncode(_savedUsername);
+    final String savedPasswordJs = jsonEncode(_savedPassword);
+    final String js = '''
       (function () {
         try {
+          var savedUser = $savedUserJs;
+          var savedPassword = $savedPasswordJs;
           var form = document.getElementById('loginForm');
           var user = document.getElementById('User') || document.getElementById('user') || document.getElementById('email');
           var pass = document.getElementById('password');
           var loginBtn = document.getElementById('loginBtn');
+          var credentialBridge = window.$_credentialsChannelName;
 
           if (form) {
             form.setAttribute('method', 'post');
@@ -137,8 +221,54 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
             loginBtn.setAttribute('type', 'submit');
           }
 
+          var syncFilledValues = function () {
+            if (user && savedUser && !String(user.value || '').trim()) {
+              user.value = savedUser;
+              user.dispatchEvent(new Event('input', { bubbles: true }));
+              user.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            if (pass && savedPassword && !String(pass.value || '')) {
+              pass.value = savedPassword;
+              pass.dispatchEvent(new Event('input', { bubbles: true }));
+              pass.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          };
+
+          var sendCredentialsToApp = function (source) {
+            try {
+              if (!credentialBridge || typeof credentialBridge.postMessage !== 'function') return;
+              if (!user || !pass) return;
+              var usernameValue = String(user.value || '').trim();
+              var passwordValue = String(pass.value || '');
+              if (!usernameValue || !passwordValue) return;
+              credentialBridge.postMessage(JSON.stringify({
+                type: 'login-credentials',
+                source: source || 'unknown',
+                username: usernameValue,
+                password: passwordValue
+              }));
+            } catch (_) {}
+          };
+
+          syncFilledValues();
+
+          if (!window.__axisCredentialsHooked) {
+            window.__axisCredentialsHooked = true;
+            if (form) {
+              form.addEventListener('submit', function () {
+                sendCredentialsToApp('submit');
+              });
+            }
+            if (loginBtn) {
+              loginBtn.addEventListener('click', function () {
+                sendCredentialsToApp('click');
+              });
+            }
+          }
+
           if (user) {
             window.setTimeout(function () {
+              syncFilledValues();
               try { user.focus(); } catch (_) {}
             }, 120);
           }
