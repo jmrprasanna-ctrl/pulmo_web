@@ -18,11 +18,41 @@ function resolveDashboardDisplayName(profileName, userName, userEmail, userRole)
     return "User";
 }
 
+function formatWelcomeNameForMobile(name){
+    const clean = String(name || "").replace(/\s+/g, " ").trim();
+    if(!clean){
+        return "User";
+    }
+    const isMobile = typeof window !== "undefined"
+        && typeof window.matchMedia === "function"
+        && window.matchMedia("(max-width: 640px)").matches;
+    if(!isMobile){
+        return clean;
+    }
+
+    const tokens = clean.split(" ").filter(Boolean);
+    if(tokens.length >= 2){
+        const prefix = tokens.slice(0, -1).join(" ");
+        const last = tokens[tokens.length - 1];
+        const lastShort = `${String(last || "").slice(0, 2)}..`;
+        const composed = `${prefix} ${lastShort}`.trim();
+        if(composed.length > 18){
+            return `${composed.slice(0, 16).trim()}..`;
+        }
+        return composed;
+    }
+
+    if(clean.length > 8){
+        return `${clean.slice(0, 8).trim()}..`;
+    }
+    return clean;
+}
+
 let displayName = resolveDashboardDisplayName(storedProfileName, storedName, storedEmail, storedRole);
 const accountName = storedName || storedEmail || storedRole || "User";
 
 const roleEl = document.getElementById("userRole");
-if (roleEl) roleEl.innerText = displayName || "User";
+if (roleEl) roleEl.innerText = formatWelcomeNameForMobile(displayName || "User");
 
 const nameEl = document.getElementById("userName");
 if (nameEl) nameEl.innerText = accountName;
@@ -40,7 +70,7 @@ function applyDashboardIdentity(name){
         : resolveDashboardDisplayName("", storedName, storedEmail, storedRole);
     displayName = safeName;
     const welcomeEl = document.getElementById("userRole");
-    if(welcomeEl) welcomeEl.innerText = safeName;
+    if(welcomeEl) welcomeEl.innerText = formatWelcomeNameForMobile(safeName);
 }
 
 async function loadDashboardProfileName(){

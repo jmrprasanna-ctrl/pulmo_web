@@ -767,6 +767,7 @@ body {
   .topbar-left .welcome-name {
     min-width: 1.5ch;
     max-width: calc(100% - 74px);
+    text-overflow: clip;
   }
 
   .topbar-right {
