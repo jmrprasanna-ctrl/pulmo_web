@@ -44,14 +44,31 @@ function applyDashboardIdentity(name){
 }
 
 async function loadDashboardProfileName(){
-    const userId = Number(localStorage.getItem("userId") || 0);
-    if(!Number.isFinite(userId) || userId <= 0) return;
-    try{
-        const profile = await request(`/users/profiles/${userId}`,"GET");
+    const pickProfileDisplayName = (profile) => {
         const profileName = String(profile?.profile_name || "").trim();
-        if(profileName.length >= 2){
-            localStorage.setItem("profileName", profileName);
-            applyDashboardIdentity(profileName);
+        const loginUser = String(profile?.login_user || "").trim();
+        const email = String(profile?.email || "").trim();
+        return resolveDashboardDisplayName(profileName, loginUser, email, storedRole);
+    };
+
+    const userId = Number(localStorage.getItem("userId") || 0);
+    try{
+        if(Number.isFinite(userId) && userId > 0){
+            const profile = await request(`/users/profiles/${userId}`,"GET");
+            const profileName = pickProfileDisplayName(profile);
+            if(profileName.length >= 2){
+                localStorage.setItem("profileName", profileName);
+                applyDashboardIdentity(profileName);
+                return;
+            }
+        }
+
+        const profiles = await request("/users/profiles","GET");
+        const firstProfile = Array.isArray(profiles) ? profiles[0] : profiles;
+        const fallbackName = pickProfileDisplayName(firstProfile);
+        if(fallbackName.length >= 2){
+            localStorage.setItem("profileName", fallbackName);
+            applyDashboardIdentity(fallbackName);
         }
     }catch(_err){
     }
