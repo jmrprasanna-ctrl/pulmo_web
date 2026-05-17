@@ -52,20 +52,43 @@ async function getGpsPayload() {
   });
 }
 
-function renderStatusCard(latest, isCheckedIn) {
+function renderStatusCard(status) {
+  const latest = status?.latest || null;
+  const isCheckedIn = !!status?.is_checked_in;
+  const hasTodayIn = !!status?.has_today_in;
+  const hasTodayOut = !!status?.has_today_out;
+  const canCheckIn = typeof status?.can_check_in_today === "boolean"
+    ? status.can_check_in_today
+    : (!hasTodayIn && !isCheckedIn);
+  const canCheckOut = typeof status?.can_check_out_today === "boolean" ? status.can_check_out_today : (hasTodayIn && !hasTodayOut);
+
   document.getElementById("inoutUserName").value = String(localStorage.getItem("userName") || localStorage.getItem("userEmail") || "User");
-  document.getElementById("inoutStatus").value = isCheckedIn ? "Checked In" : "Checked Out";
+  if (isCheckedIn) {
+    document.getElementById("inoutStatus").value = "Checked In";
+  } else if (hasTodayOut) {
+    document.getElementById("inoutStatus").value = "Completed Today";
+  } else {
+    document.getElementById("inoutStatus").value = "Checked Out";
+  }
   document.getElementById("lastCheckInAt").value = fmtDateTime(latest?.check_in_at);
   document.getElementById("lastCheckOutAt").value = fmtDateTime(latest?.check_out_at);
   const checkInBtn = document.getElementById("checkInBtn");
   const checkOutBtn = document.getElementById("checkOutBtn");
-  if (checkInBtn) checkInBtn.disabled = !!isCheckedIn;
-  if (checkOutBtn) checkOutBtn.disabled = !isCheckedIn;
+  if (checkInBtn) {
+    checkInBtn.disabled = !canCheckIn;
+    checkInBtn.title = hasTodayIn ? "Today's Time In already saved." : "Save today's Time In";
+  }
+  if (checkOutBtn) {
+    checkOutBtn.disabled = !canCheckOut;
+    checkOutBtn.title = hasTodayOut
+      ? "Today's Time Out already saved."
+      : (hasTodayIn ? "Save today's Time Out" : "Save Time In first.");
+  }
 }
 
 async function loadInOutState() {
   const status = await request("/hr/inout/status", "GET");
-  renderStatusCard(status?.latest || null, !!status?.is_checked_in);
+  renderStatusCard(status || {});
 }
 
 async function performCheckInOut(mode) {
@@ -85,8 +108,6 @@ async function performCheckInOut(mode) {
       alert(err.message || "Failed to save INOUT log.");
     }
     await loadInOutState();
-  } finally {
-    if (btn) btn.disabled = false;
   }
 }
 

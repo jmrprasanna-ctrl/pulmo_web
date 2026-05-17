@@ -149,6 +149,60 @@ body {
   gap: 10px;
 }
 
+.topbar-attendance {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.attendance-btn {
+  width: 78px;
+  min-width: 78px;
+  height: 34px;
+  min-height: 34px;
+  border-radius: 9px;
+  border: 1px solid #c8daec;
+  background: #f6fbff;
+  color: #214261;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  padding: 0 8px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+
+.attendance-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(15, 106, 191, 0.12);
+  border-color: #a9c8e4;
+}
+
+.attendance-btn.attendance-btn-in {
+  background: #ecf7ff;
+  border-color: #b8d7f0;
+  color: #0d4f8a;
+}
+
+.attendance-btn.attendance-btn-out {
+  background: #fff3f3;
+  border-color: #e8c0c0;
+  color: #a01c28;
+}
+
+.attendance-btn.is-locked,
+.attendance-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.attendance-btn.is-busy {
+  cursor: wait;
+}
+
 .user-chip {
   display: flex;
   align-items: center;
@@ -564,6 +618,19 @@ body {
     gap: 6px;
   }
 
+  .topbar-attendance {
+    gap: 6px;
+  }
+
+  .attendance-btn {
+    width: 74px;
+    min-width: 74px;
+    height: 32px;
+    min-height: 32px;
+    border-radius: 10px;
+    font-size: 0.74rem;
+  }
+
   .user-chip {
     flex: 0 0 auto;
     justify-content: flex-start;
@@ -651,6 +718,18 @@ body.theme-dark .icon-btn {
 body.theme-dark .icon-btn:hover {
   border-color: #53708f;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.28);
+}
+
+body.theme-dark .attendance-btn {
+  background: #143150;
+  border-color: #2b537d;
+  color: #dcecff;
+}
+
+body.theme-dark .attendance-btn.attendance-btn-out {
+  background: #452029;
+  border-color: #70414c;
+  color: #ffd6dc;
 }
 
 body.theme-dark .health-item {

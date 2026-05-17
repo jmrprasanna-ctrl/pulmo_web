@@ -10,7 +10,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard - PULMO TECHNOLOGIES</title>
 <link rel="stylesheet" href="../assets/css/style.css">
-<link rel="stylesheet" href="../assets/css/dashboard.css?v=20260506p12">
+<link rel="stylesheet" href="../assets/css/dashboard.css?v=20260517p01">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -43,6 +43,10 @@
                 <p>Welcome, <span id="userRole"></span></p>
             </div>
             <div class="topbar-right">
+                <div class="topbar-attendance" aria-label="Daily attendance">
+                    <button type="button" class="attendance-btn attendance-btn-in" id="topbarTimeInBtn">Time In</button>
+                    <button type="button" class="attendance-btn attendance-btn-out" id="topbarTimeOutBtn">Time Out</button>
+                </div>
                 <div class="user-chip">
                     <div class="user-avatar" id="userInitial">U</div>
                     <div class="user-meta">
@@ -172,14 +176,6 @@
             <h3>Total Customers</h3>
             <p>0</p>
         </div>
-        <div class="card" id="totalVendors">
-            <h3>Total Vendors</h3>
-            <p>0</p>
-        </div>
-        <div class="card" id="totalProducts">
-            <h3>Total Products</h3>
-            <p>0</p>
-        </div>
         <div class="card" id="totalSales">
             <h3>Total Sales</h3>
             <p>0</p>
@@ -229,7 +225,8 @@
 </div>
 
 <script src="../assets/js/api.js?v=20260330p02"></script>
-<script src="../assets/js/dashboard.js?v=20260506p10"></script>
+<script src="../assets/js/dashboard.js?v=20260517p01"></script>
+<script src="../assets/js/dashboard-attendance.js?v=20260517p01"></script>
 <script src="../assets/extracted/pages/dashboard.inline-script-1.js"></script>
 </body>
 </html>

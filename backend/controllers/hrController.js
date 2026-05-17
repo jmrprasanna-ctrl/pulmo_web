@@ -88,7 +88,7 @@ exports.getInOutStatus = async (req, res) => {
 
   try {
     await ensureInOutLogTable();
-    const rs = await db.query(
+    const latestRs = await db.query(
       `SELECT id, user_id, username, role, check_in_at, check_in_lat, check_in_lng, check_in_accuracy,
               check_in_location_label,
               check_out_at, check_out_lat, check_out_lng, check_out_accuracy, check_out_location_label
@@ -98,10 +98,33 @@ exports.getInOutStatus = async (req, res) => {
        LIMIT 1`,
       { bind: [userId] }
     );
-    const rows = Array.isArray(rs?.[0]) ? rs[0] : [];
-    const latest = rows[0] || null;
+    const latestRows = Array.isArray(latestRs?.[0]) ? latestRs[0] : [];
+    const latest = latestRows[0] || null;
     const isCheckedIn = !!(latest && !latest.check_out_at);
-    res.json({ latest, is_checked_in: isCheckedIn });
+
+    const todayRs = await db.query(
+      `SELECT id, check_in_at, check_out_at
+       FROM user_inout_logs
+       WHERE user_id = $1
+         AND DATE(check_in_at) = CURRENT_DATE
+       ORDER BY check_in_at DESC, id DESC
+       LIMIT 1`,
+      { bind: [userId] }
+    );
+    const todayRows = Array.isArray(todayRs?.[0]) ? todayRs[0] : [];
+    const todayLog = todayRows[0] || null;
+    const hasTodayIn = !!todayLog;
+    const hasTodayOut = !!(todayLog && todayLog.check_out_at);
+
+    res.json({
+      latest,
+      today_log: todayLog,
+      is_checked_in: isCheckedIn,
+      has_today_in: hasTodayIn,
+      has_today_out: hasTodayOut,
+      can_check_in_today: !hasTodayIn && !isCheckedIn,
+      can_check_out_today: hasTodayIn && !hasTodayOut,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message || "Failed to load INOUT status." });
   }
