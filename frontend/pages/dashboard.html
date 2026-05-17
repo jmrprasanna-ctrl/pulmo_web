@@ -10,7 +10,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard - PULMO TECHNOLOGIES</title>
 <link rel="stylesheet" href="../assets/css/style.css">
-<link rel="stylesheet" href="../assets/css/dashboard.css?v=20260518p01">
+<link rel="stylesheet" href="../assets/css/dashboard.css?v=20260518p02">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -61,10 +61,18 @@
                             var storedEmail = localStorage.getItem("userEmail") || "";
                             var storedName = localStorage.getItem("userName") || "";
                             var storedProfileName = localStorage.getItem("profileName") || "";
-                            var cleanProfileName = String(storedProfileName || "").trim();
-                            var displayName = storedName || storedEmail || storedRole || "";
-                            if (cleanProfileName.length >= 2) {
-                                displayName = cleanProfileName;
+                            var candidateNames = [
+                                String(storedProfileName || "").trim(),
+                                String(storedName || "").trim(),
+                                String(storedEmail || "").trim(),
+                                String(storedRole || "").trim()
+                            ];
+                            var displayName = "User";
+                            for (var i = 0; i < candidateNames.length; i += 1) {
+                                if (candidateNames[i].length >= 2) {
+                                    displayName = candidateNames[i];
+                                    break;
+                                }
                             }
                             var accountName = storedName || storedEmail || storedRole || "";
                             var roleEl = document.getElementById("userRole");
@@ -229,7 +237,7 @@
 </div>
 
 <script src="../assets/js/api.js?v=20260330p02"></script>
-<script src="../assets/js/dashboard.js?v=20260518p01"></script>
+<script src="../assets/js/dashboard.js?v=20260518p02"></script>
 <script src="../assets/js/dashboard-attendance.js?v=20260517p01"></script>
 <script src="../assets/extracted/pages/dashboard.inline-script-1.js"></script>
 </body>

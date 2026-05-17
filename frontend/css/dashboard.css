@@ -605,14 +605,17 @@ body {
 
   .topbar-left {
     width: 100%;
-    padding-right: 66px;
+    min-width: 0;
+    padding-right: 0;
   }
 
   .topbar-left p {
+    display: block;
+    width: 100%;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: calc(100% - 170px);
+    padding-right: 180px;
     margin: 0;
   }
 
@@ -624,12 +627,13 @@ body {
     overflow-y: visible;
     -webkit-overflow-scrolling: touch;
     gap: 6px;
+    margin-top: 26px;
   }
 
   .topbar-attendance {
     gap: 6px;
     position: absolute;
-    top: 52px;
+    top: 74px;
     right: 36px;
     z-index: 3;
   }

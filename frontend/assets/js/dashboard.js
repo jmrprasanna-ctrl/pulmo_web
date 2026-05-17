@@ -4,11 +4,18 @@ const storedEmail = localStorage.getItem("userEmail") || "";
 const storedName = localStorage.getItem("userName") || "";
 const storedProfileName = localStorage.getItem("profileName") || "";
 function resolveDashboardDisplayName(profileName, userName, userEmail, userRole){
-    const cleanProfile = String(profileName || "").trim();
-    if(cleanProfile.length >= 2){
-        return cleanProfile;
+    const candidates = [
+        String(profileName || "").trim(),
+        String(userName || "").trim(),
+        String(userEmail || "").trim(),
+        String(userRole || "").trim(),
+    ];
+    for(const candidate of candidates){
+        if(candidate.length >= 2){
+            return candidate;
+        }
     }
-    return String(userName || userEmail || userRole || "User").trim() || "User";
+    return "User";
 }
 
 let displayName = resolveDashboardDisplayName(storedProfileName, storedName, storedEmail, storedRole);
