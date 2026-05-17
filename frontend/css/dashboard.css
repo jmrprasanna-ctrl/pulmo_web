@@ -627,12 +627,16 @@ body {
   .topbar-left {
     width: 100%;
     min-width: 0;
-    padding-right: 0;
+    padding-right: 170px;
   }
 
   .topbar-left .welcome-line {
-    max-width: calc(100% - 164px);
+    max-width: none;
     margin-top: -2px;
+  }
+
+  .topbar-left .welcome-name {
+    max-width: none;
   }
 
   .topbar-right {
