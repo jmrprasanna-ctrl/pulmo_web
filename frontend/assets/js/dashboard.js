@@ -156,6 +156,7 @@ function bindDashboardTileAccessLinks(){
         { id: "totalMchine", permissionPath: "/dashboard/tiles/total-machines", paths: ["/products/general-machine.html"] },
         { id: "totalRentalMachines", permissionPath: "/dashboard/tiles/total-rental-machines", paths: ["/products/machine.html"] },
         { id: "totalCustomers", permissionPath: "/dashboard/tiles/total-customers", paths: ["/customers/customer-list.html"] },
+        { id: "totalProducts", permissionPath: "/dashboard/tiles/total-products", paths: ["/products/product-list.html"] },
         { id: "totalSales", permissionPath: "/dashboard/tiles/total-sales", paths: ["/reports/sales-report.html", "/invoices/invoice-list.html"] },
         { id: "receivedPayment", permissionPath: "/dashboard/tiles/received-payment", paths: ["/finance/payments.html", "/finance/finance.html"] },
         { id: "rentalMachinesCountsPrice", permissionPath: "/dashboard/tiles/rental-machines-counts", paths: ["/products/add-rental-count.html"] },
@@ -657,7 +658,11 @@ async function fetchSummary(){
         if(totalCustomersEl){
             totalCustomersEl.querySelector("p").innerText = summary.totalCustomers || 0;
         }
-                                            
+        const totalProductsEl = document.getElementById("totalProducts");
+        if(totalProductsEl){
+            totalProductsEl.querySelector("p").innerText = summary.totalProducts || 0;
+        }
+                                             
         const salesVal = summary.totalSalesPeriod ?? summary.totalSales ?? 0;
         const receivedPaymentVal = summary.receivedPaymentPeriod ?? summary.receivedPayment ?? 0;
         const rentalMachinesCountsVal = summary.rentalMachinesCountsPricePeriod
