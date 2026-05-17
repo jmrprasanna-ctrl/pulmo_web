@@ -165,8 +165,8 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     try {
       final dynamic payload = jsonDecode(rawMessage);
       if (payload is! Map) return;
-      final String username = String(payload['username'] ?? '').trim();
-      final String password = String(payload['password'] ?? '');
+      final String username = (payload['username'] ?? '').toString().trim();
+      final String password = (payload['password'] ?? '').toString();
       if (username.isEmpty || password.isEmpty) return;
       _pendingUsername = username;
       _pendingPassword = password;
