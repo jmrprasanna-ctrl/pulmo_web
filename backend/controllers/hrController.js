@@ -758,6 +758,7 @@ exports.getSallaryWorkSummary = async (req, res) => {
        )
        SELECT COALESCE(ROUND(SUM(day_hours)::numeric, 2), 0) AS total_working_hours,
               COALESCE(ROUND(SUM(CASE WHEN day_hours > 8 THEN day_hours - 8 ELSE 0 END)::numeric, 2), 0) AS total_ot_hours,
+              COALESCE(ROUND(SUM(LEAST(day_hours, 8) / 8.0)::numeric, 2), 0) AS calculated_working_days,
               COUNT(*)::INTEGER AS present_days
        FROM per_day`,
       { bind: [userId, startDate, endDate] }
@@ -769,6 +770,7 @@ exports.getSallaryWorkSummary = async (req, res) => {
       start_date: startDate,
       end_date: endDate,
       present_days: Number(row.present_days || 0),
+      calculated_working_days: normalizeBasicSallary(row.calculated_working_days),
       total_working_hours: normalizeBasicSallary(row.total_working_hours),
       total_ot_hours: normalizeBasicSallary(row.total_ot_hours),
     });

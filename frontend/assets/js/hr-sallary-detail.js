@@ -174,12 +174,9 @@ async function loadWorkSummaryByRange() {
     setWorkSummaryFields(workingHours, otHours);
 
     const workingDaysInput = document.getElementById("sdWorkingDays");
-    const currentWorkingDays = toSafeText(workingDaysInput?.value);
-    if (workingDaysInput && !currentWorkingDays) {
-      const presentDays = Number(summary?.present_days || 0);
-      if (Number.isFinite(presentDays) && presentDays >= 0) {
-        workingDaysInput.value = String(presentDays);
-      }
+    const calculatedWorkingDays = Number(summary?.calculated_working_days);
+    if (workingDaysInput && Number.isFinite(calculatedWorkingDays)) {
+      workingDaysInput.value = calculatedWorkingDays.toFixed(2);
     }
   } catch (err) {
     setWorkSummaryFields("", "");
