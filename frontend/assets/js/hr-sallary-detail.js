@@ -7,6 +7,16 @@ function normalizeRole() {
   return String(localStorage.getItem("role") || "").trim().toLowerCase();
 }
 
+function canAssignSupirorRole(targetRole) {
+  const requesterRole = normalizeRole();
+  const role = String(targetRole || "").trim().toLowerCase();
+  if (!role) return false;
+  if (requesterRole === "admin") return true;
+  if (requesterRole === "manager") return role === "admin";
+  if (requesterRole === "user") return role === "admin" || role === "manager";
+  return false;
+}
+
 function hasPagePermission(path, actions = ["view"]) {
   const role = normalizeRole();
   const hasConfiguredAccess = typeof hasAccessConfigRestrictions === "function" && hasAccessConfigRestrictions();
@@ -90,6 +100,54 @@ function setBusy(isBusy) {
   if (!btn) return;
   btn.disabled = !!isBusy || !canEditSallaryDetail;
   btn.classList.toggle("is-busy", !!isBusy);
+}
+
+async function loadSupirorOptions(selectedId = null) {
+  const select = document.getElementById("sdSupirorSelect");
+  if (!select) return;
+
+  select.innerHTML = `<option value="">Select Supiror</option>`;
+  try {
+    const users = await request("/users/assignable", "GET");
+    const rows = Array.isArray(users) ? users : [];
+    const options = rows
+      .map((row) => ({
+        id: Number(row?.id || 0),
+        username: String(row?.username || "").trim(),
+        role: String(row?.role || "").trim().toLowerCase(),
+      }))
+      .filter((row) => Number.isFinite(row.id) && row.id > 0)
+      .filter((row) => row.id !== currentSallaryUserId)
+      .filter((row) => canAssignSupirorRole(row.role))
+      .sort((a, b) => a.username.localeCompare(b.username, undefined, { sensitivity: "base" }));
+
+    options.forEach((row) => {
+      const option = document.createElement("option");
+      option.value = String(row.id);
+      option.textContent = `${row.username} (${row.role || "-"})`;
+      select.appendChild(option);
+    });
+
+    const targetId = Number(selectedId || 0);
+    if (Number.isFinite(targetId) && targetId > 0) {
+      const hasOption = Array.from(select.options).some((opt) => Number(opt.value) === targetId);
+      if (hasOption) {
+        select.value = String(targetId);
+      } else {
+        const fallback = document.createElement("option");
+        fallback.value = String(targetId);
+        fallback.textContent = `Current Supiror (${targetId})`;
+        select.appendChild(fallback);
+        select.value = String(targetId);
+      }
+    } else {
+      select.value = "";
+    }
+  } catch (err) {
+    if (window.showMessageBox) {
+      showMessageBox(err.message || "Failed to load Supiror users.", "error");
+    }
+  }
 }
 
 function toggleOtherBankField() {
@@ -225,6 +283,7 @@ function setEditableState(canEdit) {
     "sdBankAccount",
     "sdBasicSallary",
     "sdOtPayAmount",
+    "sdSupirorSelect",
     "sdAddAllowanceBtn",
     "sdAddDeductionBtn",
   ];
@@ -330,6 +389,24 @@ function fillDetail(data) {
   document.getElementById("sdOtPayAmount").value = Number.isFinite(Number(data?.ot_pay_amount))
     ? Number(data.ot_pay_amount).toFixed(2)
     : "";
+  const supirorSelect = document.getElementById("sdSupirorSelect");
+  if (supirorSelect) {
+    const supirorId = Number(data?.superior_user_id || 0);
+    if (Number.isFinite(supirorId) && supirorId > 0) {
+      const hasOption = Array.from(supirorSelect.options).some((opt) => Number(opt.value) === supirorId);
+      if (hasOption) {
+        supirorSelect.value = String(supirorId);
+      } else {
+        const fallback = document.createElement("option");
+        fallback.value = String(supirorId);
+        fallback.textContent = toSafeText(data?.superior_user_name || `Supiror ${supirorId}`);
+        supirorSelect.appendChild(fallback);
+        supirorSelect.value = String(supirorId);
+      }
+    } else {
+      supirorSelect.value = "";
+    }
+  }
   renderAllowances(Array.isArray(data?.allowances) ? data.allowances : []);
   renderDeductions(Array.isArray(data?.deductions) ? data.deductions : []);
   setWorkSummaryFields("", "");
@@ -355,6 +432,7 @@ async function saveDetail() {
   const salaryEndDate = toSafeText(document.getElementById("sdSalaryEndDate")?.value);
   const workingDaysRaw = Number(document.getElementById("sdWorkingDays")?.value);
   const otPayAmountRaw = Number(document.getElementById("sdOtPayAmount")?.value);
+  const supirorUserIdRaw = Number(document.getElementById("sdSupirorSelect")?.value || 0);
   const allowances = collectAllowances();
   const deductions = collectDeductions();
 
@@ -376,6 +454,7 @@ async function saveDetail() {
     salary_end_date: salaryEndDate,
     working_days: Number.isFinite(workingDaysRaw) ? workingDaysRaw : 0,
     ot_pay_amount: Number.isFinite(otPayAmountRaw) ? otPayAmountRaw : 0,
+    superior_user_id: Number.isFinite(supirorUserIdRaw) && supirorUserIdRaw > 0 ? supirorUserIdRaw : null,
     allowances,
     deductions,
   };
@@ -457,6 +536,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
 
   try {
+    await loadSupirorOptions();
     await loadDetail();
     await loadWorkSummaryByRange();
     if (!canEditSallaryDetail) {

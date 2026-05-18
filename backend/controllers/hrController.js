@@ -118,6 +118,7 @@ async function ensureSallaryProfileTable() {
   await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS salary_end_date DATE;`);
   await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS working_days NUMERIC(8,2) NOT NULL DEFAULT 0;`);
   await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS ot_pay_amount NUMERIC(14,2) NOT NULL DEFAULT 0;`);
+  await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS superior_user_id INTEGER;`);
   await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS allowances_json TEXT NOT NULL DEFAULT '[]';`);
   await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS deductions_json TEXT NOT NULL DEFAULT '[]';`);
   await db.query(`
@@ -205,11 +206,15 @@ async function getSallaryUserRow(userId) {
             sp.salary_end_date,
             sp.working_days,
             sp.ot_pay_amount,
+            sp.superior_user_id,
+            su.username AS superior_username,
+            su.role AS superior_role,
             sp.allowances_json,
             sp.deductions_json
      FROM users u
      LEFT JOIN user_profiles up ON up.user_id = u.id
      LEFT JOIN user_sallary_profiles sp ON sp.user_id = u.id
+     LEFT JOIN users su ON su.id = sp.superior_user_id
      WHERE u.id = $1
      LIMIT 1`,
     { bind: [userId] }
@@ -235,6 +240,27 @@ function normalizeDateOnly(value) {
   if (!raw) return "";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return "";
   return raw;
+}
+
+function toPositiveIntOrNull(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  const asInt = Math.trunc(parsed);
+  return asInt > 0 ? asInt : null;
+}
+
+function normalizeRoleValue(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function canAssignSupirorRole(requesterRole, supirorRole) {
+  const requester = normalizeRoleValue(requesterRole);
+  const target = normalizeRoleValue(supirorRole);
+  if (!target) return false;
+  if (requester === "admin") return true;
+  if (requester === "manager") return target === "admin";
+  if (requester === "user") return target === "admin" || target === "manager";
+  return false;
 }
 
 function toIsoDateUtc(value) {
@@ -637,6 +663,9 @@ exports.getSallaryDetailByUserId = async (req, res) => {
       salary_end_date: fixedCycle.end_date,
       working_days: normalizeBasicSallary(row.working_days),
       ot_pay_amount: normalizeBasicSallary(row.ot_pay_amount),
+      superior_user_id: toPositiveIntOrNull(row.superior_user_id),
+      superior_user_name: String(row.superior_username || "").trim(),
+      superior_user_role: String(row.superior_role || "").trim(),
       allowances: parseStoredAllowances(row.allowances_json),
       deductions: parseStoredDeductions(row.deductions_json),
     });
@@ -679,15 +708,42 @@ exports.upsertSallaryDetailByUserId = async (req, res) => {
     const salaryEndDate = fixedCycle.end_date;
     const workingDays = normalizeBasicSallary(req.body?.working_days);
     const otPayAmount = normalizeBasicSallary(req.body?.ot_pay_amount);
+    const superiorUserId = toPositiveIntOrNull(req.body?.superior_user_id);
     const allowances = parseAllowances(req.body?.allowances);
     const deductions = parseAllowances(req.body?.deductions);
+
+    if (superiorUserId && superiorUserId === userId) {
+      return res.status(400).json({ message: "Supiror cannot be same as current user." });
+    }
+
+    let superiorRole = "";
+    let superiorUsername = "";
+    if (superiorUserId) {
+      const superiorRs = await db.query(
+        `SELECT id, username, role
+         FROM users
+         WHERE id = $1
+         LIMIT 1`,
+        { bind: [superiorUserId] }
+      );
+      const superiorRows = Array.isArray(superiorRs?.[0]) ? superiorRs[0] : [];
+      const superior = superiorRows[0] || null;
+      if (!superior) {
+        return res.status(400).json({ message: "Selected Supiror user not found." });
+      }
+      superiorRole = String(superior.role || "").trim();
+      superiorUsername = String(superior.username || "").trim();
+      if (!canAssignSupirorRole(role, superiorRole)) {
+        return res.status(403).json({ message: "Forbidden: Selected Supiror role is not allowed for your role." });
+      }
+    }
 
     await db.query(
       `INSERT INTO user_sallary_profiles
          (user_id, username, role, profile_name, department, email, mobile, address,
-          bank_name, other_bank_name, bank_account, basic_sallary, salary_start_date, salary_end_date, working_days, ot_pay_amount, allowances_json, deductions_json, "createdAt", "updatedAt")
+          bank_name, other_bank_name, bank_account, basic_sallary, salary_start_date, salary_end_date, working_days, ot_pay_amount, superior_user_id, allowances_json, deductions_json, "createdAt", "updatedAt")
        VALUES
-         ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
+         ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW())
        ON CONFLICT (user_id)
        DO UPDATE SET
          username = EXCLUDED.username,
@@ -705,6 +761,7 @@ exports.upsertSallaryDetailByUserId = async (req, res) => {
          salary_end_date = EXCLUDED.salary_end_date,
          working_days = EXCLUDED.working_days,
          ot_pay_amount = EXCLUDED.ot_pay_amount,
+         superior_user_id = EXCLUDED.superior_user_id,
          allowances_json = EXCLUDED.allowances_json,
          deductions_json = EXCLUDED.deductions_json,
          "updatedAt" = NOW()`,
@@ -726,6 +783,7 @@ exports.upsertSallaryDetailByUserId = async (req, res) => {
           salaryEndDate || null,
           workingDays,
           otPayAmount,
+          superiorUserId || null,
           JSON.stringify(allowances),
           JSON.stringify(deductions),
         ],
@@ -752,6 +810,9 @@ exports.upsertSallaryDetailByUserId = async (req, res) => {
         salary_end_date: row?.salary_end_date ? new Date(row.salary_end_date).toISOString().slice(0, 10) : "",
         working_days: normalizeBasicSallary(row?.working_days),
         ot_pay_amount: normalizeBasicSallary(row?.ot_pay_amount),
+        superior_user_id: toPositiveIntOrNull(row?.superior_user_id),
+        superior_user_name: String(row?.superior_username || superiorUsername || "").trim(),
+        superior_user_role: String(row?.superior_role || superiorRole || "").trim(),
         allowances: parseStoredAllowances(row?.allowances_json),
         deductions: parseStoredDeductions(row?.deductions_json),
       },
