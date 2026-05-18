@@ -93,7 +93,17 @@
         .report-controls{
             width:100%;
         }
+        #stockTable{
+            min-width:920px;
+        }
+        #stockTable th,
+        #stockTable td{
+            padding:8px 10px;
+            font-size:0.84rem;
+            line-height:1.2;
+        }
         .stock-actions{
+            gap:4px;
             flex-direction: row !important;
             align-items: center !important;
             flex-wrap: nowrap !important;
@@ -101,9 +111,17 @@
         .stock-actions > *{
             width: auto !important;
         }
+        .stock-qty{
+            width:56px !important;
+            min-width:56px !important;
+            max-width:56px !important;
+            flex:0 0 56px !important;
+        }
         .stock-actions > .stock-action-icon{
-            width:40px !important;
-            min-width:40px !important;
-            max-width:40px !important;
+            width:34px !important;
+            min-width:34px !important;
+            max-width:34px !important;
+            height:34px !important;
+            min-height:34px !important;
         }
     }
