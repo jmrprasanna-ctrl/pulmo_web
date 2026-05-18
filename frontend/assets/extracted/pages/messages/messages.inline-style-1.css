@@ -1,3 +1,17 @@
+.page-head{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+        margin-bottom:12px;
+    }
+    .page-head h2{
+        margin:0;
+    }
+    .page-head .icon-btn{
+        margin-left:auto;
+        flex:0 0 auto;
+    }
 .message-grid{
         display: grid;
         grid-template-columns: 1.1fr 1.9fr;
