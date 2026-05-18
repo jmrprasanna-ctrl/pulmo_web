@@ -94,13 +94,35 @@
             width:100%;
         }
         #stockTable{
-            min-width:920px;
+            min-width:760px;
         }
         #stockTable th,
         #stockTable td{
-            padding:8px 10px;
-            font-size:0.84rem;
+            padding:6px 8px;
+            font-size:0.8rem;
             line-height:1.2;
+        }
+        #stockTable th:nth-child(1),
+        #stockTable td:nth-child(1){
+            min-width:88px;
+        }
+        #stockTable th:nth-child(2),
+        #stockTable td:nth-child(2){
+            min-width:170px;
+        }
+        #stockTable th:nth-child(3),
+        #stockTable td:nth-child(3),
+        #stockTable th:nth-child(4),
+        #stockTable td:nth-child(4){
+            min-width:96px;
+        }
+        #stockTable th:nth-child(5),
+        #stockTable td:nth-child(5){
+            min-width:72px;
+        }
+        #stockTable th:nth-child(6),
+        #stockTable td:nth-child(6){
+            min-width:168px;
         }
         .stock-actions{
             gap:4px;
@@ -112,16 +134,64 @@
             width: auto !important;
         }
         .stock-qty{
-            width:56px !important;
-            min-width:56px !important;
-            max-width:56px !important;
-            flex:0 0 56px !important;
+            width:50px !important;
+            min-width:50px !important;
+            max-width:50px !important;
+            flex:0 0 50px !important;
         }
         .stock-actions > .stock-action-icon{
-            width:34px !important;
-            min-width:34px !important;
-            max-width:34px !important;
-            height:34px !important;
-            min-height:34px !important;
+            width:30px !important;
+            min-width:30px !important;
+            max-width:30px !important;
+            height:30px !important;
+            min-height:30px !important;
+        }
+    }
+    @media (max-width: 640px){
+        #stockTable{
+            min-width:620px;
+        }
+        #stockTable th,
+        #stockTable td{
+            padding:5px 6px;
+            font-size:0.76rem;
+            line-height:1.15;
+        }
+        #stockTable th:nth-child(1),
+        #stockTable td:nth-child(1){
+            min-width:76px;
+        }
+        #stockTable th:nth-child(2),
+        #stockTable td:nth-child(2){
+            min-width:140px;
+            white-space:normal;
+            word-break:break-word;
+        }
+        #stockTable th:nth-child(3),
+        #stockTable td:nth-child(3),
+        #stockTable th:nth-child(4),
+        #stockTable td:nth-child(4){
+            min-width:82px;
+        }
+        #stockTable th:nth-child(5),
+        #stockTable td:nth-child(5){
+            min-width:64px;
+        }
+        #stockTable th:nth-child(6),
+        #stockTable td:nth-child(6){
+            min-width:130px;
+        }
+        .stock-qty{
+            width:46px !important;
+            min-width:46px !important;
+            max-width:46px !important;
+            flex:0 0 46px !important;
+        }
+        .stock-actions > .stock-action-icon{
+            width:28px !important;
+            min-width:28px !important;
+            max-width:28px !important;
+            height:28px !important;
+            min-height:28px !important;
         }
     }
