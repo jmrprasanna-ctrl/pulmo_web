@@ -2,33 +2,54 @@ const invoiceSearchEl = document.getElementById("invoiceSearch");
 const invoiceYearEl = document.getElementById("invoiceYearFilter");
 const addInvoiceBtn = document.getElementById("addInvoiceBtn");
 let allInvoices = [];
-let selectedYear = String(new Date().getFullYear());
+const MONTH_SHORT = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+let selectedPeriod = "";
 
-        function getInvoiceYear(inv){
+        function getCurrentPeriodKey(){
+            const now = new Date();
+            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        }
+
+        function getInvoiceDate(inv){
             const raw = String(inv?.invoice_date || "").trim();
-            if(!raw) return "";
+            if(!raw) return null;
             const dt = new Date(raw);
-            if(Number.isNaN(dt.getTime())) return "";
-            return String(dt.getFullYear());
+            if(Number.isNaN(dt.getTime())) return null;
+            return dt;
+        }
+
+        function getInvoicePeriodKey(inv){
+            const dt = getInvoiceDate(inv);
+            if(!dt) return "";
+            return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+        }
+
+        function formatPeriodLabel(periodKey){
+            const [year, month] = String(periodKey || "").split("-");
+            const monthNum = Number(month);
+            const monthText = MONTH_SHORT[monthNum - 1] || month || "";
+            return `${year || ""} ${monthText}`.trim();
         }
 
         function initYearFilter(){
             if(!invoiceYearEl) return;
-            const years = new Set([selectedYear]);
+            const currentPeriod = getCurrentPeriodKey();
+            const periods = new Set([currentPeriod]);
             allInvoices.forEach(inv => {
-                const y = getInvoiceYear(inv);
-                if(y) years.add(y);
+                const period = getInvoicePeriodKey(inv);
+                if(period) periods.add(period);
             });
-            const sortedYears = Array.from(years).sort((a, b) => Number(b) - Number(a));
+            const sortedPeriods = Array.from(periods).sort((a, b) => b.localeCompare(a));
             invoiceYearEl.innerHTML = "";
-            sortedYears.forEach(y => {
+            sortedPeriods.forEach(period => {
                 const opt = document.createElement("option");
-                opt.value = y;
-                opt.textContent = y;
+                opt.value = period;
+                opt.textContent = formatPeriodLabel(period);
                 invoiceYearEl.appendChild(opt);
             });
-            invoiceYearEl.value = sortedYears.includes(selectedYear) ? selectedYear : sortedYears[0];
-            selectedYear = String(invoiceYearEl.value || selectedYear);
+            selectedPeriod = selectedPeriod || currentPeriod;
+            invoiceYearEl.value = sortedPeriods.includes(selectedPeriod) ? selectedPeriod : sortedPeriods[0];
+            selectedPeriod = String(invoiceYearEl.value || selectedPeriod);
         }
 
         function renderInvoices(invoices){
@@ -60,9 +81,9 @@ let selectedYear = String(new Date().getFullYear());
 
         function applyInvoiceFilter(){
             const query = (invoiceSearchEl?.value || "").trim().toLowerCase();
-            const year = String(selectedYear || "").trim();
+            const period = String(selectedPeriod || "").trim();
             const filtered = allInvoices.filter(inv => {
-                if(year && getInvoiceYear(inv) !== year) return false;
+                if(period && getInvoicePeriodKey(inv) !== period) return false;
                 const dateText = inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString() : "";
                 if(!query) return true;
                 return [
@@ -109,7 +130,7 @@ let selectedYear = String(new Date().getFullYear());
         }
 if(invoiceYearEl){
     invoiceYearEl.addEventListener("change", () => {
-        selectedYear = String(invoiceYearEl.value || "");
+        selectedPeriod = String(invoiceYearEl.value || "");
         applyInvoiceFilter();
     });
 }
