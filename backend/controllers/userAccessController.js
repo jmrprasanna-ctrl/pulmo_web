@@ -180,6 +180,8 @@ const ACCESS_MODULE_OPTIONS = [
       { path: "/hr/sallary.html", label: "Sallary", actions: ["view", "edit"] },
       { path: "/hr/sallary-detail.html", label: "Sallary Detail", actions: ["view", "edit"] },
       { path: "/hr/leave.html", label: "Leave", actions: ["view", "add"] },
+      { path: "/hr/payslip.html", label: "Payslip", actions: ["view"] },
+      { path: "/hr/payslip-view.html", label: "Payslip View", actions: ["view", "add"] },
     ],
   },
   {
@@ -326,6 +328,13 @@ function expandImplicitActionDependencies(actionKeys) {
   if (set.has(toActionKey("/hr/sallary.html", "edit"))) {
     add("/hr/sallary-detail.html", "view");
     add("/hr/sallary-detail.html", "edit");
+  }
+  if (set.has(toActionKey("/hr/payslip.html", "view"))) {
+    add("/hr/payslip-view.html", "view");
+  }
+  if (set.has(toActionKey("/hr/payslip-view.html", "add"))) {
+    add("/hr/payslip-view.html", "view");
+    add("/hr/payslip.html", "view");
   }
   if (set.has(toActionKey("/users/technician-list.html", "add"))) {
     add("/users/add-technician.html", "view");

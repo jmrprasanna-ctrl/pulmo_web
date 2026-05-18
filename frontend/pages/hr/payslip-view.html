@@ -1,0 +1,271 @@
+<!--
+  System: PULMO WEB SYSTEM
+  Owner : CRONIT SOLLUTIONS
+  Author: JMR Prasanna
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payslip View - PULMO TECHNOLOGIES</title>
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="../../assets/css/dashboard.css">
+<style>
+    .page-head{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:12px;
+        margin-bottom:16px;
+    }
+    .page-head h2{
+        margin:0;
+    }
+    .payslip-toolbar{
+        display:flex;
+        align-items:flex-end;
+        gap:10px;
+        flex-wrap:wrap;
+        margin-bottom:10px;
+    }
+    .payslip-paper{
+        background:#fff;
+        border:1px solid #dbe4ee;
+        border-radius:16px;
+        padding:22px;
+        box-shadow:0 20px 38px rgba(23, 56, 91, 0.08);
+    }
+    .pv-company{
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:10px;
+        margin-bottom:20px;
+    }
+    .pv-company h3{
+        margin:0;
+        font-size:28px;
+        letter-spacing:0.3px;
+    }
+    .pv-company p{
+        margin:4px 0;
+        color:#3e556d;
+    }
+    .pv-meta{
+        display:grid;
+        grid-template-columns:1fr;
+        gap:6px;
+        margin-bottom:16px;
+    }
+    .pv-meta-row{
+        display:grid;
+        grid-template-columns:220px 1fr;
+        gap:10px;
+        align-items:center;
+    }
+    .pv-meta-row .label{
+        font-weight:700;
+        color:#1a3552;
+    }
+    .pv-meta-row .value{
+        color:#1a3552;
+    }
+    .pv-headline{
+        display:grid;
+        grid-template-columns:1.1fr .95fr .45fr;
+        gap:10px;
+        padding:8px 0 6px;
+        border-bottom:1px solid #dbe4ee;
+        margin-bottom:8px;
+        font-weight:700;
+        color:#1a3552;
+    }
+    .pv-block{
+        margin:8px 0 16px;
+    }
+    .pv-section{
+        font-size:34px;
+        font-weight:700;
+        color:#1a3552;
+        line-height:1;
+    }
+    .pv-row{
+        display:grid;
+        grid-template-columns:1.1fr .95fr .45fr;
+        gap:10px;
+        align-items:center;
+        min-height:32px;
+        color:#20384f;
+    }
+    .pv-row .name{
+        padding-left:0;
+    }
+    .pv-row .amount{
+        text-align:right;
+    }
+    .pv-row.total{
+        font-weight:700;
+        margin-top:4px;
+    }
+    .pv-summary{
+        display:grid;
+        grid-template-columns:repeat(2,minmax(220px,1fr));
+        gap:8px 18px;
+        margin-top:6px;
+        padding-top:10px;
+        border-top:1px dashed #d7dfeb;
+        color:#2d455e;
+    }
+    .pv-summary-item{
+        display:flex;
+        justify-content:space-between;
+        gap:10px;
+        font-size:.95rem;
+    }
+    .pv-footer-note{
+        margin-top:18px;
+        font-weight:700;
+        color:#30485f;
+    }
+    .pv-right{
+        text-align:right;
+    }
+    @media (max-width: 980px){
+        .pv-company{
+            grid-template-columns:1fr;
+        }
+        .pv-meta-row{
+            grid-template-columns:1fr;
+        }
+        .pv-headline,
+        .pv-row{
+            grid-template-columns:1fr .8fr .6fr;
+            font-size:.92rem;
+        }
+        .pv-summary{
+            grid-template-columns:1fr;
+        }
+    }
+</style>
+</head>
+<body>
+<div class="sidebar">
+    <div class="logo">
+        <img src="../../assets/images/logo.png" alt="Company Logo">
+        <span>PULMO TECHNOLOGIES</span>
+    </div>
+    <ul class="nav-links">
+        <li><a href="../dashboard.html">Dashboard</a></li>
+        <li><a href="../products/product-list.html">Products</a></li>
+        <li><a href="../products/general-machine.html">Machines</a></li>
+        <li><a href="../customers/customer-list.html">Customers</a></li>
+        <li><a href="../invoices/invoice-list.html">Invoices</a></li>
+        <li><a href="../vendors/list-vendor.html">Vendors</a></li>
+        <li><a href="../expenses/expense-list.html">Expenses</a></li>
+        <li><a href="../reports/sales-report.html">Reports</a></li>
+        <li><a href="../analytics/sales-chart.html">Analytics</a></li>
+        <li><a href="../finance/finance.html">Finance</a></li>
+        <li><a href="../support/support.html">Support</a></li>
+        <li><a href="../stock/stock.html">Stock</a></li>
+        <li><a href="inout.html">INOUT</a></li>
+        <li><a href="time-sheet.html">Time Sheet</a></li>
+        <li><a href="sallary.html">Sallary</a></li>
+        <li><a href="leave.html">Leave</a></li>
+        <li><a href="payslip.html">Payslip</a></li>
+    </ul>
+</div>
+
+<div class="main-content">
+    <header class="page-head">
+        <h2>Payslip View</h2>
+        <a class="icon-btn" href="payslip.html" aria-label="Back to payslip list" title="Back to payslip list">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+    </header>
+
+    <div class="form-container">
+        <div class="payslip-toolbar">
+            <div class="field">
+                <label for="payslipViewMonth">Month</label>
+                <input type="month" id="payslipViewMonth">
+            </div>
+            <button type="button" class="icon-btn" id="savePayslipPdfBtn" aria-label="Save PDF" title="Save PDF">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M7 3.5h7.5L19.5 8v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5.5 19v-14A1.5 1.5 0 0 1 7 3.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                    <path d="M14.5 3.5V8H19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                    <path d="M8.5 12.5h7M8.5 16h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <button type="button" class="icon-btn" id="sendPayslipEmailBtn" aria-label="Send email" title="Send email">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4.5 7.5 12 13l7.5-5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <rect x="4.5" y="6" width="15" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                </svg>
+            </button>
+            <div class="path-hint" id="payslipStatusHint"></div>
+        </div>
+
+        <section class="payslip-paper" id="payslipPaper">
+            <div class="pv-company">
+                <div>
+                    <h3 id="pvCompanyName">PULMO TECHNOLOGIES</h3>
+                    <p id="pvCompanyTagline">Total document solutions</p>
+                </div>
+                <div class="pv-right">
+                    <p id="pvCompanyCode">Company Code: -</p>
+                    <p id="pvCompanyEmail">Email: -</p>
+                </div>
+            </div>
+
+            <div class="pv-meta">
+                <div class="pv-meta-row">
+                    <div class="label" id="pvPeriodTitle">Pay Advice</div>
+                    <div class="value" id="pvPeriodRange">-</div>
+                </div>
+                <div class="pv-meta-row">
+                    <div class="label">Employee Name</div>
+                    <div class="value" id="pvEmployeeName">-</div>
+                </div>
+                <div class="pv-meta-row">
+                    <div class="label">Employee No</div>
+                    <div class="value" id="pvEmployeeNo">-</div>
+                </div>
+                <div class="pv-meta-row">
+                    <div class="label">Role</div>
+                    <div class="value" id="pvEmployeeRole">-</div>
+                </div>
+            </div>
+
+            <div class="pv-headline">
+                <div>Details</div>
+                <div>Type</div>
+                <div class="pv-right">Rs.</div>
+            </div>
+
+            <div class="pv-block" id="pvBasicBlock"></div>
+            <div class="pv-block" id="pvAllowanceBlock"></div>
+            <div class="pv-block" id="pvDeductionBlock"></div>
+
+            <div class="pv-summary">
+                <div class="pv-summary-item"><span>Present Days</span><strong id="pvPresentDays">0</strong></div>
+                <div class="pv-summary-item"><span>Working Days (Calculated)</span><strong id="pvWorkingDays">0.00</strong></div>
+                <div class="pv-summary-item"><span>Working Hrs (IN/OUT)</span><strong id="pvWorkingHours">0.00</strong></div>
+                <div class="pv-summary-item"><span>OT Hrs</span><strong id="pvOtHours">0.00</strong></div>
+                <div class="pv-summary-item"><span>Full Leave Days</span><strong id="pvFullLeave">0.00</strong></div>
+                <div class="pv-summary-item"><span>Half Day Leave Count</span><strong id="pvHalfLeave">0.00</strong></div>
+            </div>
+
+            <div class="pv-footer-note">
+                This is a computer generated pay slip, no signature required.
+            </div>
+        </section>
+    </div>
+</div>
+
+<script src="../../assets/js/api.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="../../assets/js/hr-payslip-view.js"></script>
+</body>
+</html>

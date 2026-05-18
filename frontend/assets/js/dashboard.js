@@ -322,7 +322,8 @@ const DASHBOARD_MENU_ENTRIES = [
             { path: "/hr/inout.html", label: "INOUT" },
             { path: "/hr/time-sheet.html", label: "Time Sheet" },
             { path: "/hr/sallary.html", label: "Sallary" },
-            { path: "/hr/leave.html", label: "Leave" }
+            { path: "/hr/leave.html", label: "Leave" },
+            { path: "/hr/payslip.html", label: "Payslip" }
         ]
     },
     {

@@ -64,5 +64,23 @@ router.post(
   roleMiddleware(["admin", "manager", "user"]),
   hrController.applyLeave
 );
+router.get(
+  "/payslip/users",
+  authMiddleware,
+  roleMiddleware(["admin", "manager", "user"]),
+  hrController.getPayslipUsers
+);
+router.get(
+  "/payslip/:userId",
+  authMiddleware,
+  roleMiddleware(["admin", "manager", "user"]),
+  hrController.getPayslipByUserId
+);
+router.post(
+  "/payslip/:userId/send-email",
+  authMiddleware,
+  roleMiddleware(["admin", "manager", "user"]),
+  hrController.sendPayslipEmail
+);
 
 module.exports = router;

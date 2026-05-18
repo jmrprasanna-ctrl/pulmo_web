@@ -8,48 +8,44 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>INOUT - PULMO TECHNOLOGIES</title>
+<title>Payslip - PULMO TECHNOLOGIES</title>
 <link rel="stylesheet" href="../../assets/css/style.css">
 <link rel="stylesheet" href="../../assets/css/dashboard.css">
 <style>
-    .main-content .page-head{
+    .page-head{
         display:flex;
         align-items:center;
         justify-content:space-between;
         gap:12px;
-        flex-wrap:nowrap;
-        width:100%;
+        margin-bottom:16px;
     }
-    .main-content .page-head h2{
+    .page-head h2{
         margin:0;
-        flex:1 1 auto;
-        min-width:0;
     }
-    .main-content .page-head .icon-btn{
-        margin-left:auto;
-        flex:0 0 auto;
+    .payslip-table-wrap{
+        width:100%;
+        overflow:auto;
+        max-height:calc(100vh - 300px);
+        border:1px solid var(--line);
+        border-radius:var(--radius-md);
+        background:#fff;
     }
-    .inout-grid{
-        display:grid;
-        grid-template-columns:repeat(2,minmax(260px,1fr));
-        gap:12px;
+    .payslip-table-wrap table{
+        margin:0;
+        border:0;
+        border-radius:0;
+        min-width:980px;
     }
-    .inout-grid .field label{
-        margin-top:0;
+    .payslip-table-wrap thead th{
+        position:sticky;
+        top:0;
+        z-index:1;
     }
-    .inout-actions{
-        display:flex;
-        align-items:center;
-        gap:10px;
-        flex-wrap:wrap;
+    .payslip-row-clickable{
+        cursor:pointer;
     }
-    .inout-actions button{
-        margin-top:0;
-    }
-    @media (max-width: 900px){
-        .inout-grid{
-            grid-template-columns:1fr;
-        }
+    .payslip-row-clickable:hover{
+        background:#f2f8ff !important;
     }
 </style>
 </head>
@@ -82,7 +78,7 @@
 
 <div class="main-content">
     <header class="page-head">
-        <h2>INOUT</h2>
+        <h2>Payslip</h2>
         <a class="icon-btn" href="../dashboard.html" aria-label="Back to dashboard" title="Back to dashboard">
             <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
@@ -91,35 +87,33 @@
     </header>
 
     <div class="form-container">
-        <div class="inout-grid">
+        <div class="toolbar">
             <div class="field">
-                <label>User</label>
-                <input type="text" id="inoutUserName" readonly>
-            </div>
-            <div class="field">
-                <label>Status</label>
-                <input type="text" id="inoutStatus" readonly>
-            </div>
-            <div class="field">
-                <label>Last In</label>
-                <input type="text" id="lastCheckInAt" readonly>
-            </div>
-            <div class="field">
-                <label>Last Out</label>
-                <input type="text" id="lastCheckOutAt" readonly>
+                <label for="payslipMonth">Month</label>
+                <input type="month" id="payslipMonth">
             </div>
         </div>
-
-        <div class="inout-actions">
-            <button type="button" id="checkInBtn">Time In</button>
-            <button type="button" class="btn-danger" id="checkOutBtn">Time Out</button>
+        <div class="path-hint">Click a user row to open payslip view.</div>
+        <div class="payslip-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Profile Name</th>
+                        <th>Login User</th>
+                        <th>Role</th>
+                        <th>Department</th>
+                        <th>Email</th>
+                        <th>Employee No</th>
+                        <th>Basic Sallary</th>
+                    </tr>
+                </thead>
+                <tbody id="payslipUsersBody"></tbody>
+            </table>
         </div>
-        <div class="path-hint" id="gpsHint">Location: Waiting for action...</div>
-
     </div>
 </div>
 
 <script src="../../assets/js/api.js"></script>
-<script src="../../assets/js/hr-inout.js"></script>
+<script src="../../assets/js/hr-payslip.js"></script>
 </body>
 </html>

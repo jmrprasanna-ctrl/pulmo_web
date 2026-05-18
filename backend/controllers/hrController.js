@@ -1,4 +1,6 @@
 const db = require("../config/database");
+const EmailSetup = require("../models/EmailSetup");
+const { sendEmail } = require("../services/emailService");
 
 const ensuredInOutTableDbs = new Set();
 const ensuredSallaryTableDbs = new Set();
@@ -15,6 +17,15 @@ const SALLARY_BANK_OPTIONS = new Set([
   "HNB",
   "NSB",
   "OTHER",
+]);
+
+const USER_ROLE_ALIASES = new Set([
+  "user",
+  "coordinator",
+  "cordinator",
+  "co-ordinator",
+  "co ordinator",
+  "co_ordinator",
 ]);
 
 async function ensureInOutLogTable() {
@@ -321,6 +332,7 @@ async function getSallaryUserRow(userId) {
             COALESCE(NULLIF(TRIM(up.profile_name), ''), u.username) AS profile_name,
             COALESCE(NULLIF(TRIM(up.mobile), ''), NULLIF(TRIM(u.telephone), ''), '') AS mobile,
             COALESCE(NULLIF(TRIM(up.address), ''), '') AS address,
+            COALESCE(NULLIF(TRIM(up.id_number), ''), '') AS employee_no,
             sp.bank_name,
             sp.other_bank_name,
             sp.bank_account,
@@ -436,6 +448,321 @@ function parseMonthRange(monthRaw) {
     month,
     startIso: start.toISOString().slice(0, 10),
     endIso: end.toISOString().slice(0, 10),
+  };
+}
+
+function normalizeAccessRole(role) {
+  const raw = String(role || "").trim().toLowerCase();
+  if (raw === "admin") return "admin";
+  if (raw === "manager") return "manager";
+  if (USER_ROLE_ALIASES.has(raw)) return "user";
+  return "user";
+}
+
+function canRequesterViewPayslipTarget(requesterRole, requesterUserId, targetUserId, targetRole) {
+  const requester = normalizeAccessRole(requesterRole);
+  const target = normalizeAccessRole(targetRole);
+  if (requester === "admin") return true;
+  if (requester === "manager") {
+    return target === "manager" || target === "user";
+  }
+  return Number(requesterUserId || 0) === Number(targetUserId || 0);
+}
+
+async function getPayslipVisibleUsers(requesterRole, requesterUserId) {
+  await ensureSallaryProfileTable();
+  const rs = await db.query(
+    `SELECT u.id AS user_id,
+            u.username,
+            u.role,
+            u.email,
+            u.department,
+            COALESCE(NULLIF(TRIM(up.profile_name), ''), u.username) AS profile_name,
+            COALESCE(NULLIF(TRIM(up.id_number), ''), '') AS employee_no,
+            COALESCE(sp.basic_sallary, 0) AS basic_sallary
+     FROM users u
+     LEFT JOIN user_profiles up ON up.user_id = u.id
+     LEFT JOIN user_sallary_profiles sp ON sp.user_id = u.id
+     ORDER BY LOWER(COALESCE(NULLIF(TRIM(up.profile_name), ''), u.username)) ASC, u.id ASC`
+  );
+  const rows = Array.isArray(rs?.[0]) ? rs[0] : [];
+  return rows
+    .map((row) => ({
+      user_id: Number(row.user_id || 0),
+      username: String(row.username || "").trim(),
+      role: String(row.role || "").trim(),
+      email: String(row.email || "").trim(),
+      department: String(row.department || "").trim(),
+      profile_name: String(row.profile_name || "").trim() || String(row.username || "").trim(),
+      employee_no: String(row.employee_no || "").trim(),
+      basic_sallary: normalizeBasicSallary(row.basic_sallary),
+    }))
+    .filter((row) =>
+      Number.isFinite(row.user_id)
+      && row.user_id > 0
+      && canRequesterViewPayslipTarget(requesterRole, requesterUserId, row.user_id, row.role)
+    );
+}
+
+function toMonthLabel(monthValue) {
+  const raw = String(monthValue || "").trim();
+  if (!/^\d{4}-\d{2}$/.test(raw)) return raw || "Month";
+  const [year, month] = raw.split("-").map((x) => Number(x));
+  const date = new Date(Date.UTC(year, month - 1, 1));
+  return date.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+}
+
+function toDateWithDelta(dateIso, deltaDays) {
+  const base = new Date(`${String(dateIso || "").trim()}T00:00:00Z`);
+  if (Number.isNaN(base.getTime())) return "";
+  base.setUTCDate(base.getUTCDate() + Number(deltaDays || 0));
+  return base.toISOString().slice(0, 10);
+}
+
+async function getWorkSummaryByRange(userId, startDate, endDateInclusive) {
+  await ensureInOutLogTable();
+  const rs = await db.query(
+    `WITH filtered AS (
+       SELECT DATE(check_in_at) AS log_date,
+              CASE
+                WHEN check_out_at IS NULL THEN 0
+                ELSE GREATEST(EXTRACT(EPOCH FROM (check_out_at - check_in_at)) / 3600.0, 0)
+              END AS duration_hours
+       FROM user_inout_logs
+       WHERE user_id = $1
+         AND DATE(check_in_at) >= $2
+         AND DATE(check_in_at) <= $3
+     ),
+     per_day AS (
+       SELECT log_date, SUM(duration_hours) AS day_hours
+       FROM filtered
+       GROUP BY log_date
+     )
+     SELECT COALESCE(ROUND(SUM(day_hours)::numeric, 2), 0) AS total_working_hours,
+            COALESCE(ROUND(SUM(CASE WHEN day_hours > 8 THEN day_hours - 8 ELSE 0 END)::numeric, 2), 0) AS total_ot_hours,
+            COALESCE(ROUND(SUM(LEAST(day_hours, 8) / 8.0)::numeric, 2), 0) AS calculated_working_days,
+            COUNT(*)::INTEGER AS present_days
+     FROM per_day`,
+    { bind: [userId, startDate, endDateInclusive] }
+  );
+  const rows = Array.isArray(rs?.[0]) ? rs[0] : [];
+  const row = rows[0] || {};
+  return {
+    present_days: Number(row.present_days || 0),
+    calculated_working_days: normalizeBasicSallary(row.calculated_working_days),
+    total_working_hours: normalizeBasicSallary(row.total_working_hours),
+    total_ot_hours: normalizeBasicSallary(row.total_ot_hours),
+  };
+}
+
+async function getLeaveSummaryByRange(userId, startDate, endDateExclusive) {
+  await ensureLeaveTable();
+  const rs = await db.query(
+    `SELECT
+       COALESCE(
+         SUM(
+           CASE
+             WHEN LOWER(COALESCE(leave_type, '')) = 'full'
+               THEN GREATEST(((end_date - start_date) + 1), 0)
+             ELSE 0
+           END
+         ),
+         0
+       )::NUMERIC AS full_leave_days,
+       COALESCE(
+         SUM(
+           CASE
+             WHEN LOWER(COALESCE(leave_type, '')) = 'half' THEN 1
+             ELSE 0
+           END
+         ),
+         0
+       )::NUMERIC AS half_day_leave_count
+     FROM user_leave_requests
+     WHERE user_id = $1
+       AND start_date < $3::date
+       AND end_date >= $2::date`,
+    { bind: [userId, startDate, endDateExclusive] }
+  );
+  const rows = Array.isArray(rs?.[0]) ? rs[0] : [];
+  const row = rows[0] || {};
+  return {
+    full_leave_days: normalizeBasicSallary(row.full_leave_days),
+    half_day_leave_count: normalizeBasicSallary(row.half_day_leave_count),
+  };
+}
+
+function parseBase64PdfAttachment(fileDataBase64) {
+  const raw = String(fileDataBase64 || "").trim();
+  if (!raw) return null;
+
+  let payload = raw;
+  const dataUrlMatch = raw.match(/^data:application\/pdf(?:;[^,]*)?;base64,(.+)$/i);
+  if (dataUrlMatch) {
+    payload = String(dataUrlMatch[1] || "");
+  }
+  const buffer = Buffer.from(payload, "base64");
+  if (!buffer.length) {
+    throw new Error("Generated payslip PDF is empty.");
+  }
+  if (buffer.slice(0, 4).toString("utf8") !== "%PDF") {
+    throw new Error("Invalid payslip PDF attachment.");
+  }
+  return buffer;
+}
+
+function buildSmtpPayload(setup) {
+  const smtpHost = String(setup?.smtp_host || process.env.SMTP_HOST || "").trim();
+  const smtpPort = Number(setup?.smtp_port || process.env.SMTP_PORT || 587);
+  const smtpSecure = !!(setup?.smtp_secure || String(process.env.SMTP_SECURE || "").toLowerCase() === "true");
+  const smtpUser = String(setup?.smtp_user || process.env.SMTP_USER || "").trim();
+  const smtpPass = String(setup?.smtp_pass || process.env.SMTP_PASS || "").trim();
+  const fromName = String(setup?.from_name || "PULMO TECHNOLOGIES").trim() || "PULMO TECHNOLOGIES";
+  const fromEmail = String(setup?.from_email || smtpUser || process.env.SMTP_FROM || "").trim();
+  const from = fromEmail.includes("<")
+    ? fromEmail
+    : `"${fromName}" <${fromEmail || "noreply@company.com"}>`;
+
+  return {
+    smtpConfig: {
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      user: smtpUser,
+      pass: smtpPass,
+    },
+    from,
+  };
+}
+
+function hasSmtpConfig(payload) {
+  const cfg = payload?.smtpConfig || {};
+  return !!String(cfg.host || "").trim()
+    && !!String(cfg.user || "").trim()
+    && !!String(cfg.pass || "").trim();
+}
+
+async function resolveMappedCompanyProfile(req) {
+  const userId = Number(req?.user?.id || req?.user?.userId || 0);
+  if (!Number.isFinite(userId) || userId <= 0) {
+    return {
+      company_name: "PULMO TECHNOLOGIES",
+      company_code: "",
+      company_email: "",
+    };
+  }
+
+  try {
+    const result = await db.withDatabase("inventory", async () => {
+      const rs = await db.query(
+        `SELECT cp.company_name,
+                cp.company_code,
+                COALESCE(NULLIF(TRIM(um.mapped_email), ''), cp.email) AS company_email
+         FROM user_mappings um
+         JOIN company_profiles cp ON cp.id = um.company_profile_id
+         WHERE um.user_id = $1
+         LIMIT 1`,
+        { bind: [userId] }
+      );
+      const rows = Array.isArray(rs?.[0]) ? rs[0] : [];
+      return rows[0] || null;
+    });
+
+    if (!result) {
+      return {
+        company_name: "PULMO TECHNOLOGIES",
+        company_code: "",
+        company_email: "",
+      };
+    }
+
+    return {
+      company_name: String(result.company_name || "PULMO TECHNOLOGIES").trim() || "PULMO TECHNOLOGIES",
+      company_code: String(result.company_code || "").trim(),
+      company_email: String(result.company_email || "").trim().toLowerCase(),
+    };
+  } catch (_err) {
+    return {
+      company_name: "PULMO TECHNOLOGIES",
+      company_code: "",
+      company_email: "",
+    };
+  }
+}
+
+async function buildPayslipDetailData(targetUserId, monthRange) {
+  const userRow = await getSallaryUserRow(targetUserId);
+  if (!userRow) return null;
+
+  const month = String(monthRange?.month || "").trim();
+  const periodStart = String(monthRange?.startIso || "").trim();
+  const periodEndExclusive = String(monthRange?.endIso || "").trim();
+  const periodEndInclusive = toDateWithDelta(periodEndExclusive, -1);
+
+  const workingSummary = await getWorkSummaryByRange(targetUserId, periodStart, periodEndInclusive);
+  const leaveSummary = await getLeaveSummaryByRange(targetUserId, periodStart, periodEndExclusive);
+
+  const basicSallary = normalizeBasicSallary(userRow.basic_sallary);
+  const allowances = parseStoredAllowances(userRow.allowances_json);
+  const deductions = parseStoredDeductions(userRow.deductions_json);
+  const otPayAmountPerHour = normalizeBasicSallary(userRow.ot_pay_amount);
+  const otHours = normalizeBasicSallary(workingSummary.total_ot_hours);
+  const otPayAmount = normalizeBasicSallary(otPayAmountPerHour * otHours);
+  const noPayAmount = 0;
+  const salaryForMsps = normalizeBasicSallary(Math.max(basicSallary - noPayAmount, 0));
+  const allowancesTotal = normalizeBasicSallary(
+    allowances.reduce((sum, item) => sum + normalizeBasicSallary(item?.amount), 0)
+  );
+  const deductionsTotal = normalizeBasicSallary(
+    deductions.reduce((sum, item) => sum + normalizeBasicSallary(item?.amount), 0)
+  );
+  const additionalTotal = normalizeBasicSallary(allowancesTotal + otPayAmount);
+  const grossPay = normalizeBasicSallary(salaryForMsps + additionalTotal);
+  const netSallary = normalizeBasicSallary(grossPay - deductionsTotal);
+  const companyContMsps = normalizeBasicSallary(salaryForMsps * 0.12);
+  const companyContEtf = normalizeBasicSallary(salaryForMsps * 0.03);
+
+  return {
+    month,
+    month_label: toMonthLabel(month),
+    period_start: periodStart,
+    period_end: periodEndInclusive,
+    user: {
+      user_id: Number(userRow.user_id || 0),
+      username: String(userRow.username || "").trim(),
+      role: String(userRow.role || "").trim(),
+      profile_name: String(userRow.profile_name || "").trim() || String(userRow.username || "").trim(),
+      department: String(userRow.department || "").trim(),
+      email: String(userRow.email || "").trim(),
+      employee_no: String(userRow.employee_no || "").trim(),
+      bank_name: String(userRow.bank_name || "").trim(),
+      bank_account: String(userRow.bank_account || "").trim(),
+    },
+    attendance: {
+      present_days: Number(workingSummary.present_days || 0),
+      working_days: normalizeBasicSallary(workingSummary.calculated_working_days),
+      working_hours: normalizeBasicSallary(workingSummary.total_working_hours),
+      ot_hours: otHours,
+    },
+    leave: {
+      full_leave_days: normalizeBasicSallary(leaveSummary.full_leave_days),
+      half_day_leave_count: normalizeBasicSallary(leaveSummary.half_day_leave_count),
+    },
+    salary: {
+      basic_sallary: basicSallary,
+      no_pay_amount: noPayAmount,
+      salary_for_msps: salaryForMsps,
+      allowances,
+      deductions,
+      ot_pay_per_hour: otPayAmountPerHour,
+      ot_pay_amount: otPayAmount,
+      allowances_total: allowancesTotal,
+      deductions_total: deductionsTotal,
+      gross_pay: grossPay,
+      net_sallary: netSallary,
+      company_cont_msps: companyContMsps,
+      company_cont_etf: companyContEtf,
+    },
   };
 }
 
@@ -1120,5 +1447,142 @@ exports.applyLeave = async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({ message: err.message || "Failed to apply leave." });
+  }
+};
+
+exports.getPayslipUsers = async (req, res) => {
+  const role = String(req.user?.role || "").trim().toLowerCase();
+  const requesterUserId = Number(req.user?.id || req.user?.userId || 0);
+  if (!Number.isFinite(requesterUserId) || requesterUserId <= 0) {
+    return res.status(401).json({ message: "Invalid token user." });
+  }
+
+  try {
+    const monthRange = parseMonthRange(req.query?.month);
+    const rows = await getPayslipVisibleUsers(role, requesterUserId);
+    return res.json({
+      month: monthRange.month,
+      rows,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message || "Failed to load payslip users." });
+  }
+};
+
+exports.getPayslipByUserId = async (req, res) => {
+  const role = String(req.user?.role || "").trim().toLowerCase();
+  const requesterUserId = Number(req.user?.id || req.user?.userId || 0);
+  const targetUserId = Number(req.params?.userId || 0);
+  if (!Number.isFinite(requesterUserId) || requesterUserId <= 0) {
+    return res.status(401).json({ message: "Invalid token user." });
+  }
+  if (!Number.isFinite(targetUserId) || targetUserId <= 0) {
+    return res.status(400).json({ message: "Invalid user id." });
+  }
+
+  try {
+    const monthRange = parseMonthRange(req.query?.month);
+    const visibleRows = await getPayslipVisibleUsers(role, requesterUserId);
+    const visibleTarget = visibleRows.find((row) => Number(row.user_id || 0) === targetUserId);
+    if (!visibleTarget) {
+      return res.status(403).json({ message: "Forbidden: You cannot view this payslip." });
+    }
+
+    const payslip = await buildPayslipDetailData(targetUserId, monthRange);
+    if (!payslip) {
+      return res.status(404).json({ message: "User not found." });
+    }
+    const company = await resolveMappedCompanyProfile(req);
+    return res.json({
+      company,
+      payslip,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message || "Failed to load payslip detail." });
+  }
+};
+
+exports.sendPayslipEmail = async (req, res) => {
+  const role = String(req.user?.role || "").trim().toLowerCase();
+  const requesterUserId = Number(req.user?.id || req.user?.userId || 0);
+  const targetUserId = Number(req.params?.userId || 0);
+  if (!Number.isFinite(requesterUserId) || requesterUserId <= 0) {
+    return res.status(401).json({ message: "Invalid token user." });
+  }
+  if (!Number.isFinite(targetUserId) || targetUserId <= 0) {
+    return res.status(400).json({ message: "Invalid user id." });
+  }
+
+  try {
+    const pdfBuffer = parseBase64PdfAttachment(req.body?.attachment_pdf_base64);
+    if (!pdfBuffer) {
+      return res.status(400).json({ message: "Payslip PDF attachment is required." });
+    }
+
+    const monthRange = parseMonthRange(req.body?.month || req.query?.month);
+    const visibleRows = await getPayslipVisibleUsers(role, requesterUserId);
+    const visibleTarget = visibleRows.find((row) => Number(row.user_id || 0) === targetUserId);
+    if (!visibleTarget) {
+      return res.status(403).json({ message: "Forbidden: You cannot send this payslip." });
+    }
+
+    const payslip = await buildPayslipDetailData(targetUserId, monthRange);
+    if (!payslip) {
+      return res.status(404).json({ message: "User not found." });
+    }
+    const recipient = String(payslip.user?.email || "").trim();
+    if (!recipient) {
+      return res.status(404).json({ message: "User email not found for selected payslip user." });
+    }
+
+    const setup = await EmailSetup.findOne({ order: [["id", "ASC"]] });
+    const smtpPayload = buildSmtpPayload(setup);
+    if (!hasSmtpConfig(smtpPayload)) {
+      return res.status(400).json({ message: "Email setup is incomplete. Please configure Support > Email Setup." });
+    }
+
+    const company = await resolveMappedCompanyProfile(req);
+    const profileName = String(payslip.user?.profile_name || payslip.user?.username || "user").trim();
+    const defaultFileName = `payslip-${profileName.replace(/\s+/g, "-")}-${monthRange.month}.pdf`;
+    const attachmentNameRaw = String(req.body?.attachment_file_name || "").trim();
+    const attachmentFileName = attachmentNameRaw || defaultFileName;
+
+    const subject = `Payslip ${monthRange.month} - ${profileName}`;
+    const textBody = [
+      `Dear ${profileName},`,
+      "",
+      `Please find attached your payslip for ${payslip.month_label}.`,
+      "",
+      "This is an auto-generated message.",
+      `${String(company.company_name || "PULMO TECHNOLOGIES").trim() || "PULMO TECHNOLOGIES"}`,
+    ].join("\n");
+    const htmlBody = textBody.split("\n").map((line) => line.trim()).join("<br>");
+
+    await sendEmail({
+      to: recipient,
+      subject,
+      text: textBody,
+      html: htmlBody,
+      attachments: [
+        {
+          filename: attachmentFileName.toLowerCase().endsWith(".pdf")
+            ? attachmentFileName
+            : `${attachmentFileName}.pdf`,
+          content: pdfBuffer,
+          contentType: "application/pdf",
+        },
+      ],
+      smtpConfig: smtpPayload.smtpConfig,
+      from: smtpPayload.from,
+    });
+
+    return res.json({
+      message: `Payslip email sent to ${recipient}.`,
+      recipient,
+      month: monthRange.month,
+      user_id: targetUserId,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message || "Failed to send payslip email." });
   }
 };
