@@ -20,6 +20,12 @@ const stockSourceFilterEl = document.getElementById("stockSourceFilter");
 const clearVendorStockBtnEl = document.getElementById("clearVendorStockBtn");
 let allStockProducts = [];
 
+function compareByProductIdAsc(a, b){
+    const aId = String(a?.product_id || "").trim();
+    const bId = String(b?.product_id || "").trim();
+    return aId.localeCompare(bId, undefined, { numeric: true, sensitivity: "base" });
+}
+
 function classifyVendorSource(vendorName){
     const name = String(vendorName || "").trim().toLowerCase();
     if(!name) return "VENDER";
@@ -110,7 +116,7 @@ function applyStockFilter(){
     populateModelFilter(sourceRows);
 
     if(!q && !selectedModel){
-        renderStocks(sourceRows);
+        renderStocks(sourceRows.slice().sort(compareByProductIdAsc));
         return;
     }
 
@@ -124,7 +130,7 @@ function applyStockFilter(){
             .concat(model)
             .some((v) => String(v || "").toLowerCase().includes(q));
     });
-    renderStocks(filtered);
+    renderStocks(filtered.slice().sort(compareByProductIdAsc));
 }
 
 async function loadStocks(){
