@@ -564,23 +564,8 @@ function upgradeMachinesSidebarInPlace(){
         if(generalAllowed){
             machinesChildren.push(`<li><a href="${toMenuHref("/products/general-machine.html")}">General</a></li>`);
         }
-        const rentalChildren = [];
         if(rentalAllowed){
-            rentalChildren.push(`<li><a href="${toMenuHref("/products/machine.html")}">Rental Mchine</a></li>`);
-        }
-        if(rentalAllowed || rentalChildren.length){
-            if(rentalChildren.length){
-                machinesChildren.push(`
-                    <li class="nav-group nav-group-machines" data-nav-group-machines="1">
-                        <a href="#" class="nav-group-toggle" data-sidebar-group-toggle="1" aria-expanded="false">Rental</a>
-                        <ul class="nav-submenu" data-sidebar-group-menu="1">
-                            ${rentalChildren.join("")}
-                        </ul>
-                    </li>
-                `);
-            }else{
-                machinesChildren.push(`<li><a href="${toMenuHref("/products/machine.html")}">Rental</a></li>`);
-            }
+            machinesChildren.push(`<li><a href="${toMenuHref("/products/machine.html")}">Rental</a></li>`);
         }
         if(!machinesChildren.length){
             return;
