@@ -245,11 +245,11 @@
             </div>
             <div class="field">
                 <label for="sdSalaryStartDate">Salary Start Date</label>
-                <input type="date" id="sdSalaryStartDate">
+                <input type="date" id="sdSalaryStartDate" readonly>
             </div>
             <div class="field">
                 <label for="sdSalaryEndDate">Salary End Date</label>
-                <input type="date" id="sdSalaryEndDate">
+                <input type="date" id="sdSalaryEndDate" readonly>
             </div>
             <div class="field">
                 <label for="sdWorkingDays">Working Days</label>
@@ -277,6 +277,17 @@
                     </button>
                 </div>
                 <div id="sdAllowancesList" class="allowances-list"></div>
+            </div>
+            <div class="field" style="grid-column:1/-1;">
+                <div class="allowances-head">
+                    <label>Add Deductions</label>
+                    <button type="button" class="allowance-icon-btn" id="sdAddDeductionBtn" aria-label="Add deduction" title="Add deduction">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+                <div id="sdDeductionsList" class="allowances-list"></div>
             </div>
         </div>
 

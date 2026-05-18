@@ -119,6 +119,7 @@ async function ensureSallaryProfileTable() {
   await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS working_days NUMERIC(8,2) NOT NULL DEFAULT 0;`);
   await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS ot_pay_amount NUMERIC(14,2) NOT NULL DEFAULT 0;`);
   await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS allowances_json TEXT NOT NULL DEFAULT '[]';`);
+  await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS deductions_json TEXT NOT NULL DEFAULT '[]';`);
   await db.query(`
     CREATE INDEX IF NOT EXISTS user_sallary_profiles_profile_name_idx
     ON user_sallary_profiles (LOWER(COALESCE(profile_name, '')));
@@ -164,6 +165,10 @@ function parseStoredAllowances(rawJson) {
   }
 }
 
+function parseStoredDeductions(rawJson) {
+  return parseStoredAllowances(rawJson);
+}
+
 function normalizeBasicSallary(value) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return 0;
@@ -200,7 +205,8 @@ async function getSallaryUserRow(userId) {
             sp.salary_end_date,
             sp.working_days,
             sp.ot_pay_amount,
-            sp.allowances_json
+            sp.allowances_json,
+            sp.deductions_json
      FROM users u
      LEFT JOIN user_profiles up ON up.user_id = u.id
      LEFT JOIN user_sallary_profiles sp ON sp.user_id = u.id
@@ -229,6 +235,46 @@ function normalizeDateOnly(value) {
   if (!raw) return "";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return "";
   return raw;
+}
+
+function toIsoDateUtc(value) {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0, 10);
+}
+
+function resolveFixedSallaryCycle(anchorValue) {
+  const anchor = anchorValue ? new Date(anchorValue) : new Date();
+  const base = Number.isNaN(anchor.getTime()) ? new Date() : anchor;
+  const year = base.getUTCFullYear();
+  const month = base.getUTCMonth();
+  const day = base.getUTCDate();
+
+  let startYear = year;
+  let startMonth = month;
+  let endYear = year;
+  let endMonth = month;
+
+  if (day >= 20) {
+    if (month === 11) {
+      endYear = year + 1;
+      endMonth = 0;
+    } else {
+      endMonth = month + 1;
+    }
+  } else if (month === 0) {
+    startYear = year - 1;
+    startMonth = 11;
+  } else {
+    startMonth = month - 1;
+  }
+
+  const startDate = new Date(Date.UTC(startYear, startMonth, 20));
+  const endDate = new Date(Date.UTC(endYear, endMonth, 20));
+  return {
+    start_date: toIsoDateUtc(startDate),
+    end_date: toIsoDateUtc(endDate),
+  };
 }
 
 function parseMonthRange(monthRaw) {
@@ -572,6 +618,7 @@ exports.getSallaryDetailByUserId = async (req, res) => {
     if (!row) {
       return res.status(404).json({ message: "User not found." });
     }
+    const fixedCycle = resolveFixedSallaryCycle();
 
     return res.json({
       user_id: Number(row.user_id || 0),
@@ -586,11 +633,12 @@ exports.getSallaryDetailByUserId = async (req, res) => {
       other_bank_name: String(row.other_bank_name || "").trim(),
       bank_account: String(row.bank_account || "").trim(),
       basic_sallary: normalizeBasicSallary(row.basic_sallary),
-      salary_start_date: row.salary_start_date ? new Date(row.salary_start_date).toISOString().slice(0, 10) : "",
-      salary_end_date: row.salary_end_date ? new Date(row.salary_end_date).toISOString().slice(0, 10) : "",
+      salary_start_date: fixedCycle.start_date,
+      salary_end_date: fixedCycle.end_date,
       working_days: normalizeBasicSallary(row.working_days),
       ot_pay_amount: normalizeBasicSallary(row.ot_pay_amount),
       allowances: parseStoredAllowances(row.allowances_json),
+      deductions: parseStoredDeductions(row.deductions_json),
     });
   } catch (err) {
     return res.status(500).json({ message: err.message || "Failed to load sallary detail." });
@@ -626,21 +674,20 @@ exports.upsertSallaryDetailByUserId = async (req, res) => {
       : "";
     const bankAccount = String(req.body?.bank_account || "").trim().slice(0, 120);
     const basicSallary = normalizeBasicSallary(req.body?.basic_sallary ?? req.body?.basic_salary);
-    const salaryStartDate = normalizeDateOnly(req.body?.salary_start_date);
-    const salaryEndDate = normalizeDateOnly(req.body?.salary_end_date);
-    if (salaryStartDate && salaryEndDate && salaryEndDate < salaryStartDate) {
-      return res.status(400).json({ message: "End date cannot be before start date." });
-    }
+    const fixedCycle = resolveFixedSallaryCycle();
+    const salaryStartDate = fixedCycle.start_date;
+    const salaryEndDate = fixedCycle.end_date;
     const workingDays = normalizeBasicSallary(req.body?.working_days);
     const otPayAmount = normalizeBasicSallary(req.body?.ot_pay_amount);
     const allowances = parseAllowances(req.body?.allowances);
+    const deductions = parseAllowances(req.body?.deductions);
 
     await db.query(
       `INSERT INTO user_sallary_profiles
          (user_id, username, role, profile_name, department, email, mobile, address,
-          bank_name, other_bank_name, bank_account, basic_sallary, salary_start_date, salary_end_date, working_days, ot_pay_amount, allowances_json, "createdAt", "updatedAt")
+          bank_name, other_bank_name, bank_account, basic_sallary, salary_start_date, salary_end_date, working_days, ot_pay_amount, allowances_json, deductions_json, "createdAt", "updatedAt")
        VALUES
-         ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW(), NOW())
+         ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
        ON CONFLICT (user_id)
        DO UPDATE SET
          username = EXCLUDED.username,
@@ -659,6 +706,7 @@ exports.upsertSallaryDetailByUserId = async (req, res) => {
          working_days = EXCLUDED.working_days,
          ot_pay_amount = EXCLUDED.ot_pay_amount,
          allowances_json = EXCLUDED.allowances_json,
+         deductions_json = EXCLUDED.deductions_json,
          "updatedAt" = NOW()`,
       {
         bind: [
@@ -679,6 +727,7 @@ exports.upsertSallaryDetailByUserId = async (req, res) => {
           workingDays,
           otPayAmount,
           JSON.stringify(allowances),
+          JSON.stringify(deductions),
         ],
       }
     );
@@ -704,6 +753,7 @@ exports.upsertSallaryDetailByUserId = async (req, res) => {
         working_days: normalizeBasicSallary(row?.working_days),
         ot_pay_amount: normalizeBasicSallary(row?.ot_pay_amount),
         allowances: parseStoredAllowances(row?.allowances_json),
+        deductions: parseStoredDeductions(row?.deductions_json),
       },
     });
   } catch (err) {
@@ -722,10 +772,12 @@ exports.getSallaryWorkSummary = async (req, res) => {
     return res.status(400).json({ message: "Invalid user id." });
   }
 
-  const startDate = normalizeDateOnly(req.query?.start_date);
-  const endDate = normalizeDateOnly(req.query?.end_date);
+  let startDate = normalizeDateOnly(req.query?.start_date);
+  let endDate = normalizeDateOnly(req.query?.end_date);
   if (!startDate || !endDate) {
-    return res.status(400).json({ message: "Start date and end date are required." });
+    const fixedCycle = resolveFixedSallaryCycle();
+    startDate = fixedCycle.start_date;
+    endDate = fixedCycle.end_date;
   }
   if (endDate < startDate) {
     return res.status(400).json({ message: "End date cannot be before start date." });

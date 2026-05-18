@@ -37,6 +37,46 @@ function toAmount(value, fallback = "") {
   return parsed.toFixed(2);
 }
 
+function resolveFixedSallaryCycle(anchorValue) {
+  const anchor = anchorValue ? new Date(anchorValue) : new Date();
+  const base = Number.isNaN(anchor.getTime()) ? new Date() : anchor;
+  const year = base.getUTCFullYear();
+  const month = base.getUTCMonth();
+  const day = base.getUTCDate();
+
+  let startYear = year;
+  let startMonth = month;
+  let endYear = year;
+  let endMonth = month;
+
+  if (day >= 20) {
+    if (month === 11) {
+      endYear = year + 1;
+      endMonth = 0;
+    } else {
+      endMonth = month + 1;
+    }
+  } else if (month === 0) {
+    startYear = year - 1;
+    startMonth = 11;
+  } else {
+    startMonth = month - 1;
+  }
+
+  const startDate = new Date(Date.UTC(startYear, startMonth, 20)).toISOString().slice(0, 10);
+  const endDate = new Date(Date.UTC(endYear, endMonth, 20)).toISOString().slice(0, 10);
+  return { startDate, endDate };
+}
+
+function applyFixedSallaryDates(anchorValue) {
+  const cycle = resolveFixedSallaryCycle(anchorValue);
+  const startEl = document.getElementById("sdSalaryStartDate");
+  const endEl = document.getElementById("sdSalaryEndDate");
+  if (startEl) startEl.value = cycle.startDate;
+  if (endEl) endEl.value = cycle.endDate;
+  return cycle;
+}
+
 function showStatus(message = "", type = "success") {
   const hint = document.getElementById("sdStatusHint");
   if (hint) {
@@ -94,6 +134,40 @@ function createAllowanceRow(allowance = {}) {
   return row;
 }
 
+function createDeductionRow(deduction = {}) {
+  const row = document.createElement("div");
+  row.className = "allowance-row";
+  row.innerHTML = `
+    <input type="text" class="deduction-name" placeholder="Deduction name" value="${toSafeText(deduction.name)}">
+    <input type="number" class="deduction-amount" min="0" step="0.01" placeholder="0.00" value="${Number.isFinite(Number(deduction.amount)) ? Number(deduction.amount) : ""}">
+    <button type="button" class="allowance-icon-btn allowance-remove deduction-remove" aria-label="Remove deduction" title="Remove deduction">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M9.5 9.5v8M14.5 9.5v8M6 7.5h12M10 7.5V6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5M8 7.5l.6 11a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9l.6-11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  `;
+
+  const removeBtn = row.querySelector(".deduction-remove");
+  if (removeBtn) {
+    removeBtn.disabled = !canEditSallaryDetail;
+    removeBtn.addEventListener("click", () => {
+      const list = document.getElementById("sdDeductionsList");
+      if (!list) return;
+      row.remove();
+      if (!list.children.length) {
+        list.appendChild(createDeductionRow());
+      }
+    });
+  }
+
+  const nameInput = row.querySelector(".deduction-name");
+  const amountInput = row.querySelector(".deduction-amount");
+  if (nameInput) nameInput.disabled = !canEditSallaryDetail;
+  if (amountInput) amountInput.disabled = !canEditSallaryDetail;
+
+  return row;
+}
+
 function renderAllowances(allowances) {
   const list = document.getElementById("sdAllowancesList");
   if (!list) return;
@@ -108,6 +182,20 @@ function renderAllowances(allowances) {
   });
 }
 
+function renderDeductions(deductions) {
+  const list = document.getElementById("sdDeductionsList");
+  if (!list) return;
+  list.innerHTML = "";
+  const rows = Array.isArray(deductions) ? deductions : [];
+  if (!rows.length) {
+    list.appendChild(createDeductionRow());
+    return;
+  }
+  rows.forEach((item) => {
+    list.appendChild(createDeductionRow(item || {}));
+  });
+}
+
 function collectAllowances() {
   const list = document.getElementById("sdAllowancesList");
   if (!list) return [];
@@ -119,17 +207,27 @@ function collectAllowances() {
   }).filter((entry) => entry.name || entry.amount > 0);
 }
 
+function collectDeductions() {
+  const list = document.getElementById("sdDeductionsList");
+  if (!list) return [];
+  return Array.from(list.querySelectorAll(".allowance-row")).map((row) => {
+    const name = toSafeText(row.querySelector(".deduction-name")?.value);
+    const amountRaw = Number(row.querySelector(".deduction-amount")?.value);
+    const amount = Number.isFinite(amountRaw) ? Number(amountRaw.toFixed(2)) : 0;
+    return { name, amount };
+  }).filter((entry) => entry.name || entry.amount > 0);
+}
+
 function setEditableState(canEdit) {
   const editableIds = [
     "sdBankName",
     "sdOtherBankName",
     "sdBankAccount",
     "sdBasicSallary",
-    "sdSalaryStartDate",
-    "sdSalaryEndDate",
     "sdWorkingDays",
     "sdOtPayAmount",
     "sdAddAllowanceBtn",
+    "sdAddDeductionBtn",
   ];
   editableIds.forEach((id) => {
     const element = document.getElementById(id);
@@ -137,6 +235,10 @@ function setEditableState(canEdit) {
       element.disabled = !canEdit;
     }
   });
+  const startDateInput = document.getElementById("sdSalaryStartDate");
+  const endDateInput = document.getElementById("sdSalaryEndDate");
+  if (startDateInput) startDateInput.disabled = true;
+  if (endDateInput) endDateInput.disabled = true;
   const updateBtn = document.getElementById("sdUpdateBtn");
   if (updateBtn) {
     updateBtn.disabled = !canEdit;
@@ -151,6 +253,7 @@ function setWorkSummaryFields(totalWorkingHours = "", totalOtHours = "") {
 }
 
 async function loadWorkSummaryByRange() {
+  applyFixedSallaryDates();
   const startDate = toSafeText(document.getElementById("sdSalaryStartDate")?.value);
   const endDate = toSafeText(document.getElementById("sdSalaryEndDate")?.value);
   if (!startDate || !endDate || !currentSallaryUserId) {
@@ -215,8 +318,7 @@ function fillDetail(data) {
   document.getElementById("sdBankAccount").value = toSafeText(data?.bank_account);
   const basicSallary = Number(data?.basic_sallary);
   document.getElementById("sdBasicSallary").value = Number.isFinite(basicSallary) ? basicSallary.toFixed(2) : "";
-  document.getElementById("sdSalaryStartDate").value = toSafeText(data?.salary_start_date);
-  document.getElementById("sdSalaryEndDate").value = toSafeText(data?.salary_end_date);
+  applyFixedSallaryDates();
   document.getElementById("sdWorkingDays").value = Number.isFinite(Number(data?.working_days))
     ? Number(data.working_days).toFixed(2)
     : "";
@@ -224,6 +326,7 @@ function fillDetail(data) {
     ? Number(data.ot_pay_amount).toFixed(2)
     : "";
   renderAllowances(Array.isArray(data?.allowances) ? data.allowances : []);
+  renderDeductions(Array.isArray(data?.deductions) ? data.deductions : []);
   setWorkSummaryFields("", "");
   toggleOtherBankField();
 }
@@ -248,6 +351,7 @@ async function saveDetail() {
   const workingDaysRaw = Number(document.getElementById("sdWorkingDays")?.value);
   const otPayAmountRaw = Number(document.getElementById("sdOtPayAmount")?.value);
   const allowances = collectAllowances();
+  const deductions = collectDeductions();
 
   if (bankName === "OTHER" && !otherBankName) {
     if (window.showMessageBox) showMessageBox("Enter other bank name.", "error");
@@ -268,6 +372,7 @@ async function saveDetail() {
     working_days: Number.isFinite(workingDaysRaw) ? workingDaysRaw : 0,
     ot_pay_amount: Number.isFinite(otPayAmountRaw) ? otPayAmountRaw : 0,
     allowances,
+    deductions,
   };
 
   setBusy(true);
@@ -320,6 +425,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   const bankSelect = document.getElementById("sdBankName");
   const addAllowanceBtn = document.getElementById("sdAddAllowanceBtn");
+  const addDeductionBtn = document.getElementById("sdAddDeductionBtn");
   const updateBtn = document.getElementById("sdUpdateBtn");
   const startDateInput = document.getElementById("sdSalaryStartDate");
   const endDateInput = document.getElementById("sdSalaryEndDate");
@@ -335,6 +441,11 @@ window.addEventListener("DOMContentLoaded", async () => {
     const list = document.getElementById("sdAllowancesList");
     if (!list) return;
     list.appendChild(createAllowanceRow());
+  });
+  addDeductionBtn?.addEventListener("click", () => {
+    const list = document.getElementById("sdDeductionsList");
+    if (!list) return;
+    list.appendChild(createDeductionRow());
   });
   updateBtn?.addEventListener("click", () => {
     saveDetail();
