@@ -20,6 +20,30 @@ function getRole() {
   return String(localStorage.getItem("role") || "").toLowerCase();
 }
 
+function resolveProfileNameForFile() {
+  const candidates = [
+    localStorage.getItem("profileName"),
+    localStorage.getItem("userName"),
+    localStorage.getItem("userEmail"),
+    localStorage.getItem("role"),
+  ];
+  for (const candidate of candidates) {
+    const clean = String(candidate || "").trim();
+    if (clean) return clean;
+  }
+  return "user";
+}
+
+function sanitizeFilePart(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, " ")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase();
+}
+
 function canViewAllUsers() {
   const role = getRole();
   return role === "admin" || role === "manager";
@@ -137,7 +161,8 @@ function exportTimeSheetMonthlyPdf() {
   }
 
   const safeMonth = selectedMonth.replace(/[^0-9-]/g, "");
-  doc.save(`timesheet-${safeMonth}.pdf`);
+  const profileName = sanitizeFilePart(resolveProfileNameForFile()) || "user";
+  doc.save(`timesheet-${profileName}-${safeMonth}.pdf`);
 }
 
 function bindUserFilter(userOptions) {
