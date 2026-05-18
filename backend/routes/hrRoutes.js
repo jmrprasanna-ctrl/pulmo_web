@@ -52,5 +52,17 @@ router.put(
   roleMiddleware(["admin", "manager", "user"]),
   hrController.upsertSallaryDetailByUserId
 );
+router.get(
+  "/leave/meta",
+  authMiddleware,
+  roleMiddleware(["admin", "manager", "user"]),
+  hrController.getLeaveMeta
+);
+router.post(
+  "/leave/apply",
+  authMiddleware,
+  roleMiddleware(["admin", "manager", "user"]),
+  hrController.applyLeave
+);
 
 module.exports = router;

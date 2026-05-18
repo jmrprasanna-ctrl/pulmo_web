@@ -179,6 +179,7 @@ const ACCESS_MODULE_OPTIONS = [
       { path: "/hr/time-sheet.html", label: "Time Sheet", actions: ["view"] },
       { path: "/hr/sallary.html", label: "Sallary", actions: ["view", "edit"] },
       { path: "/hr/sallary-detail.html", label: "Sallary Detail", actions: ["view", "edit"] },
+      { path: "/hr/leave.html", label: "Leave", actions: ["view", "add"] },
     ],
   },
   {

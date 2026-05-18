@@ -1,0 +1,190 @@
+<!--
+  System: PULMO WEB SYSTEM
+  Owner : CRONIT SOLLUTIONS
+  Author: JMR Prasanna
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leave - PULMO TECHNOLOGIES</title>
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="../../assets/css/dashboard.css">
+<style>
+    .page-head{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:12px;
+        margin-bottom:16px;
+    }
+    .page-head h2{
+        margin:0;
+    }
+    .leave-tiles{
+        display:grid;
+        grid-template-columns:repeat(2,minmax(170px,1fr));
+        gap:12px;
+        margin-bottom:12px;
+    }
+    .leave-tile{
+        width:100%;
+        border:1px solid #dbe7f3;
+        border-radius:14px;
+        background:#fff;
+        padding:14px 16px;
+        text-align:left;
+        cursor:pointer;
+        transition:border-color .2s ease, box-shadow .2s ease, transform .15s ease;
+    }
+    .leave-tile:hover{
+        border-color:#b6d1eb;
+        box-shadow:0 10px 22px rgba(32, 94, 150, 0.12);
+        transform:translateY(-1px);
+    }
+    .leave-tile.is-active{
+        border-color:#8fb8de;
+        box-shadow:0 8px 20px rgba(45, 120, 186, 0.17);
+        background:#f8fbff;
+    }
+    .leave-tile-title{
+        display:block;
+        font-weight:700;
+        color:#1c3651;
+    }
+    .leave-tile-value{
+        display:block;
+        margin-top:6px;
+        font-size:1.4rem;
+        font-weight:700;
+        color:#0f6abf;
+    }
+    .leave-grid{
+        display:grid;
+        grid-template-columns:repeat(2,minmax(260px,1fr));
+        gap:12px;
+    }
+    .leave-grid .field label{
+        margin-top:0;
+    }
+    .leave-grid .full-col{
+        grid-column:1/-1;
+    }
+    .leave-actions{
+        display:flex;
+        align-items:center;
+        gap:10px;
+        margin-top:12px;
+    }
+    .leave-actions button{
+        margin-top:0;
+    }
+    .leave-actions .path-hint{
+        margin:0;
+    }
+    @media (max-width: 900px){
+        .leave-tiles{
+            grid-template-columns:1fr;
+        }
+        .leave-grid{
+            grid-template-columns:1fr;
+        }
+    }
+</style>
+</head>
+<body>
+<div class="sidebar">
+    <div class="logo">
+        <img src="../../assets/images/logo.png" alt="Company Logo">
+        <span>PULMO TECHNOLOGIES</span>
+    </div>
+    <ul class="nav-links">
+        <li><a href="../dashboard.html">Dashboard</a></li>
+        <li><a href="../products/product-list.html">Products</a></li>
+        <li><a href="../products/general-machine.html">Machines</a></li>
+        <li><a href="../customers/customer-list.html">Customers</a></li>
+        <li><a href="../invoices/invoice-list.html">Invoices</a></li>
+        <li><a href="../vendors/list-vendor.html">Vendors</a></li>
+        <li><a href="../expenses/expense-list.html">Expenses</a></li>
+        <li><a href="../reports/sales-report.html">Reports</a></li>
+        <li><a href="../analytics/sales-chart.html">Analytics</a></li>
+        <li><a href="../finance/finance.html">Finance</a></li>
+        <li><a href="../support/support.html">Support</a></li>
+        <li><a href="../stock/stock.html">Stock</a></li>
+        <li><a href="inout.html">INOUT</a></li>
+        <li><a href="time-sheet.html">Time Sheet</a></li>
+        <li><a href="sallary.html">Sallary</a></li>
+        <li><a href="leave.html">Leave</a></li>
+    </ul>
+</div>
+
+<div class="main-content">
+    <header class="page-head">
+        <h2>Apply Leave</h2>
+        <a class="icon-btn" href="../dashboard.html" aria-label="Back to dashboard" title="Back to dashboard">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+    </header>
+
+    <div class="form-container">
+        <div class="leave-tiles">
+            <button type="button" class="leave-tile is-active" id="leaveTypeFull" data-leave-type="full">
+                <span class="leave-tile-title">Full Leave</span>
+                <span class="leave-tile-value" id="leaveFullCount">0.00</span>
+            </button>
+            <button type="button" class="leave-tile" id="leaveTypeHalf" data-leave-type="half">
+                <span class="leave-tile-title">Half Day Leave</span>
+                <span class="leave-tile-value" id="leaveHalfCount">0.00</span>
+            </button>
+        </div>
+        <div class="path-hint" id="leaveMonthHint">This month leave summary</div>
+
+        <div class="leave-grid">
+            <div class="field">
+                <label>Profile Name</label>
+                <input type="text" id="leaveProfileName" readonly>
+            </div>
+            <div class="field">
+                <label>Login User</label>
+                <input type="text" id="leaveLoginUser" readonly>
+            </div>
+            <div class="field">
+                <label>Role</label>
+                <input type="text" id="leaveRole" readonly>
+            </div>
+            <div class="field">
+                <label>Supirior</label>
+                <input type="text" id="leaveSupiriorName" readonly>
+            </div>
+            <div class="field">
+                <label>Leave Type</label>
+                <input type="text" id="leaveTypeValue" readonly>
+            </div>
+            <div class="field">
+                <label for="leaveStartDate">Start Date</label>
+                <input type="date" id="leaveStartDate">
+            </div>
+            <div class="field">
+                <label for="leaveEndDate">End Date</label>
+                <input type="date" id="leaveEndDate">
+            </div>
+            <div class="field full-col">
+                <label for="leaveReason">Reason</label>
+                <textarea id="leaveReason" placeholder="Enter leave reason"></textarea>
+            </div>
+        </div>
+
+        <div class="leave-actions">
+            <button type="button" id="leaveSaveBtn">Save Leave</button>
+            <div class="path-hint" id="leaveStatusHint"></div>
+        </div>
+    </div>
+</div>
+
+<script src="../../assets/js/api.js"></script>
+<script src="../../assets/js/hr-leave.js"></script>
+</body>
+</html>

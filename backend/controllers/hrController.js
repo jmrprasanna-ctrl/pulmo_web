@@ -2,6 +2,7 @@ const db = require("../config/database");
 
 const ensuredInOutTableDbs = new Set();
 const ensuredSallaryTableDbs = new Set();
+const ensuredLeaveTableDbs = new Set();
 
 const SALLARY_BANK_OPTIONS = new Set([
   "Commercial Bank",
@@ -127,6 +128,128 @@ async function ensureSallaryProfileTable() {
   `);
 
   ensuredSallaryTableDbs.add(dbName);
+}
+
+async function ensureLeaveTable() {
+  const dbName = String(db.getCurrentDatabase ? db.getCurrentDatabase() : "").trim().toLowerCase() || "inventory";
+  if (ensuredLeaveTableDbs.has(dbName)) return;
+
+  await ensureSallaryProfileTable();
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS user_leave_requests (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      username VARCHAR(200) NOT NULL,
+      role VARCHAR(40),
+      profile_name VARCHAR(200),
+      supirior_user_id INTEGER,
+      supirior_name VARCHAR(200),
+      leave_type VARCHAR(20) NOT NULL,
+      start_date DATE NOT NULL,
+      end_date DATE NOT NULL,
+      reason TEXT,
+      status VARCHAR(40) NOT NULL DEFAULT 'Pending',
+      "createdAt" TIMESTAMP DEFAULT NOW(),
+      "updatedAt" TIMESTAMP DEFAULT NOW()
+    );
+  `);
+  await db.query(`ALTER TABLE user_leave_requests ADD COLUMN IF NOT EXISTS username VARCHAR(200);`);
+  await db.query(`ALTER TABLE user_leave_requests ADD COLUMN IF NOT EXISTS role VARCHAR(40);`);
+  await db.query(`ALTER TABLE user_leave_requests ADD COLUMN IF NOT EXISTS profile_name VARCHAR(200);`);
+  await db.query(`ALTER TABLE user_leave_requests ADD COLUMN IF NOT EXISTS supirior_user_id INTEGER;`);
+  await db.query(`ALTER TABLE user_leave_requests ADD COLUMN IF NOT EXISTS supirior_name VARCHAR(200);`);
+  await db.query(`ALTER TABLE user_leave_requests ADD COLUMN IF NOT EXISTS leave_type VARCHAR(20);`);
+  await db.query(`ALTER TABLE user_leave_requests ADD COLUMN IF NOT EXISTS start_date DATE;`);
+  await db.query(`ALTER TABLE user_leave_requests ADD COLUMN IF NOT EXISTS end_date DATE;`);
+  await db.query(`ALTER TABLE user_leave_requests ADD COLUMN IF NOT EXISTS reason TEXT;`);
+  await db.query(`ALTER TABLE user_leave_requests ADD COLUMN IF NOT EXISTS status VARCHAR(40) NOT NULL DEFAULT 'Pending';`);
+  await db.query(`
+    CREATE INDEX IF NOT EXISTS user_leave_requests_user_date_idx
+    ON user_leave_requests (user_id, start_date, end_date);
+  `);
+  await db.query(`
+    CREATE INDEX IF NOT EXISTS user_leave_requests_type_idx
+    ON user_leave_requests (leave_type);
+  `);
+
+  ensuredLeaveTableDbs.add(dbName);
+}
+
+function normalizeLeaveType(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return "";
+  if (raw.includes("half")) return "half";
+  if (raw.includes("full")) return "full";
+  return "";
+}
+
+function resolveCurrentMonthRange() {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const start = new Date(Date.UTC(year, month, 1));
+  const end = new Date(Date.UTC(year, month + 1, 1));
+  return {
+    month: start.toISOString().slice(0, 7),
+    startDate: start.toISOString().slice(0, 10),
+    endDateExclusive: end.toISOString().slice(0, 10),
+  };
+}
+
+async function getLeaveUserRow(userId) {
+  const rs = await db.query(
+    `SELECT u.id AS user_id,
+            u.username,
+            u.role,
+            COALESCE(NULLIF(TRIM(up.profile_name), ''), u.username) AS profile_name,
+            sp.superior_user_id,
+            su.username AS superior_username
+     FROM users u
+     LEFT JOIN user_profiles up ON up.user_id = u.id
+     LEFT JOIN user_sallary_profiles sp ON sp.user_id = u.id
+     LEFT JOIN users su ON su.id = sp.superior_user_id
+     WHERE u.id = $1
+     LIMIT 1`,
+    { bind: [userId] }
+  );
+  const rows = Array.isArray(rs?.[0]) ? rs[0] : [];
+  return rows[0] || null;
+}
+
+async function getLeaveTilesForMonth(userId, startDate, endDateExclusive) {
+  const rs = await db.query(
+    `SELECT
+       COALESCE(
+         SUM(
+           CASE
+             WHEN LOWER(COALESCE(leave_type, '')) = 'full'
+               THEN GREATEST(((end_date - start_date) + 1), 0)
+             ELSE 0
+           END
+         ),
+         0
+       )::NUMERIC AS full_leave_days,
+       COALESCE(
+         SUM(
+           CASE
+             WHEN LOWER(COALESCE(leave_type, '')) = 'half' THEN 1
+             ELSE 0
+           END
+         ),
+         0
+       )::NUMERIC AS half_day_leave_count
+     FROM user_leave_requests
+     WHERE user_id = $1
+       AND start_date < $3::date
+       AND end_date >= $2::date`,
+    { bind: [userId, startDate, endDateExclusive] }
+  );
+  const rows = Array.isArray(rs?.[0]) ? rs[0] : [];
+  const row = rows[0] || {};
+  return {
+    full_leave_days: normalizeBasicSallary(row.full_leave_days),
+    half_day_leave_count: normalizeBasicSallary(row.half_day_leave_count),
+  };
 }
 
 function parseAllowances(raw) {
@@ -889,5 +1012,113 @@ exports.getSallaryWorkSummary = async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({ message: err.message || "Failed to calculate work summary." });
+  }
+};
+
+exports.getLeaveMeta = async (req, res) => {
+  const requesterUserId = Number(req.user?.id || req.user?.userId || 0);
+  if (!Number.isFinite(requesterUserId) || requesterUserId <= 0) {
+    return res.status(401).json({ message: "Invalid token user." });
+  }
+
+  try {
+    await ensureLeaveTable();
+    const userRow = await getLeaveUserRow(requesterUserId);
+    if (!userRow) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const monthRange = resolveCurrentMonthRange();
+    const tiles = await getLeaveTilesForMonth(
+      requesterUserId,
+      monthRange.startDate,
+      monthRange.endDateExclusive
+    );
+
+    return res.json({
+      user_id: Number(userRow.user_id || 0),
+      username: String(userRow.username || "").trim(),
+      role: String(userRow.role || "").trim(),
+      profile_name: String(userRow.profile_name || "").trim() || String(userRow.username || "").trim(),
+      supirior_user_id: toPositiveIntOrNull(userRow.superior_user_id),
+      supirior_name: String(userRow.superior_username || "").trim(),
+      month: monthRange.month,
+      tiles,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message || "Failed to load leave page data." });
+  }
+};
+
+exports.applyLeave = async (req, res) => {
+  const requesterUserId = Number(req.user?.id || req.user?.userId || 0);
+  if (!Number.isFinite(requesterUserId) || requesterUserId <= 0) {
+    return res.status(401).json({ message: "Invalid token user." });
+  }
+
+  const leaveType = normalizeLeaveType(req.body?.leave_type);
+  if (!leaveType) {
+    return res.status(400).json({ message: "Leave type is required. Use Full Leave or Half Day Leave." });
+  }
+
+  const startDate = normalizeDateOnly(req.body?.start_date || req.body?.leave_date);
+  const endDate = normalizeDateOnly(req.body?.end_date || startDate);
+  if (!startDate || !endDate) {
+    return res.status(400).json({ message: "Start date and end date are required." });
+  }
+  if (endDate < startDate) {
+    return res.status(400).json({ message: "End date cannot be before start date." });
+  }
+  if (leaveType === "half" && endDate !== startDate) {
+    return res.status(400).json({ message: "Half day leave must be for a single date." });
+  }
+
+  const reason = String(req.body?.reason || "").trim().slice(0, 1000);
+
+  try {
+    await ensureLeaveTable();
+    const userRow = await getLeaveUserRow(requesterUserId);
+    if (!userRow) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const insertRs = await db.query(
+      `INSERT INTO user_leave_requests
+         (user_id, username, role, profile_name, supirior_user_id, supirior_name, leave_type, start_date, end_date, reason, status, "createdAt", "updatedAt")
+       VALUES
+         ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Pending', NOW(), NOW())
+       RETURNING id, user_id, username, role, profile_name, supirior_user_id, supirior_name,
+                 leave_type, start_date, end_date, reason, status, "createdAt", "updatedAt"`,
+      {
+        bind: [
+          requesterUserId,
+          String(userRow.username || "").trim(),
+          String(userRow.role || "").trim(),
+          String(userRow.profile_name || "").trim() || String(userRow.username || "").trim(),
+          toPositiveIntOrNull(userRow.superior_user_id),
+          String(userRow.superior_username || "").trim() || null,
+          leaveType,
+          startDate,
+          endDate,
+          reason || null,
+        ],
+      }
+    );
+    const rows = Array.isArray(insertRs?.[0]) ? insertRs[0] : [];
+    const monthRange = resolveCurrentMonthRange();
+    const tiles = await getLeaveTilesForMonth(
+      requesterUserId,
+      monthRange.startDate,
+      monthRange.endDateExclusive
+    );
+
+    return res.json({
+      message: "Leave applied successfully.",
+      leave: rows[0] || null,
+      month: monthRange.month,
+      tiles,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message || "Failed to apply leave." });
   }
 };
