@@ -1,45 +1,25 @@
-.add-product-main {
+.add-product-shell {
     max-width: 1100px;
 }
 
-.add-product-shell {
-    border: 1px solid #d8e3ef;
-    border-radius: 16px;
-    padding: 20px;
-    background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
-    box-shadow: 0 6px 22px rgba(15, 23, 42, 0.06);
-}
-
-.add-product-header {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+.page-head{
+    display:flex;
     align-items: center;
-    gap: 16px;
-    margin-bottom: 14px;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 10px;
+    width: 100%;
 }
 
-.add-product-title {
+.page-head h2{
     margin: 0;
-    font-size: 24px;
-    color: #13304f;
+    flex: 1 1 auto;
     min-width: 0;
 }
 
-.add-product-subtitle {
-    margin: 4px 0 0 0;
-    color: #4b647d;
-    font-size: 13px;
-}
-
-.add-product-badge {
-    background: #d8e8fa;
-    color: #11457a;
-    border: 1px solid #bfd6f0;
-    border-radius: 999px;
-    padding: 6px 12px;
-    font-size: 12px;
-    font-weight: 700;
-    white-space: nowrap;
+.page-head .icon-btn{
+    margin-left: auto;
+    flex: 0 0 auto;
 }
 
 .add-product-grid {
@@ -118,35 +98,24 @@
 }
 
 @media (max-width: 900px) {
+    .page-head h2{
+        padding-left: 0 !important;
+    }
+    .page-head{
+        margin-right: 0;
+    }
     .add-product-grid {
         grid-template-columns: 1fr;
     }
 
-    .add-product-header {
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: center;
+    .add-product-actions{
+        width: 100%;
+        justify-content: flex-start;
     }
 }
 
-body.theme-dark .add-product-shell {
-    border-color: #3a4f64;
-    background: linear-gradient(180deg, #1f2d3a 0%, #253747 100%);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.26);
-}
-
-body.theme-dark .add-product-title {
-    color: #e4eef8;
-}
-
-body.theme-dark .add-product-subtitle,
 body.theme-dark .field-hint {
     color: #afc3d8;
-}
-
-body.theme-dark .add-product-badge {
-    background: #2a3e52;
-    color: #d4e6f8;
-    border-color: #42607e;
 }
 
 body.theme-dark .field label {
