@@ -77,8 +77,35 @@
         gap:10px;
         margin-top:12px;
     }
-    .leave-actions button{
+    .leave-save-icon-btn{
+        width:42px;
+        height:42px;
+        min-height:42px;
         margin-top:0;
+        padding:0;
+        border:1px solid #cfe1f5;
+        border-radius:12px;
+        background:#fff;
+        color:#0b4f93;
+        display:inline-grid;
+        place-items:center;
+        cursor:pointer;
+        transition:transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    .leave-save-icon-btn svg{
+        width:18px;
+        height:18px;
+    }
+    .leave-save-icon-btn:hover:not(:disabled){
+        transform:translateY(-1px);
+        box-shadow:0 10px 20px rgba(15, 106, 191, 0.14);
+        border-color:#adc9e6;
+    }
+    .leave-save-icon-btn:disabled{
+        opacity:0.55;
+        cursor:not-allowed;
+        transform:none;
+        box-shadow:none;
     }
     .leave-actions .path-hint{
         margin:0;
@@ -178,7 +205,13 @@
         </div>
 
         <div class="leave-actions">
-            <button type="button" id="leaveSaveBtn">Save Leave</button>
+            <button type="button" id="leaveSaveBtn" class="leave-save-icon-btn" aria-label="Save leave" title="Save leave">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 4.5h10l2.5 2.5V19a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 5.5 19V6A1.5 1.5 0 0 1 7 4.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                    <path d="M8.5 4.5h6v4h-6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                    <path d="M8.5 14.5h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+            </button>
             <div class="path-hint" id="leaveStatusHint"></div>
         </div>
     </div>
