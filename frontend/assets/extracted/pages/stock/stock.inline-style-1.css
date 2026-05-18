@@ -1,4 +1,14 @@
-.report-block{
+.stock-page-head{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:12px;
+        margin-bottom:16px;
+    }
+    .stock-page-head h2{
+        margin:0;
+    }
+    .report-block{
         border: 1px solid #d9e6f3;
         border-radius: 14px;
         padding: 14px;
@@ -51,9 +61,13 @@
         align-items: center;
         flex-wrap: nowrap;
         white-space: nowrap;
+        width: max-content;
     }
     .stock-qty{
-        width: 72px;
+        width: 68px !important;
+        min-width: 68px;
+        max-width: 68px;
+        flex: 0 0 68px;
         margin: 0;
     }
     #stockTable{
