@@ -100,8 +100,35 @@
         gap:10px;
         margin-top:14px;
     }
-    .update-wrap button{
+    .update-icon-btn{
+        width:42px;
+        height:42px;
+        min-height:42px;
         margin-top:0;
+        padding:0;
+        border:1px solid #cfe1f5;
+        border-radius:12px;
+        background:#fff;
+        color:#0b4f93;
+        display:inline-grid;
+        place-items:center;
+        cursor:pointer;
+        transition:transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    .update-icon-btn svg{
+        width:18px;
+        height:18px;
+    }
+    .update-icon-btn:hover:not(:disabled){
+        transform:translateY(-1px);
+        box-shadow:0 10px 20px rgba(15, 106, 191, 0.14);
+        border-color:#adc9e6;
+    }
+    .update-icon-btn:disabled{
+        opacity:0.55;
+        cursor:not-allowed;
+        transform:none;
+        box-shadow:none;
     }
     .update-wrap .path-hint{
         margin:0;
@@ -230,11 +257,10 @@
         </div>
 
         <div class="update-wrap">
-            <button type="button" id="sdUpdateBtn">
+            <button type="button" id="sdUpdateBtn" class="update-icon-btn" aria-label="Update sallary detail" title="Update sallary detail">
                 <svg class="inline-icon" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M12 4a8 8 0 1 1-7.73 10h2.1A6 6 0 1 0 8.1 7.1L10.2 9.2H4V3l2.68 2.68A7.95 7.95 0 0 1 12 4Z" fill="currentColor"/>
                 </svg>
-                <span>Update</span>
             </button>
             <div class="path-hint" id="sdStatusHint"></div>
         </div>
