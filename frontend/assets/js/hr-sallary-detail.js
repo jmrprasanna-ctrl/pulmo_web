@@ -224,7 +224,6 @@ function setEditableState(canEdit) {
     "sdOtherBankName",
     "sdBankAccount",
     "sdBasicSallary",
-    "sdWorkingDays",
     "sdOtPayAmount",
     "sdAddAllowanceBtn",
     "sdAddDeductionBtn",
@@ -237,8 +236,14 @@ function setEditableState(canEdit) {
   });
   const startDateInput = document.getElementById("sdSalaryStartDate");
   const endDateInput = document.getElementById("sdSalaryEndDate");
+  const workingDaysInput = document.getElementById("sdWorkingDays");
+  const calcHoursInput = document.getElementById("sdCalculatedWorkingHours");
+  const calcOtInput = document.getElementById("sdCalculatedOtHours");
   if (startDateInput) startDateInput.disabled = true;
   if (endDateInput) endDateInput.disabled = true;
+  if (workingDaysInput) workingDaysInput.disabled = true;
+  if (calcHoursInput) calcHoursInput.disabled = true;
+  if (calcOtInput) calcOtInput.disabled = true;
   const updateBtn = document.getElementById("sdUpdateBtn");
   if (updateBtn) {
     updateBtn.disabled = !canEdit;
