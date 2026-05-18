@@ -130,11 +130,12 @@
             }
             .access-actions{
                 width:100%;
-                flex-direction:column !important;
-                align-items:stretch !important;
+                flex-direction:row !important;
+                align-items:center !important;
+                justify-content:flex-start;
             }
             .access-actions > *{
-                width:100% !important;
+                width:auto !important;
                 margin-left:0 !important;
             }
             .access-actions > .icon-btn{
