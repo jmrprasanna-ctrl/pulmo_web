@@ -39,7 +39,13 @@ function renderRows(rows) {
       <td>${gpsLabel(row.check_in_lat, row.check_in_lng, row.check_in_location_label)}</td>
       <td>${fmtDateTime(row.check_out_at)}</td>
       <td>${gpsLabel(row.check_out_lat, row.check_out_lng, row.check_out_location_label)}</td>
-      <td>${row.duration_minutes == null ? "-" : Number(row.duration_minutes).toFixed(2)}</td>
+      <td>${(() => {
+        const providedHours = Number(row.duration_hours);
+        if (Number.isFinite(providedHours)) return providedHours.toFixed(2);
+        const minutes = Number(row.duration_minutes);
+        if (!Number.isFinite(minutes)) return "-";
+        return (minutes / 60).toFixed(2);
+      })()}</td>
     </tr>
   `).join("");
 }
