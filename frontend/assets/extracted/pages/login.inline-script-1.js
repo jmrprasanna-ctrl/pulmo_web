@@ -132,6 +132,6 @@ if(passwordToggle){
 });
 
 window.addEventListener("DOMContentLoaded", () => {
-    setLoadingOverlay(true, "Starting AXIS WEB SYSTEM...");
+    setLoadingOverlay(true, "Starting AXIS CMS SYSTEM...");
     window.setTimeout(() => setLoadingOverlay(false), 950);
 });
