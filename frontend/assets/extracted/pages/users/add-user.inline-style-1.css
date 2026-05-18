@@ -1,3 +1,24 @@
+.page-head{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:10px;
+            flex-wrap:nowrap;
+            width:100%;
+            margin-bottom:12px;
+        }
+        .page-head h2{
+            margin:0;
+            flex:1 1 auto;
+            min-width:0;
+        }
+        .page-head .icon-btn{
+            margin-left:auto;
+            flex:0 0 auto;
+        }
+        .form-container{
+            max-width: 760px;
+        }
 .form-actions{
             display: flex;
             gap: 12px;
@@ -50,4 +71,15 @@
         button.toggle-pass:focus{
             outline:none;
             box-shadow:0 0 0 3px rgba(79,126,169,0.2);
+        }
+        @media (max-width: 900px){
+            .form-actions{
+                width:100%;
+                flex-direction:column;
+                align-items:stretch;
+            }
+            .form-actions > .btn{
+                width:100%;
+                margin-left:0;
+            }
         }
