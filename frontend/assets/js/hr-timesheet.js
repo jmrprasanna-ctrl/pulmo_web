@@ -57,12 +57,17 @@ function toHoursValue(row) {
   return minutes / 60;
 }
 
+function toOvertimeValue(hours) {
+  if (hours == null || !Number.isFinite(hours)) return null;
+  return Math.max(hours - 8, 0);
+}
+
 function renderRows(rows) {
   const body = document.getElementById("tsBody");
   if (!body) return;
   const list = Array.isArray(rows) ? rows : [];
   if (!list.length) {
-    body.innerHTML = `<tr><td colspan="7" style="text-align:center;">No timesheet logs found.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8" style="text-align:center;">No timesheet logs found.</td></tr>`;
     return;
   }
   body.innerHTML = list.map((row) => `
@@ -76,6 +81,11 @@ function renderRows(rows) {
       <td>${(() => {
         const hours = toHoursValue(row);
         return hours == null ? "-" : hours.toFixed(2);
+      })()}</td>
+      <td>${(() => {
+        const hours = toHoursValue(row);
+        const overtime = toOvertimeValue(hours);
+        return overtime == null ? "-" : overtime.toFixed(2);
       })()}</td>
     </tr>
   `).join("");
@@ -113,12 +123,13 @@ function exportTimeSheetMonthlyPdf() {
 
   const columns = [
     { title: "User", x: 24 },
-    { title: "Role", x: 140 },
-    { title: "Check In", x: 200 },
-    { title: "In Location", x: 345 },
-    { title: "Check Out", x: 470 },
-    { title: "Out Location", x: 620 },
-    { title: "Hours", x: 760 }
+    { title: "Role", x: 118 },
+    { title: "Check In", x: 170 },
+    { title: "In Location", x: 305 },
+    { title: "Check Out", x: 415 },
+    { title: "Out Location", x: 555 },
+    { title: "Hours", x: 700 },
+    { title: "O.T", x: 765 }
   ];
 
   const drawHeader = () => {
@@ -148,6 +159,7 @@ function exportTimeSheetMonthlyPdf() {
       drawHeader();
     }
     const hours = toHoursValue(row);
+    const overtime = toOvertimeValue(hours);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.text(String(row.username || "-").slice(0, 16), columns[0].x, y);
@@ -157,6 +169,7 @@ function exportTimeSheetMonthlyPdf() {
     doc.text(fmtDateTime(row.check_out_at).slice(0, 26), columns[4].x, y);
     doc.text(gpsLabel(row.check_out_lat, row.check_out_lng, row.check_out_location_label).slice(0, 18), columns[5].x, y);
     doc.text(hours == null ? "-" : hours.toFixed(2), columns[6].x, y);
+    doc.text(overtime == null ? "-" : overtime.toFixed(2), columns[7].x, y);
     y += rowHeight;
   }
 
