@@ -41,6 +41,36 @@
     .allowances-head label{
         margin:0;
     }
+    .allowance-icon-btn{
+        width:42px;
+        height:42px;
+        min-height:42px;
+        margin-top:0;
+        padding:0;
+        border:1px solid #cfe1f5;
+        border-radius:12px;
+        background:#fff;
+        color:#0b4f93;
+        display:inline-grid;
+        place-items:center;
+        cursor:pointer;
+        transition:transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    .allowance-icon-btn svg{
+        width:18px;
+        height:18px;
+    }
+    .allowance-icon-btn:hover:not(:disabled){
+        transform:translateY(-1px);
+        box-shadow:0 10px 20px rgba(15, 106, 191, 0.14);
+        border-color:#adc9e6;
+    }
+    .allowance-icon-btn:disabled{
+        opacity:0.55;
+        cursor:not-allowed;
+        transform:none;
+        box-shadow:none;
+    }
     .allowances-list{
         display:grid;
         gap:8px;
@@ -55,11 +85,13 @@
         margin:0;
     }
     .allowance-remove{
-        margin-top:0;
-        min-height:43px;
-        width:43px;
-        padding:0;
-        border-radius:12px;
+        border-color:#f0c2ca;
+        background:#fff2f4;
+        color:#b4232f;
+    }
+    .allowance-remove:hover:not(:disabled){
+        box-shadow:0 10px 20px rgba(176, 35, 47, 0.16);
+        border-color:#e3a8b2;
     }
     .update-wrap{
         display:flex;
@@ -86,7 +118,7 @@
             grid-template-columns:1fr;
         }
         .allowance-remove{
-            width:100%;
+            justify-self:flex-start;
         }
     }
 </style>
@@ -187,7 +219,11 @@
             <div class="field" style="grid-column:1/-1;">
                 <div class="allowances-head">
                     <label>Add Alloances</label>
-                    <button type="button" class="btn btn-secondary btn-inline" id="sdAddAllowanceBtn">Add</button>
+                    <button type="button" class="allowance-icon-btn" id="sdAddAllowanceBtn" aria-label="Add allowance" title="Add allowance">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
                 </div>
                 <div id="sdAllowancesList" class="allowances-list"></div>
             </div>

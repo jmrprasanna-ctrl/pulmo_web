@@ -60,7 +60,11 @@ function createAllowanceRow(allowance = {}) {
   row.innerHTML = `
     <input type="text" class="allowance-name" placeholder="Allowance name" value="${toSafeText(allowance.name)}">
     <input type="number" class="allowance-amount" min="0" step="0.01" placeholder="0.00" value="${Number.isFinite(Number(allowance.amount)) ? Number(allowance.amount) : ""}">
-    <button type="button" class="btn btn-danger allowance-remove" aria-label="Remove allowance">X</button>
+    <button type="button" class="allowance-icon-btn allowance-remove" aria-label="Remove allowance" title="Remove allowance">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M9.5 9.5v8M14.5 9.5v8M6 7.5h12M10 7.5V6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5M8 7.5l.6 11a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9l.6-11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
   `;
 
   const removeBtn = row.querySelector(".allowance-remove");
