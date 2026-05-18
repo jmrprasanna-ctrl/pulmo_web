@@ -57,32 +57,34 @@
     }
     .stock-actions{
         display: flex;
-        gap: 6px;
+        gap: 4px;
         align-items: center;
         flex-wrap: nowrap;
         white-space: nowrap;
         width: max-content;
     }
     .stock-qty{
-        width: 68px !important;
-        min-width: 68px;
-        max-width: 68px;
-        flex: 0 0 68px;
+        width: 56px !important;
+        min-width: 56px;
+        max-width: 56px;
+        flex: 0 0 56px;
         margin: 0;
     }
     #stockTable{
-        min-width: 1080px;
+        min-width: 920px;
     }
     #stockTable th,
     #stockTable td{
-        padding: 12px 14px;
+        padding: 8px 10px;
+        font-size: 0.88rem;
+        line-height: 1.25;
     }
     .stock-actions .stock-action-icon{
-        width:40px;
-        min-width:40px;
-        max-width:40px;
-        height:40px;
-        min-height:40px;
+        width:34px;
+        min-width:34px;
+        max-width:34px;
+        height:34px;
+        min-height:34px;
         padding:0;
         margin-top:0;
     }
@@ -102,8 +104,8 @@
             width: auto !important;
         }
         .stock-actions > .stock-action-icon{
-            width:40px !important;
-            min-width:40px !important;
-            max-width:40px !important;
+            width:34px !important;
+            min-width:34px !important;
+            max-width:34px !important;
         }
     }
