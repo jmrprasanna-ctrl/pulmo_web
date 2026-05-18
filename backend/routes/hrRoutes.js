@@ -40,6 +40,12 @@ router.get(
   roleMiddleware(["admin", "manager", "user"]),
   hrController.getSallaryDetailByUserId
 );
+router.get(
+  "/sallary/:userId/work-summary",
+  authMiddleware,
+  roleMiddleware(["admin", "manager", "user"]),
+  hrController.getSallaryWorkSummary
+);
 router.put(
   "/sallary/:userId",
   authMiddleware,

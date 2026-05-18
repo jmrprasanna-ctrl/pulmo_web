@@ -31,6 +31,12 @@ function toSafeText(value, fallback = "") {
   return text || fallback;
 }
 
+function toAmount(value, fallback = "") {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return parsed.toFixed(2);
+}
+
 function showStatus(message = "", type = "success") {
   const hint = document.getElementById("sdStatusHint");
   if (hint) {
@@ -119,6 +125,10 @@ function setEditableState(canEdit) {
     "sdOtherBankName",
     "sdBankAccount",
     "sdBasicSallary",
+    "sdSalaryStartDate",
+    "sdSalaryEndDate",
+    "sdWorkingDays",
+    "sdOtPayAmount",
     "sdAddAllowanceBtn",
   ];
   editableIds.forEach((id) => {
@@ -130,6 +140,50 @@ function setEditableState(canEdit) {
   const updateBtn = document.getElementById("sdUpdateBtn");
   if (updateBtn) {
     updateBtn.disabled = !canEdit;
+  }
+}
+
+function setWorkSummaryFields(totalWorkingHours = "", totalOtHours = "") {
+  const workingHoursEl = document.getElementById("sdCalculatedWorkingHours");
+  const otHoursEl = document.getElementById("sdCalculatedOtHours");
+  if (workingHoursEl) workingHoursEl.value = totalWorkingHours;
+  if (otHoursEl) otHoursEl.value = totalOtHours;
+}
+
+async function loadWorkSummaryByRange() {
+  const startDate = toSafeText(document.getElementById("sdSalaryStartDate")?.value);
+  const endDate = toSafeText(document.getElementById("sdSalaryEndDate")?.value);
+  if (!startDate || !endDate || !currentSallaryUserId) {
+    setWorkSummaryFields("", "");
+    return;
+  }
+  if (endDate < startDate) {
+    setWorkSummaryFields("", "");
+    showStatus("End date cannot be before start date.", "error");
+    return;
+  }
+
+  try {
+    const query = new URLSearchParams({
+      start_date: startDate,
+      end_date: endDate,
+    });
+    const summary = await request(`/hr/sallary/${encodeURIComponent(String(currentSallaryUserId))}/work-summary?${query.toString()}`, "GET");
+    const workingHours = toAmount(summary?.total_working_hours, "0.00");
+    const otHours = toAmount(summary?.total_ot_hours, "0.00");
+    setWorkSummaryFields(workingHours, otHours);
+
+    const workingDaysInput = document.getElementById("sdWorkingDays");
+    const currentWorkingDays = toSafeText(workingDaysInput?.value);
+    if (workingDaysInput && !currentWorkingDays) {
+      const presentDays = Number(summary?.present_days || 0);
+      if (Number.isFinite(presentDays) && presentDays >= 0) {
+        workingDaysInput.value = String(presentDays);
+      }
+    }
+  } catch (err) {
+    setWorkSummaryFields("", "");
+    showStatus(err.message || "Failed to calculate working hours.", "error");
   }
 }
 
@@ -164,7 +218,16 @@ function fillDetail(data) {
   document.getElementById("sdBankAccount").value = toSafeText(data?.bank_account);
   const basicSallary = Number(data?.basic_sallary);
   document.getElementById("sdBasicSallary").value = Number.isFinite(basicSallary) ? basicSallary.toFixed(2) : "";
+  document.getElementById("sdSalaryStartDate").value = toSafeText(data?.salary_start_date);
+  document.getElementById("sdSalaryEndDate").value = toSafeText(data?.salary_end_date);
+  document.getElementById("sdWorkingDays").value = Number.isFinite(Number(data?.working_days))
+    ? Number(data.working_days).toFixed(2)
+    : "";
+  document.getElementById("sdOtPayAmount").value = Number.isFinite(Number(data?.ot_pay_amount))
+    ? Number(data.ot_pay_amount).toFixed(2)
+    : "";
   renderAllowances(Array.isArray(data?.allowances) ? data.allowances : []);
+  setWorkSummaryFields("", "");
   toggleOtherBankField();
 }
 
@@ -183,10 +246,18 @@ async function saveDetail() {
   const otherBankName = toSafeText(document.getElementById("sdOtherBankName")?.value);
   const bankAccount = toSafeText(document.getElementById("sdBankAccount")?.value);
   const basicRaw = Number(document.getElementById("sdBasicSallary")?.value);
+  const salaryStartDate = toSafeText(document.getElementById("sdSalaryStartDate")?.value);
+  const salaryEndDate = toSafeText(document.getElementById("sdSalaryEndDate")?.value);
+  const workingDaysRaw = Number(document.getElementById("sdWorkingDays")?.value);
+  const otPayAmountRaw = Number(document.getElementById("sdOtPayAmount")?.value);
   const allowances = collectAllowances();
 
   if (bankName === "OTHER" && !otherBankName) {
     if (window.showMessageBox) showMessageBox("Enter other bank name.", "error");
+    return;
+  }
+  if (salaryStartDate && salaryEndDate && salaryEndDate < salaryStartDate) {
+    if (window.showMessageBox) showMessageBox("End date cannot be before start date.", "error");
     return;
   }
 
@@ -195,6 +266,10 @@ async function saveDetail() {
     other_bank_name: bankName === "OTHER" ? otherBankName : "",
     bank_account: bankAccount,
     basic_sallary: Number.isFinite(basicRaw) ? basicRaw : 0,
+    salary_start_date: salaryStartDate,
+    salary_end_date: salaryEndDate,
+    working_days: Number.isFinite(workingDaysRaw) ? workingDaysRaw : 0,
+    ot_pay_amount: Number.isFinite(otPayAmountRaw) ? otPayAmountRaw : 0,
     allowances,
   };
 
@@ -249,8 +324,16 @@ window.addEventListener("DOMContentLoaded", async () => {
   const bankSelect = document.getElementById("sdBankName");
   const addAllowanceBtn = document.getElementById("sdAddAllowanceBtn");
   const updateBtn = document.getElementById("sdUpdateBtn");
+  const startDateInput = document.getElementById("sdSalaryStartDate");
+  const endDateInput = document.getElementById("sdSalaryEndDate");
 
   bankSelect?.addEventListener("change", toggleOtherBankField);
+  startDateInput?.addEventListener("change", () => {
+    loadWorkSummaryByRange();
+  });
+  endDateInput?.addEventListener("change", () => {
+    loadWorkSummaryByRange();
+  });
   addAllowanceBtn?.addEventListener("click", () => {
     const list = document.getElementById("sdAllowancesList");
     if (!list) return;
@@ -262,6 +345,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   try {
     await loadDetail();
+    await loadWorkSummaryByRange();
     if (!canEditSallaryDetail) {
       showStatus("View only access.");
     }

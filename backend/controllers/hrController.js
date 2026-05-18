@@ -114,6 +114,10 @@ async function ensureSallaryProfileTable() {
   await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS other_bank_name VARCHAR(160);`);
   await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS bank_account VARCHAR(120);`);
   await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS basic_sallary NUMERIC(14,2) NOT NULL DEFAULT 0;`);
+  await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS salary_start_date DATE;`);
+  await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS salary_end_date DATE;`);
+  await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS working_days NUMERIC(8,2) NOT NULL DEFAULT 0;`);
+  await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS ot_pay_amount NUMERIC(14,2) NOT NULL DEFAULT 0;`);
   await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS allowances_json TEXT NOT NULL DEFAULT '[]';`);
   await db.query(`
     CREATE INDEX IF NOT EXISTS user_sallary_profiles_profile_name_idx
@@ -192,6 +196,10 @@ async function getSallaryUserRow(userId) {
             sp.other_bank_name,
             sp.bank_account,
             sp.basic_sallary,
+            sp.salary_start_date,
+            sp.salary_end_date,
+            sp.working_days,
+            sp.ot_pay_amount,
             sp.allowances_json
      FROM users u
      LEFT JOIN user_profiles up ON up.user_id = u.id
@@ -214,6 +222,13 @@ function toLocationLabel(value, fallback = "") {
   if (raw) return raw.slice(0, 120);
   const normalizedFallback = String(fallback || "").trim();
   return normalizedFallback ? normalizedFallback.slice(0, 120) : null;
+}
+
+function normalizeDateOnly(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return "";
+  return raw;
 }
 
 function parseMonthRange(monthRaw) {
@@ -571,6 +586,10 @@ exports.getSallaryDetailByUserId = async (req, res) => {
       other_bank_name: String(row.other_bank_name || "").trim(),
       bank_account: String(row.bank_account || "").trim(),
       basic_sallary: normalizeBasicSallary(row.basic_sallary),
+      salary_start_date: row.salary_start_date ? new Date(row.salary_start_date).toISOString().slice(0, 10) : "",
+      salary_end_date: row.salary_end_date ? new Date(row.salary_end_date).toISOString().slice(0, 10) : "",
+      working_days: normalizeBasicSallary(row.working_days),
+      ot_pay_amount: normalizeBasicSallary(row.ot_pay_amount),
       allowances: parseStoredAllowances(row.allowances_json),
     });
   } catch (err) {
@@ -607,14 +626,21 @@ exports.upsertSallaryDetailByUserId = async (req, res) => {
       : "";
     const bankAccount = String(req.body?.bank_account || "").trim().slice(0, 120);
     const basicSallary = normalizeBasicSallary(req.body?.basic_sallary ?? req.body?.basic_salary);
+    const salaryStartDate = normalizeDateOnly(req.body?.salary_start_date);
+    const salaryEndDate = normalizeDateOnly(req.body?.salary_end_date);
+    if (salaryStartDate && salaryEndDate && salaryEndDate < salaryStartDate) {
+      return res.status(400).json({ message: "End date cannot be before start date." });
+    }
+    const workingDays = normalizeBasicSallary(req.body?.working_days);
+    const otPayAmount = normalizeBasicSallary(req.body?.ot_pay_amount);
     const allowances = parseAllowances(req.body?.allowances);
 
     await db.query(
       `INSERT INTO user_sallary_profiles
          (user_id, username, role, profile_name, department, email, mobile, address,
-          bank_name, other_bank_name, bank_account, basic_sallary, allowances_json, "createdAt", "updatedAt")
+          bank_name, other_bank_name, bank_account, basic_sallary, salary_start_date, salary_end_date, working_days, ot_pay_amount, allowances_json, "createdAt", "updatedAt")
        VALUES
-         ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
+         ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
        ON CONFLICT (user_id)
        DO UPDATE SET
          username = EXCLUDED.username,
@@ -628,6 +654,10 @@ exports.upsertSallaryDetailByUserId = async (req, res) => {
          other_bank_name = EXCLUDED.other_bank_name,
          bank_account = EXCLUDED.bank_account,
          basic_sallary = EXCLUDED.basic_sallary,
+         salary_start_date = EXCLUDED.salary_start_date,
+         salary_end_date = EXCLUDED.salary_end_date,
+         working_days = EXCLUDED.working_days,
+         ot_pay_amount = EXCLUDED.ot_pay_amount,
          allowances_json = EXCLUDED.allowances_json,
          "updatedAt" = NOW()`,
       {
@@ -644,6 +674,10 @@ exports.upsertSallaryDetailByUserId = async (req, res) => {
           otherBankName || null,
           bankAccount || null,
           basicSallary,
+          salaryStartDate || null,
+          salaryEndDate || null,
+          workingDays,
+          otPayAmount,
           JSON.stringify(allowances),
         ],
       }
@@ -665,10 +699,80 @@ exports.upsertSallaryDetailByUserId = async (req, res) => {
         other_bank_name: String(row?.other_bank_name || "").trim(),
         bank_account: String(row?.bank_account || "").trim(),
         basic_sallary: normalizeBasicSallary(row?.basic_sallary),
+        salary_start_date: row?.salary_start_date ? new Date(row.salary_start_date).toISOString().slice(0, 10) : "",
+        salary_end_date: row?.salary_end_date ? new Date(row.salary_end_date).toISOString().slice(0, 10) : "",
+        working_days: normalizeBasicSallary(row?.working_days),
+        ot_pay_amount: normalizeBasicSallary(row?.ot_pay_amount),
         allowances: parseStoredAllowances(row?.allowances_json),
       },
     });
   } catch (err) {
     return res.status(500).json({ message: err.message || "Failed to save sallary detail." });
+  }
+};
+
+exports.getSallaryWorkSummary = async (req, res) => {
+  const role = String(req.user?.role || "").trim().toLowerCase();
+  const requesterUserId = Number(req.user?.id || req.user?.userId || 0);
+  const userId = Number(req.params?.userId || 0);
+  if (!Number.isFinite(requesterUserId) || requesterUserId <= 0) {
+    return res.status(401).json({ message: "Invalid token user." });
+  }
+  if (!Number.isFinite(userId) || userId <= 0) {
+    return res.status(400).json({ message: "Invalid user id." });
+  }
+
+  const startDate = normalizeDateOnly(req.query?.start_date);
+  const endDate = normalizeDateOnly(req.query?.end_date);
+  if (!startDate || !endDate) {
+    return res.status(400).json({ message: "Start date and end date are required." });
+  }
+  if (endDate < startDate) {
+    return res.status(400).json({ message: "End date cannot be before start date." });
+  }
+
+  try {
+    await ensureSallaryProfileTable();
+    await ensureInOutLogTable();
+    const viewAll = canViewAllSallaryUsers(role);
+    if (!viewAll && userId !== requesterUserId) {
+      return res.status(403).json({ message: "Forbidden: You can only view your own work summary." });
+    }
+
+    const rs = await db.query(
+      `WITH filtered AS (
+         SELECT DATE(check_in_at) AS log_date,
+                CASE
+                  WHEN check_out_at IS NULL THEN 0
+                  ELSE GREATEST(EXTRACT(EPOCH FROM (check_out_at - check_in_at)) / 3600.0, 0)
+                END AS duration_hours
+         FROM user_inout_logs
+         WHERE user_id = $1
+           AND DATE(check_in_at) >= $2
+           AND DATE(check_in_at) <= $3
+       ),
+       per_day AS (
+         SELECT log_date, SUM(duration_hours) AS day_hours
+         FROM filtered
+         GROUP BY log_date
+       )
+       SELECT COALESCE(ROUND(SUM(day_hours)::numeric, 2), 0) AS total_working_hours,
+              COALESCE(ROUND(SUM(CASE WHEN day_hours > 8 THEN day_hours - 8 ELSE 0 END)::numeric, 2), 0) AS total_ot_hours,
+              COUNT(*)::INTEGER AS present_days
+       FROM per_day`,
+      { bind: [userId, startDate, endDate] }
+    );
+    const rows = Array.isArray(rs?.[0]) ? rs[0] : [];
+    const row = rows[0] || {};
+    return res.json({
+      user_id: userId,
+      start_date: startDate,
+      end_date: endDate,
+      present_days: Number(row.present_days || 0),
+      total_working_hours: normalizeBasicSallary(row.total_working_hours),
+      total_ot_hours: normalizeBasicSallary(row.total_ot_hours),
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message || "Failed to calculate work summary." });
   }
 };
