@@ -640,7 +640,7 @@ exports.upsertSallaryDetailByUserId = async (req, res) => {
          (user_id, username, role, profile_name, department, email, mobile, address,
           bank_name, other_bank_name, bank_account, basic_sallary, salary_start_date, salary_end_date, working_days, ot_pay_amount, allowances_json, "createdAt", "updatedAt")
        VALUES
-         ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
+         ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW(), NOW())
        ON CONFLICT (user_id)
        DO UPDATE SET
          username = EXCLUDED.username,
