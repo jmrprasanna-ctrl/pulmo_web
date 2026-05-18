@@ -22,6 +22,25 @@
     .page-head h2{
         margin:0;
     }
+    .timesheet-table-wrap{
+        width:100%;
+        overflow:auto;
+        max-height:calc(100vh - 330px);
+        border:1px solid var(--line);
+        border-radius:var(--radius-md);
+        background:#fff;
+    }
+    .timesheet-table-wrap table{
+        margin:0;
+        border:0;
+        border-radius:0;
+        min-width:980px;
+    }
+    .timesheet-table-wrap thead th{
+        position:sticky;
+        top:0;
+        z-index:1;
+    }
 </style>
 </head>
 <body>
@@ -70,28 +89,24 @@
                     <option value="">All Users</option>
                 </select>
             </div>
-            <button type="button" class="icon-btn" id="tsLoadBtn" aria-label="Load timesheet" title="Load timesheet">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    <path d="M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </button>
         </div>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>User</th>
-                    <th>Role</th>
-                    <th>Check In</th>
-                    <th>In Location</th>
-                    <th>Check Out</th>
-                    <th>Out Location</th>
-                    <th>Minutes</th>
-                </tr>
-            </thead>
-            <tbody id="tsBody"></tbody>
-        </table>
+        <div class="timesheet-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Role</th>
+                        <th>Check In</th>
+                        <th>In Location</th>
+                        <th>Check Out</th>
+                        <th>Out Location</th>
+                        <th>Minutes</th>
+                    </tr>
+                </thead>
+                <tbody id="tsBody"></tbody>
+            </table>
+        </div>
     </div>
 </div>
 
