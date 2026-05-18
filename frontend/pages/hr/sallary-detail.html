@@ -1,0 +1,211 @@
+<!--
+  System: PULMO WEB SYSTEM
+  Owner : CRONIT SOLLUTIONS
+  Author: JMR Prasanna
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sallary Detail - PULMO TECHNOLOGIES</title>
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="../../assets/css/dashboard.css">
+<style>
+    .page-head{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:12px;
+        margin-bottom:16px;
+    }
+    .page-head h2{
+        margin:0;
+    }
+    .detail-grid{
+        display:grid;
+        grid-template-columns:repeat(2,minmax(260px,1fr));
+        gap:12px;
+    }
+    .detail-grid .field label{
+        margin-top:0;
+    }
+    .allowances-head{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+        margin-top:12px;
+        margin-bottom:8px;
+    }
+    .allowances-head label{
+        margin:0;
+    }
+    .allowances-list{
+        display:grid;
+        gap:8px;
+    }
+    .allowance-row{
+        display:grid;
+        grid-template-columns:minmax(180px,1fr) minmax(120px,200px) auto;
+        gap:8px;
+        align-items:center;
+    }
+    .allowance-row input{
+        margin:0;
+    }
+    .allowance-remove{
+        margin-top:0;
+        min-height:43px;
+        width:43px;
+        padding:0;
+        border-radius:12px;
+    }
+    .update-wrap{
+        display:flex;
+        align-items:center;
+        justify-content:flex-start;
+        gap:10px;
+        margin-top:14px;
+    }
+    .update-wrap button{
+        margin-top:0;
+    }
+    .update-wrap .path-hint{
+        margin:0;
+    }
+    .inline-icon{
+        width:18px;
+        height:18px;
+    }
+    @media (max-width: 900px){
+        .detail-grid{
+            grid-template-columns:1fr;
+        }
+        .allowance-row{
+            grid-template-columns:1fr;
+        }
+        .allowance-remove{
+            width:100%;
+        }
+    }
+</style>
+</head>
+<body>
+<div class="sidebar">
+    <div class="logo">
+        <img src="../../assets/images/logo.png" alt="Company Logo">
+        <span>PULMO TECHNOLOGIES</span>
+    </div>
+    <ul class="nav-links">
+        <li><a href="../dashboard.html">Dashboard</a></li>
+        <li><a href="../products/product-list.html">Products</a></li>
+        <li><a href="../products/general-machine.html">Machines</a></li>
+        <li><a href="../customers/customer-list.html">Customers</a></li>
+        <li><a href="../invoices/invoice-list.html">Invoices</a></li>
+        <li><a href="../vendors/list-vendor.html">Vendors</a></li>
+        <li><a href="../expenses/expense-list.html">Expenses</a></li>
+        <li><a href="../reports/sales-report.html">Reports</a></li>
+        <li><a href="../analytics/sales-chart.html">Analytics</a></li>
+        <li><a href="../finance/finance.html">Finance</a></li>
+        <li><a href="../support/support.html">Support</a></li>
+        <li><a href="../stock/stock.html">Stock</a></li>
+        <li><a href="inout.html">INOUT</a></li>
+        <li><a href="time-sheet.html">Time Sheet</a></li>
+        <li><a href="sallary.html">Sallary</a></li>
+    </ul>
+</div>
+
+<div class="main-content">
+    <header class="page-head">
+        <h2>Sallary Detail</h2>
+        <a class="icon-btn" href="sallary.html" aria-label="Back to sallary list" title="Back to sallary list">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+    </header>
+
+    <div class="form-container">
+        <div class="detail-grid">
+            <div class="field">
+                <label>Profile Name</label>
+                <input type="text" id="sdProfileName" readonly>
+            </div>
+            <div class="field">
+                <label>Login User</label>
+                <input type="text" id="sdLoginUser" readonly>
+            </div>
+            <div class="field">
+                <label>Role</label>
+                <input type="text" id="sdRole" readonly>
+            </div>
+            <div class="field">
+                <label>Department</label>
+                <input type="text" id="sdDepartment" readonly>
+            </div>
+            <div class="field">
+                <label>Email</label>
+                <input type="text" id="sdEmail" readonly>
+            </div>
+            <div class="field">
+                <label>Mobile</label>
+                <input type="text" id="sdMobile" readonly>
+            </div>
+            <div class="field" style="grid-column:1/-1;">
+                <label>Address</label>
+                <textarea id="sdAddress" readonly></textarea>
+            </div>
+            <div class="field">
+                <label for="sdBankName">Bank</label>
+                <select id="sdBankName">
+                    <option value="">Select Bank</option>
+                    <option value="Commercial Bank">Commercial Bank</option>
+                    <option value="Peoples Bank">Peoples Bank</option>
+                    <option value="Bank of Ceylon">Bank of Ceylon</option>
+                    <option value="Sampath Bank">Sampath Bank</option>
+                    <option value="Seylan Bank">Seylan Bank</option>
+                    <option value="Nation Trust Bank">Nation Trust Bank</option>
+                    <option value="NDB">NDB</option>
+                    <option value="HNB">HNB</option>
+                    <option value="NSB">NSB</option>
+                    <option value="OTHER">OTHER</option>
+                </select>
+            </div>
+            <div class="field" id="sdOtherBankWrap" style="display:none;">
+                <label for="sdOtherBankName">Other Bank Name</label>
+                <input type="text" id="sdOtherBankName" placeholder="Enter bank name">
+            </div>
+            <div class="field">
+                <label for="sdBankAccount">Bank Account</label>
+                <input type="text" id="sdBankAccount" placeholder="Enter bank account number">
+            </div>
+            <div class="field">
+                <label for="sdBasicSallary">Basic Sallary Entry</label>
+                <input type="number" id="sdBasicSallary" min="0" step="0.01" placeholder="0.00">
+            </div>
+            <div class="field" style="grid-column:1/-1;">
+                <div class="allowances-head">
+                    <label>Add Alloances</label>
+                    <button type="button" class="btn btn-secondary btn-inline" id="sdAddAllowanceBtn">Add</button>
+                </div>
+                <div id="sdAllowancesList" class="allowances-list"></div>
+            </div>
+        </div>
+
+        <div class="update-wrap">
+            <button type="button" id="sdUpdateBtn">
+                <svg class="inline-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 4a8 8 0 1 1-7.73 10h2.1A6 6 0 1 0 8.1 7.1L10.2 9.2H4V3l2.68 2.68A7.95 7.95 0 0 1 12 4Z" fill="currentColor"/>
+                </svg>
+                <span>Update</span>
+            </button>
+            <div class="path-hint" id="sdStatusHint"></div>
+        </div>
+    </div>
+</div>
+
+<script src="../../assets/js/api.js"></script>
+<script src="../../assets/js/hr-sallary-detail.js"></script>
+</body>
+</html>

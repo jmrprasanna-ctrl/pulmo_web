@@ -320,7 +320,8 @@ const DASHBOARD_MENU_ENTRIES = [
         label: "HR",
         children: [
             { path: "/hr/inout.html", label: "INOUT" },
-            { path: "/hr/time-sheet.html", label: "Time Sheet" }
+            { path: "/hr/time-sheet.html", label: "Time Sheet" },
+            { path: "/hr/sallary.html", label: "Sallary" }
         ]
     },
     {

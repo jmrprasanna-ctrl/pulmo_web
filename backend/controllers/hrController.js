@@ -1,6 +1,20 @@
 const db = require("../config/database");
 
 const ensuredInOutTableDbs = new Set();
+const ensuredSallaryTableDbs = new Set();
+
+const SALLARY_BANK_OPTIONS = new Set([
+  "Commercial Bank",
+  "Peoples Bank",
+  "Bank of Ceylon",
+  "Sampath Bank",
+  "Seylan Bank",
+  "Nation Trust Bank",
+  "NDB",
+  "HNB",
+  "NSB",
+  "OTHER",
+]);
 
 async function ensureInOutLogTable() {
   const dbName = String(db.getCurrentDatabase ? db.getCurrentDatabase() : "").trim().toLowerCase() || "inventory";
@@ -44,6 +58,150 @@ async function ensureInOutLogTable() {
   `);
 
   ensuredInOutTableDbs.add(dbName);
+}
+
+async function ensureSallaryProfileTable() {
+  const dbName = String(db.getCurrentDatabase ? db.getCurrentDatabase() : "").trim().toLowerCase() || "inventory";
+  if (ensuredSallaryTableDbs.has(dbName)) return;
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS user_profiles (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      profile_name VARCHAR(200),
+      address TEXT,
+      mobile VARCHAR(60),
+      id_number VARCHAR(120),
+      emergency_contact_no VARCHAR(60),
+      authoris_officer VARCHAR(200),
+      profile_picture_path VARCHAR(500),
+      "createdAt" TIMESTAMP DEFAULT NOW(),
+      "updatedAt" TIMESTAMP DEFAULT NOW()
+    );
+  `);
+  await db.query(`ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS profile_name VARCHAR(200);`);
+  await db.query(`ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS address TEXT;`);
+  await db.query(`ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS mobile VARCHAR(60);`);
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS user_sallary_profiles (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      username VARCHAR(200) NOT NULL,
+      role VARCHAR(40),
+      profile_name VARCHAR(200),
+      department VARCHAR(160),
+      email VARCHAR(200),
+      mobile VARCHAR(60),
+      address TEXT,
+      bank_name VARCHAR(120),
+      other_bank_name VARCHAR(160),
+      bank_account VARCHAR(120),
+      basic_sallary NUMERIC(14,2) NOT NULL DEFAULT 0,
+      allowances_json TEXT NOT NULL DEFAULT '[]',
+      "createdAt" TIMESTAMP DEFAULT NOW(),
+      "updatedAt" TIMESTAMP DEFAULT NOW()
+    );
+  `);
+  await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS username VARCHAR(200);`);
+  await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS role VARCHAR(40);`);
+  await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS profile_name VARCHAR(200);`);
+  await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS department VARCHAR(160);`);
+  await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS email VARCHAR(200);`);
+  await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS mobile VARCHAR(60);`);
+  await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS address TEXT;`);
+  await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS bank_name VARCHAR(120);`);
+  await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS other_bank_name VARCHAR(160);`);
+  await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS bank_account VARCHAR(120);`);
+  await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS basic_sallary NUMERIC(14,2) NOT NULL DEFAULT 0;`);
+  await db.query(`ALTER TABLE user_sallary_profiles ADD COLUMN IF NOT EXISTS allowances_json TEXT NOT NULL DEFAULT '[]';`);
+  await db.query(`
+    CREATE INDEX IF NOT EXISTS user_sallary_profiles_profile_name_idx
+    ON user_sallary_profiles (LOWER(COALESCE(profile_name, '')));
+  `);
+
+  ensuredSallaryTableDbs.add(dbName);
+}
+
+function parseAllowances(raw) {
+  let list = [];
+  if (Array.isArray(raw)) {
+    list = raw;
+  } else if (typeof raw === "string" && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) list = parsed;
+    } catch (_err) {
+      list = [];
+    }
+  }
+
+  const normalized = [];
+  list.forEach((entry, index) => {
+    const name = String(entry?.name ?? entry?.label ?? "").trim().slice(0, 120);
+    const amountRaw = Number(entry?.amount ?? entry?.value ?? 0);
+    const amount = Number.isFinite(amountRaw) ? Number(amountRaw.toFixed(2)) : 0;
+    if (!name && amount <= 0) return;
+    normalized.push({
+      name: name || `Allowance ${index + 1}`,
+      amount: Math.max(0, amount),
+    });
+  });
+
+  return normalized;
+}
+
+function parseStoredAllowances(rawJson) {
+  try {
+    const parsed = JSON.parse(String(rawJson || "[]"));
+    return parseAllowances(parsed);
+  } catch (_err) {
+    return [];
+  }
+}
+
+function normalizeBasicSallary(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, Number(parsed.toFixed(2)));
+}
+
+function normalizeBankName(value) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return "";
+  if (SALLARY_BANK_OPTIONS.has(trimmed)) return trimmed;
+  return "OTHER";
+}
+
+function canViewAllSallaryUsers(role) {
+  const normalized = String(role || "").trim().toLowerCase();
+  return normalized === "admin" || normalized === "manager";
+}
+
+async function getSallaryUserRow(userId) {
+  const rs = await db.query(
+    `SELECT u.id AS user_id,
+            u.username,
+            u.role,
+            u.department,
+            u.email,
+            COALESCE(NULLIF(TRIM(up.profile_name), ''), u.username) AS profile_name,
+            COALESCE(NULLIF(TRIM(up.mobile), ''), NULLIF(TRIM(u.telephone), ''), '') AS mobile,
+            COALESCE(NULLIF(TRIM(up.address), ''), '') AS address,
+            sp.bank_name,
+            sp.other_bank_name,
+            sp.bank_account,
+            sp.basic_sallary,
+            sp.allowances_json
+     FROM users u
+     LEFT JOIN user_profiles up ON up.user_id = u.id
+     LEFT JOIN user_sallary_profiles sp ON sp.user_id = u.id
+     WHERE u.id = $1
+     LIMIT 1`,
+    { bind: [userId] }
+  );
+  const rows = Array.isArray(rs?.[0]) ? rs[0] : [];
+  return rows[0] || null;
 }
 
 function toNullableFloat(value) {
@@ -318,5 +476,199 @@ exports.getMonthlyTimeSheet = async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({ message: err.message || "Failed to load monthly timesheet." });
+  }
+};
+
+exports.getSallaryUsers = async (req, res) => {
+  const role = String(req.user?.role || "").trim().toLowerCase();
+  const requesterUserId = Number(req.user?.id || req.user?.userId || 0);
+  if (!Number.isFinite(requesterUserId) || requesterUserId <= 0) {
+    return res.status(401).json({ message: "Invalid token user." });
+  }
+
+  try {
+    await ensureSallaryProfileTable();
+    const viewAll = canViewAllSallaryUsers(role);
+    const rs = await db.query(
+      `SELECT u.id AS user_id,
+              u.username,
+              u.role,
+              u.department,
+              u.email,
+              COALESCE(NULLIF(TRIM(up.profile_name), ''), u.username) AS profile_name,
+              COALESCE(NULLIF(TRIM(up.mobile), ''), NULLIF(TRIM(u.telephone), ''), '') AS mobile,
+              COALESCE(NULLIF(TRIM(up.address), ''), '') AS address,
+              sp.bank_name,
+              sp.bank_account,
+              sp.basic_sallary,
+              sp."updatedAt" AS sallary_updated_at
+       FROM users u
+       LEFT JOIN user_profiles up ON up.user_id = u.id
+       LEFT JOIN user_sallary_profiles sp ON sp.user_id = u.id
+       WHERE ($1::boolean = TRUE OR u.id = $2)
+       ORDER BY LOWER(COALESCE(NULLIF(TRIM(up.profile_name), ''), u.username)) ASC, u.id ASC`,
+      { bind: [viewAll, requesterUserId] }
+    );
+    const rows = Array.isArray(rs?.[0]) ? rs[0] : [];
+    const normalizedRows = rows.map((row) => ({
+      user_id: Number(row.user_id || 0),
+      username: String(row.username || ""),
+      role: String(row.role || ""),
+      profile_name: String(row.profile_name || "").trim() || String(row.username || ""),
+      department: String(row.department || "").trim(),
+      email: String(row.email || "").trim(),
+      mobile: String(row.mobile || "").trim(),
+      address: String(row.address || "").trim(),
+      bank_name: String(row.bank_name || "").trim(),
+      bank_account: String(row.bank_account || "").trim(),
+      basic_sallary: normalizeBasicSallary(row.basic_sallary),
+      sallary_updated_at: row.sallary_updated_at ? new Date(row.sallary_updated_at).toISOString() : "",
+    }));
+
+    return res.json({
+      rows: normalizedRows,
+      can_view_all: viewAll,
+      requester_user_id: requesterUserId,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message || "Failed to load sallary users." });
+  }
+};
+
+exports.getSallaryDetailByUserId = async (req, res) => {
+  const role = String(req.user?.role || "").trim().toLowerCase();
+  const requesterUserId = Number(req.user?.id || req.user?.userId || 0);
+  const userId = Number(req.params?.userId || 0);
+  if (!Number.isFinite(requesterUserId) || requesterUserId <= 0) {
+    return res.status(401).json({ message: "Invalid token user." });
+  }
+  if (!Number.isFinite(userId) || userId <= 0) {
+    return res.status(400).json({ message: "Invalid user id." });
+  }
+
+  try {
+    await ensureSallaryProfileTable();
+    const viewAll = canViewAllSallaryUsers(role);
+    if (!viewAll && userId !== requesterUserId) {
+      return res.status(403).json({ message: "Forbidden: You can only view your own sallary profile." });
+    }
+
+    const row = await getSallaryUserRow(userId);
+    if (!row) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    return res.json({
+      user_id: Number(row.user_id || 0),
+      username: String(row.username || "").trim(),
+      role: String(row.role || "").trim(),
+      department: String(row.department || "").trim(),
+      email: String(row.email || "").trim(),
+      profile_name: String(row.profile_name || "").trim() || String(row.username || "").trim(),
+      mobile: String(row.mobile || "").trim(),
+      address: String(row.address || "").trim(),
+      bank_name: String(row.bank_name || "").trim(),
+      other_bank_name: String(row.other_bank_name || "").trim(),
+      bank_account: String(row.bank_account || "").trim(),
+      basic_sallary: normalizeBasicSallary(row.basic_sallary),
+      allowances: parseStoredAllowances(row.allowances_json),
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message || "Failed to load sallary detail." });
+  }
+};
+
+exports.upsertSallaryDetailByUserId = async (req, res) => {
+  const role = String(req.user?.role || "").trim().toLowerCase();
+  const requesterUserId = Number(req.user?.id || req.user?.userId || 0);
+  const userId = Number(req.params?.userId || 0);
+  if (!Number.isFinite(requesterUserId) || requesterUserId <= 0) {
+    return res.status(401).json({ message: "Invalid token user." });
+  }
+  if (!Number.isFinite(userId) || userId <= 0) {
+    return res.status(400).json({ message: "Invalid user id." });
+  }
+
+  try {
+    await ensureSallaryProfileTable();
+    const viewAll = canViewAllSallaryUsers(role);
+    if (!viewAll && userId !== requesterUserId) {
+      return res.status(403).json({ message: "Forbidden: You can only update your own sallary profile." });
+    }
+
+    const sourceRow = await getSallaryUserRow(userId);
+    if (!sourceRow) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const bankName = normalizeBankName(req.body?.bank_name);
+    const otherBankName = bankName === "OTHER"
+      ? String(req.body?.other_bank_name || "").trim().slice(0, 160)
+      : "";
+    const bankAccount = String(req.body?.bank_account || "").trim().slice(0, 120);
+    const basicSallary = normalizeBasicSallary(req.body?.basic_sallary ?? req.body?.basic_salary);
+    const allowances = parseAllowances(req.body?.allowances);
+
+    await db.query(
+      `INSERT INTO user_sallary_profiles
+         (user_id, username, role, profile_name, department, email, mobile, address,
+          bank_name, other_bank_name, bank_account, basic_sallary, allowances_json, "createdAt", "updatedAt")
+       VALUES
+         ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
+       ON CONFLICT (user_id)
+       DO UPDATE SET
+         username = EXCLUDED.username,
+         role = EXCLUDED.role,
+         profile_name = EXCLUDED.profile_name,
+         department = EXCLUDED.department,
+         email = EXCLUDED.email,
+         mobile = EXCLUDED.mobile,
+         address = EXCLUDED.address,
+         bank_name = EXCLUDED.bank_name,
+         other_bank_name = EXCLUDED.other_bank_name,
+         bank_account = EXCLUDED.bank_account,
+         basic_sallary = EXCLUDED.basic_sallary,
+         allowances_json = EXCLUDED.allowances_json,
+         "updatedAt" = NOW()`,
+      {
+        bind: [
+          userId,
+          String(sourceRow.username || "").trim(),
+          String(sourceRow.role || "").trim(),
+          String(sourceRow.profile_name || "").trim(),
+          String(sourceRow.department || "").trim(),
+          String(sourceRow.email || "").trim(),
+          String(sourceRow.mobile || "").trim(),
+          String(sourceRow.address || "").trim(),
+          bankName || null,
+          otherBankName || null,
+          bankAccount || null,
+          basicSallary,
+          JSON.stringify(allowances),
+        ],
+      }
+    );
+
+    const row = await getSallaryUserRow(userId);
+    return res.json({
+      message: "Sallary details saved successfully.",
+      detail: {
+        user_id: Number(row?.user_id || 0),
+        username: String(row?.username || "").trim(),
+        role: String(row?.role || "").trim(),
+        department: String(row?.department || "").trim(),
+        email: String(row?.email || "").trim(),
+        profile_name: String(row?.profile_name || "").trim() || String(row?.username || "").trim(),
+        mobile: String(row?.mobile || "").trim(),
+        address: String(row?.address || "").trim(),
+        bank_name: String(row?.bank_name || "").trim(),
+        other_bank_name: String(row?.other_bank_name || "").trim(),
+        bank_account: String(row?.bank_account || "").trim(),
+        basic_sallary: normalizeBasicSallary(row?.basic_sallary),
+        allowances: parseStoredAllowances(row?.allowances_json),
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message || "Failed to save sallary detail." });
   }
 };

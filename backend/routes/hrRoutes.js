@@ -28,5 +28,23 @@ router.get(
   roleMiddleware(["admin", "manager", "user"]),
   hrController.getMonthlyTimeSheet
 );
+router.get(
+  "/sallary/users",
+  authMiddleware,
+  roleMiddleware(["admin", "manager", "user"]),
+  hrController.getSallaryUsers
+);
+router.get(
+  "/sallary/:userId",
+  authMiddleware,
+  roleMiddleware(["admin", "manager", "user"]),
+  hrController.getSallaryDetailByUserId
+);
+router.put(
+  "/sallary/:userId",
+  authMiddleware,
+  roleMiddleware(["admin", "manager", "user"]),
+  hrController.upsertSallaryDetailByUserId
+);
 
 module.exports = router;

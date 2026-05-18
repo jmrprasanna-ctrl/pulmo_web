@@ -177,6 +177,8 @@ const ACCESS_MODULE_OPTIONS = [
     items: [
       { path: "/hr/inout.html", label: "INOUT", actions: ["view", "add", "edit"] },
       { path: "/hr/time-sheet.html", label: "Time Sheet", actions: ["view"] },
+      { path: "/hr/sallary.html", label: "Sallary", actions: ["view", "edit"] },
+      { path: "/hr/sallary-detail.html", label: "Sallary Detail", actions: ["view", "edit"] },
     ],
   },
   {
@@ -319,6 +321,10 @@ function expandImplicitActionDependencies(actionKeys) {
   if (set.has(toActionKey("/users/profile-list.html", "edit"))) {
     add("/users/edit-profile.html", "view");
     add("/users/edit-profile.html", "edit");
+  }
+  if (set.has(toActionKey("/hr/sallary.html", "edit"))) {
+    add("/hr/sallary-detail.html", "view");
+    add("/hr/sallary-detail.html", "edit");
   }
   if (set.has(toActionKey("/users/technician-list.html", "add"))) {
     add("/users/add-technician.html", "view");
