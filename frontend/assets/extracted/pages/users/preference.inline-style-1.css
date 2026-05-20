@@ -18,6 +18,17 @@
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 16px;
         }
+        .preference-target{
+            max-width: 780px;
+            margin-bottom: 14px;
+            padding: 12px 14px;
+        }
+        .preference-target label{
+            margin: 0 0 6px;
+        }
+        .preference-target select{
+            margin-bottom: 8px;
+        }
         .user-preference-grid{
             grid-template-columns: minmax(320px, 680px);
             justify-content: flex-start;

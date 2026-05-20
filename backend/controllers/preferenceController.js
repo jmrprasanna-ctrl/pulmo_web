@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const db = require("../config/database");
 const UiSetting = require("../models/UiSetting");
+const User = require("../models/User");
 
 const IMAGE_ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".bmp", ".gif", ".png"]);
 const STORAGE_ROOT = path.resolve(__dirname, "../storage/preferences");
@@ -79,61 +80,101 @@ const BRAND_IMAGE_MAP = {
   },
 };
 
-let preferenceSchemaEnsured = false;
+const ensuredPreferenceSchemaDbSet = new Set();
 
-async function ensurePreferenceSchema() {
-  if (preferenceSchemaEnsured) return;
-  await db.query(`
-    ALTER TABLE ui_settings
-    ADD COLUMN IF NOT EXISTS quotation3_template_pdf_path VARCHAR(500);
-  `);
-  await db.query(`ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS sign_q2_path VARCHAR(500);`);
-  await db.query(`ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS seal_q2_path VARCHAR(500);`);
-  await db.query(`ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS sign_q3_path VARCHAR(500);`);
-  await db.query(`ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS seal_q3_path VARCHAR(500);`);
-  preferenceSchemaEnsured = true;
+function normalizeDbName(value) {
+  const normalized = db.normalizeDatabaseName(value);
+  return normalized || DEFAULT_DB_NAME;
 }
 
-async function ensureUserPreferenceTable() {
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS ${USER_PREF_TABLE} (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER UNIQUE NOT NULL,
-      logo_path VARCHAR(500),
-      invoice_template_pdf_path VARCHAR(500),
-      quotation_template_pdf_path VARCHAR(500),
-      quotation2_template_pdf_path VARCHAR(500),
-      quotation3_template_pdf_path VARCHAR(500),
-      sign_c_path VARCHAR(500),
-      sign_v_path VARCHAR(500),
-      seal_c_path VARCHAR(500),
-      seal_v_path VARCHAR(500),
-      sign_q2_path VARCHAR(500),
-      seal_q2_path VARCHAR(500),
-      sign_q3_path VARCHAR(500),
-      seal_q3_path VARCHAR(500),
-      primary_color VARCHAR(24),
-      background_color VARCHAR(24),
-      button_color VARCHAR(24),
-      mode_theme VARCHAR(16),
-      "createdAt" TIMESTAMP DEFAULT NOW(),
-      "updatedAt" TIMESTAMP DEFAULT NOW()
-    );
-  `);
-  await db.query(`ALTER TABLE ${USER_PREF_TABLE} ADD COLUMN IF NOT EXISTS sign_q2_path VARCHAR(500);`);
-  await db.query(`ALTER TABLE ${USER_PREF_TABLE} ADD COLUMN IF NOT EXISTS seal_q2_path VARCHAR(500);`);
-  await db.query(`ALTER TABLE ${USER_PREF_TABLE} ADD COLUMN IF NOT EXISTS sign_q3_path VARCHAR(500);`);
-  await db.query(`ALTER TABLE ${USER_PREF_TABLE} ADD COLUMN IF NOT EXISTS seal_q3_path VARCHAR(500);`);
+function normalizeUserDatabase(value) {
+  const normalized = db.normalizeDatabaseName(value);
+  return normalized || DEFAULT_DB_NAME;
 }
 
-async function getOrCreateSettings() {
-  await ensurePreferenceSchema();
-  await ensureUserPreferenceTable();
-  let row = await UiSetting.findOne({ order: [["id", "ASC"]] });
-  if (!row) {
-    row = await UiSetting.create({});
+function parseUserReference(raw) {
+  const value = String(raw || "").trim();
+  if (!value) return null;
+
+  const composite = value.match(/^([a-z0-9_]+):(\d+)$/i);
+  if (composite) {
+    const userDatabase = normalizeUserDatabase(composite[1]);
+    const userId = Number(composite[2]);
+    if (!Number.isFinite(userId) || userId <= 0) return null;
+    return { user_id: userId, user_database: userDatabase };
   }
-  return row;
+
+  const userId = Number(value);
+  if (!Number.isFinite(userId) || userId <= 0) return null;
+  return { user_id: userId, user_database: DEFAULT_DB_NAME };
+}
+
+async function ensurePreferenceSchema(databaseName = DEFAULT_DB_NAME) {
+  const targetDb = normalizeDbName(databaseName);
+  await db.registerDatabase(targetDb).catch(() => {});
+  if (ensuredPreferenceSchemaDbSet.has(targetDb)) return;
+
+  await db.withDatabase(targetDb, async () => {
+    await db.query(`
+      ALTER TABLE ui_settings
+      ADD COLUMN IF NOT EXISTS quotation3_template_pdf_path VARCHAR(500);
+    `);
+    await db.query(`ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS sign_q2_path VARCHAR(500);`);
+    await db.query(`ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS seal_q2_path VARCHAR(500);`);
+    await db.query(`ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS sign_q3_path VARCHAR(500);`);
+    await db.query(`ALTER TABLE ui_settings ADD COLUMN IF NOT EXISTS seal_q3_path VARCHAR(500);`);
+  });
+
+  ensuredPreferenceSchemaDbSet.add(targetDb);
+}
+
+async function ensureUserPreferenceTable(databaseName = DEFAULT_DB_NAME) {
+  const targetDb = normalizeDbName(databaseName);
+  await db.registerDatabase(targetDb).catch(() => {});
+  await db.withDatabase(targetDb, async () => {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS ${USER_PREF_TABLE} (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER UNIQUE NOT NULL,
+        logo_path VARCHAR(500),
+        invoice_template_pdf_path VARCHAR(500),
+        quotation_template_pdf_path VARCHAR(500),
+        quotation2_template_pdf_path VARCHAR(500),
+        quotation3_template_pdf_path VARCHAR(500),
+        sign_c_path VARCHAR(500),
+        sign_v_path VARCHAR(500),
+        seal_c_path VARCHAR(500),
+        seal_v_path VARCHAR(500),
+        sign_q2_path VARCHAR(500),
+        seal_q2_path VARCHAR(500),
+        sign_q3_path VARCHAR(500),
+        seal_q3_path VARCHAR(500),
+        primary_color VARCHAR(24),
+        background_color VARCHAR(24),
+        button_color VARCHAR(24),
+        mode_theme VARCHAR(16),
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    await db.query(`ALTER TABLE ${USER_PREF_TABLE} ADD COLUMN IF NOT EXISTS sign_q2_path VARCHAR(500);`);
+    await db.query(`ALTER TABLE ${USER_PREF_TABLE} ADD COLUMN IF NOT EXISTS seal_q2_path VARCHAR(500);`);
+    await db.query(`ALTER TABLE ${USER_PREF_TABLE} ADD COLUMN IF NOT EXISTS sign_q3_path VARCHAR(500);`);
+    await db.query(`ALTER TABLE ${USER_PREF_TABLE} ADD COLUMN IF NOT EXISTS seal_q3_path VARCHAR(500);`);
+  });
+}
+
+async function getOrCreateSettings(databaseName = DEFAULT_DB_NAME) {
+  const targetDb = normalizeDbName(databaseName);
+  await ensurePreferenceSchema(targetDb);
+  await ensureUserPreferenceTable(targetDb);
+  return db.withDatabase(targetDb, async () => {
+    let row = await UiSetting.findOne({ order: [["id", "ASC"]] });
+    if (!row) {
+      row = await UiSetting.create({});
+    }
+    return row;
+  });
 }
 
 function ensureStorage() {
@@ -142,23 +183,18 @@ function ensureStorage() {
   }
 }
 
-function normalizeDbName(value) {
-  const normalized = db.normalizeDatabaseName(value);
-  return normalized || DEFAULT_DB_NAME;
-}
-
 function getRequestDbName(req) {
   return normalizeDbName(req?.databaseName || req?.user?.database_name || req?.headers?.["x-database-name"]);
 }
 
-function getDbStorageDir(req) {
-  const dbName = getRequestDbName(req);
+function getDbStorageDir(context) {
+  const dbName = normalizeDbName(context?.databaseName || DEFAULT_DB_NAME);
   return path.join(STORAGE_ROOT, dbName);
 }
 
-function getUserStorageDir(req) {
-  const dbDir = getDbStorageDir(req);
-  const userId = getCurrentUserId(req);
+function getUserStorageDir(context) {
+  const dbDir = getDbStorageDir(context);
+  const userId = Number(context?.userId || 0);
   const safeUser = userId > 0 ? `user_${userId}` : "user_0";
   return path.join(dbDir, safeUser);
 }
@@ -168,39 +204,104 @@ function getCurrentUserId(req) {
   return Number.isFinite(id) && id > 0 ? id : 0;
 }
 
-async function getUserPreferenceRow(req, createIfMissing = true) {
-  const userId = getCurrentUserId(req);
+async function resolveTargetPreferenceContext(req, options = {}) {
+  const allowAdminOverride = options?.allowAdminOverride !== false;
+  const requesterRole = String(req?.user?.role || "").trim().toLowerCase();
+  const requesterUserId = getCurrentUserId(req);
+  const requesterDb = getRequestDbName(req);
+
+  let userId = requesterUserId;
+  let databaseName = requesterDb;
+
+  if (allowAdminOverride && requesterRole === "admin") {
+    const rawUserRef = req?.body?.user_ref ?? req?.query?.user_ref;
+    const userRef = parseUserReference(rawUserRef);
+    if (userRef && Number.isFinite(userRef.user_id) && userRef.user_id > 0) {
+      if (userRef.user_database !== DEFAULT_DB_NAME) {
+        await db.registerDatabase(userRef.user_database).catch(() => {});
+        const sourceUser = await db.withDatabase(userRef.user_database, async () => {
+          return User.findByPk(userRef.user_id, { attributes: ["id", "username", "email"] });
+        }).catch(() => null);
+        const plain = sourceUser && sourceUser.toJSON ? sourceUser.toJSON() : sourceUser;
+        const email = String(plain?.email || "").trim().toLowerCase();
+        const username = String(plain?.username || "").trim().toLowerCase();
+        const canonicalUserId = await db.withDatabase(DEFAULT_DB_NAME, async () => {
+          if (email) {
+            const byEmailRs = await db.query(
+              `SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+              { bind: [email] }
+            );
+            const byEmailRows = Array.isArray(byEmailRs?.[0]) ? byEmailRs[0] : [];
+            if (Number(byEmailRows[0]?.id || 0) > 0) return Number(byEmailRows[0].id);
+          }
+          if (username) {
+            const byUserRs = await db.query(
+              `SELECT id FROM users WHERE LOWER(username) = LOWER($1) LIMIT 1`,
+              { bind: [username] }
+            );
+            const byUserRows = Array.isArray(byUserRs?.[0]) ? byUserRs[0] : [];
+            if (Number(byUserRows[0]?.id || 0) > 0) return Number(byUserRows[0].id);
+          }
+          return Number(userRef.user_id || 0);
+        }).catch(() => Number(userRef.user_id || 0));
+        userId = Number(canonicalUserId || userRef.user_id || requesterUserId);
+      } else {
+        userId = Number(userRef.user_id);
+      }
+    }
+
+    const requestedDbName = normalizeDbName(req?.body?.database_name ?? req?.query?.database_name);
+    if (requestedDbName) {
+      databaseName = requestedDbName;
+    }
+  }
+
+  userId = Number.isFinite(Number(userId)) && Number(userId) > 0 ? Number(userId) : requesterUserId;
+  databaseName = normalizeDbName(databaseName || requesterDb || DEFAULT_DB_NAME);
+  await db.registerDatabase(databaseName).catch(() => {});
+
+  return {
+    userId,
+    databaseName,
+  };
+}
+
+async function getUserPreferenceRow(context, createIfMissing = true) {
+  const userId = Number(context?.userId || 0);
+  const targetDb = normalizeDbName(context?.databaseName || DEFAULT_DB_NAME);
   if (!userId) return null;
 
-  await getOrCreateSettings();
-  const selectedResult = await db.query(`SELECT * FROM ${USER_PREF_TABLE} WHERE user_id = $1 LIMIT 1`, {
-    bind: [userId],
-  });
-  let rs = Array.isArray(selectedResult?.[0]) ? selectedResult[0] : [];
-  if (rs.length) return rs[0];
-  if (!createIfMissing) return null;
+  await getOrCreateSettings(targetDb);
+  return db.withDatabase(targetDb, async () => {
+    const selectedResult = await db.query(`SELECT * FROM ${USER_PREF_TABLE} WHERE user_id = $1 LIMIT 1`, {
+      bind: [userId],
+    });
+    const rs = Array.isArray(selectedResult?.[0]) ? selectedResult[0] : [];
+    if (rs.length) return rs[0];
+    if (!createIfMissing) return null;
 
-  const base = await UiSetting.findOne({ order: [["id", "ASC"]] });
-  await db.query(
-    `INSERT INTO ${USER_PREF_TABLE}
-      (user_id, primary_color, background_color, button_color, mode_theme, "createdAt", "updatedAt")
-     VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-     ON CONFLICT (user_id) DO NOTHING`,
-    {
-      bind: [
-        userId,
-        String(base?.primary_color || "#0f6abf"),
-        String(base?.background_color || "#edf3fb"),
-        String(base?.button_color || "#0f6abf"),
-        String(base?.mode_theme || "light"),
-      ],
-    }
-  );
-  const insertedResult = await db.query(`SELECT * FROM ${USER_PREF_TABLE} WHERE user_id = $1 LIMIT 1`, {
-    bind: [userId],
+    const base = await UiSetting.findOne({ order: [["id", "ASC"]] });
+    await db.query(
+      `INSERT INTO ${USER_PREF_TABLE}
+        (user_id, primary_color, background_color, button_color, mode_theme, "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+       ON CONFLICT (user_id) DO NOTHING`,
+      {
+        bind: [
+          userId,
+          String(base?.primary_color || "#0f6abf"),
+          String(base?.background_color || "#edf3fb"),
+          String(base?.button_color || "#0f6abf"),
+          String(base?.mode_theme || "light"),
+        ],
+      }
+    );
+    const insertedResult = await db.query(`SELECT * FROM ${USER_PREF_TABLE} WHERE user_id = $1 LIMIT 1`, {
+      bind: [userId],
+    });
+    const inserted = Array.isArray(insertedResult?.[0]) ? insertedResult[0] : [];
+    return (Array.isArray(inserted) && inserted[0]) || null;
   });
-  const inserted = Array.isArray(insertedResult?.[0]) ? insertedResult[0] : [];
-  return (Array.isArray(inserted) && inserted[0]) || null;
 }
 
 function parseBase64Payload(fileDataBase64) {
@@ -256,8 +357,9 @@ function resolveBrandImagePath(row, imageType) {
 
 exports.getPreferences = async (_req, res) => {
   try {
-    const row = await getOrCreateSettings();
-    const userPref = await getUserPreferenceRow(_req, true);
+    const target = await resolveTargetPreferenceContext(_req, { allowAdminOverride: true });
+    const row = await getOrCreateSettings(target.databaseName);
+    const userPref = await getUserPreferenceRow(target, true);
     const readPath = (column) => String(userPref?.[column] || "").trim();
     res.json({
       logo_path: readPath("logo_path"),
@@ -288,6 +390,8 @@ exports.getPreferences = async (_req, res) => {
       seal_q3_file_name: currentFileNameFromPath(readPath("seal_q3_path")),
       logo_url: "/api/preferences/logo-file",
       updated_at: row.updatedAt ? row.updatedAt.toISOString() : "",
+      target_user_id: Number(target.userId || 0),
+      target_database_name: normalizeDbName(target.databaseName),
     });
   } catch (err) {
     console.error(err);
@@ -310,27 +414,32 @@ exports.uploadLogo = async (req, res) => {
       return res.status(400).json({ message: "Uploaded logo is empty." });
     }
 
+    const target = await resolveTargetPreferenceContext(req, { allowAdminOverride: true });
     ensureStorage();
-    const targetDir = getUserStorageDir(req);
+    const targetDir = getUserStorageDir(target);
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });
     }
     const targetPath = path.join(targetDir, `${LOGO_FILE_NAME}${ext}`);
     fs.writeFileSync(targetPath, fileBuffer);
 
-    const row = await getOrCreateSettings();
-    await getUserPreferenceRow(req, true);
-    await db.query(
-      `UPDATE ${USER_PREF_TABLE}
-       SET logo_path = $1, "updatedAt" = NOW()
-       WHERE user_id = $2`,
-      { bind: [targetPath, getCurrentUserId(req)] }
-    );
+    const row = await getOrCreateSettings(target.databaseName);
+    await getUserPreferenceRow(target, true);
+    await db.withDatabase(target.databaseName, async () => {
+      await db.query(
+        `UPDATE ${USER_PREF_TABLE}
+         SET logo_path = $1, "updatedAt" = NOW()
+         WHERE user_id = $2`,
+        { bind: [targetPath, Number(target.userId || 0)] }
+      );
+    });
 
     res.json({
       message: "System logo updated.",
       logo_url: "/api/preferences/logo-file",
       logo_updated_at: row.updatedAt ? row.updatedAt.toISOString() : "",
+      target_user_id: Number(target.userId || 0),
+      target_database_name: normalizeDbName(target.databaseName),
     });
   } catch (err) {
     console.error(err);
@@ -359,8 +468,9 @@ exports.uploadBrandImage = async (req, res) => {
       return res.status(400).json({ message: "Uploaded image is empty." });
     }
 
+    const target = await resolveTargetPreferenceContext(req, { allowAdminOverride: true });
     ensureStorage();
-    const targetDir = getUserStorageDir(req);
+    const targetDir = getUserStorageDir(target);
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });
     }
@@ -368,18 +478,22 @@ exports.uploadBrandImage = async (req, res) => {
     ensureDirForFile(targetPath);
     fs.writeFileSync(targetPath, fileBuffer);
 
-    await getUserPreferenceRow(req, true);
-    await db.query(
-      `UPDATE ${USER_PREF_TABLE}
-       SET ${meta.column} = $1, "updatedAt" = NOW()
-       WHERE user_id = $2`,
-      { bind: [targetPath, getCurrentUserId(req)] }
-    );
+    await getUserPreferenceRow(target, true);
+    await db.withDatabase(target.databaseName, async () => {
+      await db.query(
+        `UPDATE ${USER_PREF_TABLE}
+         SET ${meta.column} = $1, "updatedAt" = NOW()
+         WHERE user_id = $2`,
+        { bind: [targetPath, Number(target.userId || 0)] }
+      );
+    });
 
     res.json({
       message: `${imageType} image updated.`,
       path: targetPath,
       file_name: path.basename(targetPath),
+      target_user_id: Number(target.userId || 0),
+      target_database_name: normalizeDbName(target.databaseName),
     });
   } catch (err) {
     console.error(err);
@@ -406,25 +520,30 @@ exports.uploadTemplate = async (req, res) => {
       return res.status(400).json({ message: "Uploaded template is empty." });
     }
 
+    const target = await resolveTargetPreferenceContext(req, { allowAdminOverride: true });
     ensureStorage();
-    const targetDir = getUserStorageDir(req);
+    const targetDir = getUserStorageDir(target);
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });
     }
     const targetPath = path.join(targetDir, `${safeNamePart(mapping.baseName)}.pdf`);
     fs.writeFileSync(targetPath, fileBuffer);
 
-    await getUserPreferenceRow(req, true);
-    await db.query(
-      `UPDATE ${USER_PREF_TABLE}
-       SET ${mapping.column} = $1, "updatedAt" = NOW()
-       WHERE user_id = $2`,
-      { bind: [targetPath, getCurrentUserId(req)] }
-    );
+    await getUserPreferenceRow(target, true);
+    await db.withDatabase(target.databaseName, async () => {
+      await db.query(
+        `UPDATE ${USER_PREF_TABLE}
+         SET ${mapping.column} = $1, "updatedAt" = NOW()
+         WHERE user_id = $2`,
+        { bind: [targetPath, Number(target.userId || 0)] }
+      );
+    });
 
     res.json({
       message: `${templateType} template updated.`,
       path: targetPath,
+      target_user_id: Number(target.userId || 0),
+      target_database_name: normalizeDbName(target.databaseName),
     });
   } catch (err) {
     console.error(err);
@@ -434,7 +553,8 @@ exports.uploadTemplate = async (req, res) => {
 
 exports.getLogoFile = async (_req, res) => {
   try {
-    const row = await getOrCreateSettings();
+    const targetDb = getRequestDbName(_req);
+    const row = await getOrCreateSettings(targetDb);
     const configuredLogoPath = String(row.logo_path || "").trim();
     const defaultLogoPath = path.resolve(__dirname, "../../frontend/assets/images/logo.png");
     const logoPath = configuredLogoPath && fs.existsSync(configuredLogoPath)
@@ -456,8 +576,9 @@ exports.getLogoFile = async (_req, res) => {
 
 exports.getMyUiSettings = async (req, res) => {
   try {
-    const base = await getOrCreateSettings();
-    const userPref = await getUserPreferenceRow(req, true);
+    const target = await resolveTargetPreferenceContext(req, { allowAdminOverride: false });
+    const base = await getOrCreateSettings(target.databaseName);
+    const userPref = await getUserPreferenceRow(target, true);
     const logoUpdatedAt = userPref?.updatedAt || base.updatedAt;
     res.json({
       app_name: base.app_name,
@@ -478,23 +599,26 @@ exports.getMyUiSettings = async (req, res) => {
 
 exports.updateMyTheme = async (req, res) => {
   try {
-    await getOrCreateSettings();
-    await getUserPreferenceRow(req, true);
+    const target = await resolveTargetPreferenceContext(req, { allowAdminOverride: false });
+    await getOrCreateSettings(target.databaseName);
+    await getUserPreferenceRow(target, true);
     const primary = String(req.body?.primary_color || "").trim() || "#0f6abf";
     const background = String(req.body?.background_color || "").trim() || "#edf3fb";
     const button = String(req.body?.button_color || "").trim() || primary;
     const rawMode = String(req.body?.mode_theme || "").trim().toLowerCase();
     const mode = rawMode === "dark" || rawMode === "darker" ? rawMode : "light";
-    await db.query(
-      `UPDATE ${USER_PREF_TABLE}
-       SET primary_color = $1,
-           background_color = $2,
-           button_color = $3,
-           mode_theme = $4,
-           "updatedAt" = NOW()
-       WHERE user_id = $5`,
-      { bind: [primary, background, button, mode, getCurrentUserId(req)] }
-    );
+    await db.withDatabase(target.databaseName, async () => {
+      await db.query(
+        `UPDATE ${USER_PREF_TABLE}
+         SET primary_color = $1,
+             background_color = $2,
+             button_color = $3,
+             mode_theme = $4,
+             "updatedAt" = NOW()
+         WHERE user_id = $5`,
+        { bind: [primary, background, button, mode, Number(target.userId || 0)] }
+      );
+    });
     res.json({ message: "Theme settings updated." });
   } catch (err) {
     console.error(err);
