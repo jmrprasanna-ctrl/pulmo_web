@@ -331,7 +331,7 @@ const DASHBOARD_MENU_ENTRIES = [
         children: [
             { path: "/users/user-list.html", label: "User List" },
             { path: "/users/profile-list.html", label: "Profile" },
-            { path: "/users/preference.html", label: "Preference" },
+            { path: "/users/preference.html", label: "System Preference" },
             { path: "/users/user-access.html", label: "Access" },
             {
                 path: "/users/mapped.html",
