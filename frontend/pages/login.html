@@ -9,7 +9,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PULMO TECHNOLOGIES - Login</title>
-<link rel="stylesheet" href="../assets/extracted/pages/login.inline-style-1.css?v=20260521p1">
+<link rel="stylesheet" href="../assets/extracted/pages/login.inline-style-1.css">
 </head>
 <body>
 
@@ -30,13 +30,7 @@
     <img src="../assets/images/logo.png" alt="Company Logo">
     <h2>User Login</h2>
     <p class="login-meta">PULMO TECHNOLOGIES</p>
-    <form id="loginForm" method="post" autocomplete="off" novalidate>
-        <div class="field">
-            <label for="savedUsersSelect">Saved Users</label>
-            <select id="savedUsersSelect" name="savedUsers" autocomplete="off">
-                <option value="">Select saved user</option>
-            </select>
-        </div>
+    <form id="loginForm" method="post" autocomplete="on" novalidate>
         <div class="field">
             <label for="User">User</label>
             <input
@@ -44,7 +38,7 @@
                 id="User"
                 name="username"
                 placeholder="User"
-                autocomplete="off"
+                autocomplete="username"
                 autocapitalize="none"
                 autocorrect="off"
                 spellcheck="false"
@@ -59,7 +53,7 @@
                     id="password"
                     name="password"
                     placeholder="Password"
-                    autocomplete="new-password"
+                    autocomplete="current-password"
                     required
                 >
                 <button
@@ -82,7 +76,7 @@
 </div>
 
 <script src="../assets/js/api.js?v=20260521p1"></script>
-<script src="../assets/extracted/pages/login.inline-script-1.js?v=20260521p1"></script>
+<script src="../assets/extracted/pages/login.inline-script-1.js"></script>
 
 </body>
 </html>
