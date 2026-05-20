@@ -110,9 +110,7 @@ function nowForDateTimeInput() {
 
 function toggleEditorAccessUI() {
   const editBtn = document.getElementById("tsEditLogBtn");
-  const actionHead = document.getElementById("tsActionHead");
   if (editBtn) editBtn.style.display = canEditDatesRuntime ? "" : "none";
-  if (actionHead) actionHead.style.display = canEditDatesRuntime ? "" : "none";
 
   const { editor } = getEditorElements();
   if (editor && !canEditDatesRuntime) {
@@ -258,7 +256,7 @@ function renderRows(rows) {
 
   const list = Array.isArray(rows) ? rows : [];
   if (!list.length) {
-    body.innerHTML = `<tr><td colspan="${canEditDatesRuntime ? 9 : 8}" style="text-align:center;">No timesheet logs found.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8" style="text-align:center;">No timesheet logs found.</td></tr>`;
     return;
   }
 
@@ -279,9 +277,6 @@ function renderRows(rows) {
         const overtime = toOvertimeValue(hours);
         return overtime == null ? "-" : overtime.toFixed(2);
       })()}</td>
-      ${canEditDatesRuntime
-        ? `<td><button type="button" class="timesheet-row-action ts-row-edit" data-log-id="${Number(row.id || 0)}">Edit</button></td>`
-        : ""}
     </tr>
   `).join("");
 }
@@ -428,23 +423,12 @@ window.addEventListener("DOMContentLoaded", () => {
   const savePdfBtn = document.getElementById("tsSavePdfBtn");
   const editLogBtn = document.getElementById("tsEditLogBtn");
   const userFilter = document.getElementById("tsUserFilter");
-  const body = document.getElementById("tsBody");
   const { saveBtn, cancelBtn } = getEditorElements();
 
   savePdfBtn?.addEventListener("click", exportTimeSheetMonthlyPdf);
   editLogBtn?.addEventListener("click", openEditorForNewLog);
   saveBtn?.addEventListener("click", () => saveEditorLog());
   cancelBtn?.addEventListener("click", () => closeEditor());
-
-  body?.addEventListener("click", (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) return;
-    const editBtn = target.closest(".ts-row-edit");
-    if (!editBtn) return;
-    const logId = Number(editBtn.getAttribute("data-log-id") || 0);
-    if (!Number.isFinite(logId) || logId <= 0) return;
-    openEditorForRow(logId);
-  });
 
   monthEl?.addEventListener("change", () => loadMonthly().catch((err) => {
     if (window.showMessageBox) showMessageBox(err.message || "Failed to load timesheet.", "error");
