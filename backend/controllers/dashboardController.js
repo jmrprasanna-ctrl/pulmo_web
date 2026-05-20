@@ -192,6 +192,161 @@ function buildEmptySummaryPayload(period, periodStart, periodEnd, baseDate){
     };
 }
 
+async function buildSchemaCompatibleSummary(period, periodStart, periodEnd, baseDate){
+    const periodStartDate = toDateOnlyText(periodStart) || new Date(periodStart).toISOString().slice(0, 10);
+    const periodEndDate = toDateOnlyText(periodEnd) || new Date(periodEnd).toISOString().slice(0, 10);
+    const year = Number(baseDate?.getFullYear?.() || new Date().getFullYear());
+
+    const safe = async (fn, fallbackValue) => {
+        try{
+            const value = await fn();
+            if(value === null || value === undefined){
+                return fallbackValue;
+            }
+            return value;
+        }catch(err){
+            if(isSchemaCompatibilityError(err)){
+                return fallbackValue;
+            }
+            throw err;
+        }
+    };
+
+    const totalUsers = toNumberSafe(await safe(() => User.count(), 0));
+    const totalGeneralMachines = toNumberSafe(await safe(() => GeneralMachine.count(), 0));
+    const totalRentalMachines = toNumberSafe(await safe(() => RentalMachine.count(), 0));
+    const totalProducts = toNumberSafe(await safe(() => Product.count(), 0));
+    const totalCustomers = toNumberSafe(await safe(() => Customer.count(), 0));
+    const totalVendors = toNumberSafe(await safe(() => Vendor.count(), 0));
+
+    const invoiceDateRangeWhere = buildDateOnlyRangeWhere("invoice_date", periodStartDate, periodEndDate);
+    const invoiceCreatedRangeWhere = { createdAt: { [Op.between]: [periodStart, periodEnd] } };
+    const expenseDateRangeWhere = buildDateOnlyRangeWhere("date", periodStartDate, periodEndDate);
+    const expenseCreatedRangeWhere = { createdAt: { [Op.between]: [periodStart, periodEnd] } };
+
+    let totalSalesPeriod = await safe(() => Invoice.sum("total_amount", { where: invoiceDateRangeWhere }), null);
+    if(totalSalesPeriod === null){
+        totalSalesPeriod = await safe(() => Invoice.sum("total_amount", { where: invoiceCreatedRangeWhere }), 0);
+    }
+
+    let totalExpensesPeriod = await safe(() => Expense.sum("amount", { where: expenseDateRangeWhere }), null);
+    if(totalExpensesPeriod === null){
+        totalExpensesPeriod = await safe(() => Expense.sum("amount", { where: expenseCreatedRangeWhere }), 0);
+    }
+
+    let receivedPaymentPeriod = await safe(() => Invoice.sum("total_amount", {
+        where: {
+            [Op.and]: [
+                invoiceDateRangeWhere,
+                { payment_status: getReceivedPaymentStatusFilter() }
+            ]
+        }
+    }), null);
+    if(receivedPaymentPeriod === null){
+        receivedPaymentPeriod = await safe(() => Invoice.sum("total_amount", {
+            where: {
+                [Op.and]: [
+                    invoiceCreatedRangeWhere,
+                    { payment_status: getReceivedPaymentStatusFilter() }
+                ]
+            }
+        }), 0);
+    }
+
+    const totalSalesAllTime = toNumberSafe(await safe(() => Invoice.sum("total_amount"), 0));
+    const totalExpensesAllTime = toNumberSafe(await safe(() => Expense.sum("amount"), 0));
+    const receivedPaymentAllTime = toNumberSafe(await safe(() => Invoice.sum("total_amount", {
+        where: {
+            payment_status: getReceivedPaymentStatusFilter()
+        }
+    }), 0));
+
+    const lowStock = await safe(() => Product.findAll({
+        where:{ count:{ [Op.lt]:5 } },
+        attributes:["product_id","description","count"]
+    }), []);
+
+    const months = MONTH_NAMES_SHORT.slice();
+    const monthlySales = [];
+    const monthlyProfit = [];
+    for(let m = 0; m < 12; m += 1){
+        const start = new Date(year, m, 1, 0, 0, 0, 0);
+        const end = new Date(year, m + 1, 0, 23, 59, 59, 999);
+        const startText = toDateOnlyText(start);
+        const endText = toDateOnlyText(end);
+        const monthDateWhere = buildDateOnlyRangeWhere("invoice_date", startText, endText);
+        const monthCreatedWhere = { createdAt: { [Op.between]: [start, end] } };
+
+        let monthSales = await safe(() => Invoice.sum("total_amount", { where: monthDateWhere }), null);
+        if(monthSales === null){
+            monthSales = await safe(() => Invoice.sum("total_amount", { where: monthCreatedWhere }), 0);
+        }
+
+        let monthExpenses = await safe(() => Expense.sum("amount", {
+            where: buildDateOnlyRangeWhere("date", startText, endText)
+        }), null);
+        if(monthExpenses === null){
+            monthExpenses = await safe(() => Expense.sum("amount", { where: monthCreatedWhere }), 0);
+        }
+
+        monthlySales.push(toNumberSafe(monthSales));
+        monthlyProfit.push(toNumberSafe(monthSales) - toNumberSafe(monthExpenses));
+    }
+
+    const totalSalesPeriodSafe = toNumberSafe(totalSalesPeriod);
+    const totalExpensesPeriodSafe = toNumberSafe(totalExpensesPeriod);
+    const receivedPaymentPeriodSafe = toNumberSafe(receivedPaymentPeriod);
+    const netProfitPeriod = receivedPaymentPeriodSafe - totalExpensesPeriodSafe;
+    const netProfitAllTime = receivedPaymentAllTime - totalExpensesAllTime;
+
+    return {
+        totalUsers,
+        totalGeneralMachines,
+        totalRentalMachines,
+        totalProducts,
+        totalCustomers,
+        totalVendors,
+        totalSales: totalSalesPeriodSafe,
+        receivedPayment: receivedPaymentPeriodSafe,
+        rentalMachinesCountsPrice: 0,
+        rentalConsumablesPrice: 0,
+        totalExpenses: totalExpensesPeriodSafe,
+        netProfit: netProfitPeriod,
+        technicianPaid: 0,
+        technicianPaidForProfit: 0,
+        vendorPaid: 0,
+        totalSalesAllTime,
+        receivedPaymentAllTime,
+        rentalMachinesCountsPriceAllTime: 0,
+        rentalMachinesCountsPriceAllInputs: 0,
+        rentalConsumablesPriceAllTime: 0,
+        rentalConsumablesPriceAllInputs: 0,
+        totalExpensesAllTime,
+        netProfitAllTime,
+        technicianPaidAllTime: 0,
+        technicianPaidAllTimeForProfit: 0,
+        vendorPaidAllTime: 0,
+        totalSalesPeriod: totalSalesPeriodSafe,
+        receivedPaymentPeriod: receivedPaymentPeriodSafe,
+        rentalMachinesCountsPricePeriod: 0,
+        rentalConsumablesPricePeriod: 0,
+        totalExpensesPeriod: totalExpensesPeriodSafe,
+        netProfitPeriod,
+        technicianPaidPeriod: 0,
+        technicianPaidForProfitPeriod: 0,
+        vendorPaidPeriod: 0,
+        lowStock: Array.isArray(lowStock) ? lowStock : [],
+        months,
+        monthlySales,
+        monthlyProfit,
+        period,
+        periodStart,
+        periodEnd,
+        year,
+        fallback_mode: "schema_compatibility_partial"
+    };
+}
+
 exports.getSummary = async (req,res)=>{
     let period = "day";
     let baseDate = new Date();
@@ -504,7 +659,13 @@ exports.getSummary = async (req,res)=>{
                 code: getErrorCode(err),
                 message
             });
-            return res.json(buildEmptySummaryPayload(period, periodStart, periodEnd, baseDate));
+            try{
+                const compatibleSummary = await buildSchemaCompatibleSummary(period, periodStart, periodEnd, baseDate);
+                return res.json(compatibleSummary);
+            }catch(compatErr){
+                console.error("[dashboard] Compatible summary fallback failed.", compatErr);
+                return res.json(buildEmptySummaryPayload(period, periodStart, periodEnd, baseDate));
+            }
         }
         console.error(err);
         res.status(500).json({ message:"Failed to get dashboard summary" });
