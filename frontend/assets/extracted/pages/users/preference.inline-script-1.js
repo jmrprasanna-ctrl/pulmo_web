@@ -1,4 +1,14 @@
-function fileToDataUrl(file){
+function byId(id){
+            return document.getElementById(id);
+        }
+
+        function setText(id, value){
+            const el = byId(id);
+            if(!el) return;
+            el.textContent = value;
+        }
+
+        function fileToDataUrl(file){
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = () => resolve(String(reader.result || ""));
@@ -8,19 +18,19 @@ function fileToDataUrl(file){
         }
 
         function setStatuses(pref){
-            document.getElementById("logoStatus").textContent = `Current: ${pref.logo_file_name || "-"}`;
-            document.getElementById("invoiceStatus").textContent = `Current: ${pref.invoice_template_pdf_file_name || "-"}`;
-            document.getElementById("quotationStatus").textContent = `Current: ${pref.quotation_template_pdf_file_name || "-"}`;
-            document.getElementById("quotation2Status").textContent = `Current: ${pref.quotation2_template_pdf_file_name || "-"}`;
-            document.getElementById("quotation3Status").textContent = `Current: ${pref.quotation3_template_pdf_file_name || "-"}`;
-            document.getElementById("signCStatus").textContent = `Current: ${pref.sign_c_file_name || "-"} | Path: ${pref.sign_c_path || "-"}`;
-            document.getElementById("signVStatus").textContent = `Current: ${pref.sign_v_file_name || "-"} | Path: ${pref.sign_v_path || "-"}`;
-            document.getElementById("sealCStatus").textContent = `Current: ${pref.seal_c_file_name || "-"} | Path: ${pref.seal_c_path || "-"}`;
-            document.getElementById("sealVStatus").textContent = `Current: ${pref.seal_v_file_name || "-"} | Path: ${pref.seal_v_path || "-"}`;
-            document.getElementById("signQ2Status").textContent = `Current: ${pref.sign_q2_file_name || "-"} | Path: ${pref.sign_q2_path || "-"}`;
-            document.getElementById("sealQ2Status").textContent = `Current: ${pref.seal_q2_file_name || "-"} | Path: ${pref.seal_q2_path || "-"}`;
-            document.getElementById("signQ3Status").textContent = `Current: ${pref.sign_q3_file_name || "-"} | Path: ${pref.sign_q3_path || "-"}`;
-            document.getElementById("sealQ3Status").textContent = `Current: ${pref.seal_q3_file_name || "-"} | Path: ${pref.seal_q3_path || "-"}`;
+            setText("logoStatus", `Current: ${pref.logo_file_name || "-"}`);
+            setText("invoiceStatus", `Current: ${pref.invoice_template_pdf_file_name || "-"}`);
+            setText("quotationStatus", `Current: ${pref.quotation_template_pdf_file_name || "-"}`);
+            setText("quotation2Status", `Current: ${pref.quotation2_template_pdf_file_name || "-"}`);
+            setText("quotation3Status", `Current: ${pref.quotation3_template_pdf_file_name || "-"}`);
+            setText("signCStatus", `Current: ${pref.sign_c_file_name || "-"} | Path: ${pref.sign_c_path || "-"}`);
+            setText("signVStatus", `Current: ${pref.sign_v_file_name || "-"} | Path: ${pref.sign_v_path || "-"}`);
+            setText("sealCStatus", `Current: ${pref.seal_c_file_name || "-"} | Path: ${pref.seal_c_path || "-"}`);
+            setText("sealVStatus", `Current: ${pref.seal_v_file_name || "-"} | Path: ${pref.seal_v_path || "-"}`);
+            setText("signQ2Status", `Current: ${pref.sign_q2_file_name || "-"} | Path: ${pref.sign_q2_path || "-"}`);
+            setText("sealQ2Status", `Current: ${pref.seal_q2_file_name || "-"} | Path: ${pref.seal_q2_path || "-"}`);
+            setText("signQ3Status", `Current: ${pref.sign_q3_file_name || "-"} | Path: ${pref.sign_q3_path || "-"}`);
+            setText("sealQ3Status", `Current: ${pref.seal_q3_file_name || "-"} | Path: ${pref.seal_q3_path || "-"}`);
         }
 
         function setMappedStatusText(elementId, labels){
@@ -125,7 +135,11 @@ function fileToDataUrl(file){
         }
 
         async function uploadLogo(){
-            const input = document.getElementById("logoFile");
+            const input = byId("logoFile");
+            if(!input){
+                alert("Logo input is missing on this page.");
+                return;
+            }
             const file = input.files && input.files[0];
             if(!file){
                 alert("Please choose a logo file.");
@@ -143,19 +157,23 @@ function fileToDataUrl(file){
                 fileDataBase64
             });
             showMessageBox("System logo updated");
-            input.value = "";
+            if(input) input.value = "";
             await loadPreferences();
         }
 
         function getTemplateInput(templateType){
-            if(templateType === "invoice") return document.getElementById("invoiceTemplateFile");
-            if(templateType === "quotation") return document.getElementById("quotationTemplateFile");
-            if(templateType === "quotation2") return document.getElementById("quotation2TemplateFile");
-            return document.getElementById("quotation3TemplateFile");
+            if(templateType === "invoice") return byId("invoiceTemplateFile");
+            if(templateType === "quotation") return byId("quotationTemplateFile");
+            if(templateType === "quotation2") return byId("quotation2TemplateFile");
+            return byId("quotation3TemplateFile");
         }
 
         async function uploadTemplate(templateType){
             const input = getTemplateInput(templateType);
+            if(!input){
+                alert(`Template input is missing for type: ${templateType}`);
+                return;
+            }
             const file = input.files && input.files[0];
             if(!file){
                 alert("Please choose a PDF file.");
@@ -172,23 +190,27 @@ function fileToDataUrl(file){
                 fileDataBase64
             });
             showMessageBox(`${templateType} template updated`);
-            input.value = "";
+            if(input) input.value = "";
             await loadPreferences();
         }
 
         function getBrandImageInput(imageType){
-            if(imageType === "sign_c") return document.getElementById("signCFile");
-            if(imageType === "sign_v") return document.getElementById("signVFile");
-            if(imageType === "seal_c") return document.getElementById("sealCFile");
-            if(imageType === "sign_q2") return document.getElementById("signQ2File");
-            if(imageType === "seal_q2") return document.getElementById("sealQ2File");
-            if(imageType === "sign_q3") return document.getElementById("signQ3File");
-            if(imageType === "seal_q3") return document.getElementById("sealQ3File");
-            return document.getElementById("sealVFile");
+            if(imageType === "sign_c") return byId("signCFile");
+            if(imageType === "sign_v") return byId("signVFile");
+            if(imageType === "seal_c") return byId("sealCFile");
+            if(imageType === "sign_q2") return byId("signQ2File");
+            if(imageType === "seal_q2") return byId("sealQ2File");
+            if(imageType === "sign_q3") return byId("signQ3File");
+            if(imageType === "seal_q3") return byId("sealQ3File");
+            return byId("sealVFile");
         }
 
         async function uploadBrandImage(imageType){
             const input = getBrandImageInput(imageType);
+            if(!input){
+                alert(`Image input is missing for type: ${imageType}`);
+                return;
+            }
             const file = input.files && input.files[0];
             if(!file){
                 alert("Please choose an image file.");
@@ -206,7 +228,7 @@ function fileToDataUrl(file){
                 fileDataBase64
             });
             showMessageBox(`${imageType} image updated`);
-            input.value = "";
+            if(input) input.value = "";
             await loadPreferences();
         }
 
