@@ -5,8 +5,8 @@ const storedName = localStorage.getItem("userName") || "";
 const storedProfileName = localStorage.getItem("profileName") || "";
 function resolveDashboardDisplayName(profileName, userName, userEmail, userRole){
     const candidates = [
-        String(profileName || "").trim(),
         String(userName || "").trim(),
+        String(profileName || "").trim(),
         String(userEmail || "").trim(),
         String(userRole || "").trim(),
     ];
@@ -49,6 +49,23 @@ function applyDashboardIdentity(name){
 }
 
 async function loadDashboardProfileName(){
+    const doesProfileMatchCurrentAccount = (profile) => {
+        const rowLoginUser = String(profile?.login_user || "").trim().toLowerCase();
+        const rowEmail = String(profile?.email || "").trim().toLowerCase();
+        const hasStoredName = normalizedStoredName.length > 0;
+        const hasStoredEmail = normalizedStoredEmail.length > 0;
+        if(hasStoredName && rowLoginUser && rowLoginUser === normalizedStoredName){
+            return true;
+        }
+        if(hasStoredEmail && rowEmail && rowEmail === normalizedStoredEmail){
+            return true;
+        }
+        if(!hasStoredName && !hasStoredEmail){
+            return true;
+        }
+        return false;
+    };
+
     const pickProfileDisplayName = (profile) => {
         const profileName = String(profile?.profile_name || "").trim();
         const loginUser = String(profile?.login_user || "").trim();
@@ -63,7 +80,7 @@ async function loadDashboardProfileName(){
         if(Number.isFinite(userId) && userId > 0){
             const profile = await request(`/users/profiles/${userId}`,"GET");
             const profileName = pickProfileDisplayName(profile);
-            if(profileName.length >= 2){
+            if(profileName.length >= 2 && doesProfileMatchCurrentAccount(profile)){
                 localStorage.setItem("profileName", profileName);
                 applyDashboardIdentity(profileName);
                 return;
@@ -73,10 +90,6 @@ async function loadDashboardProfileName(){
         const profiles = await request("/users/profiles","GET");
         const rows = Array.isArray(profiles) ? profiles : [];
         const matched = rows.find((row) => {
-            const rowUserId = Number(row?.user_id || 0);
-            if(Number.isFinite(userId) && userId > 0 && rowUserId === userId){
-                return true;
-            }
             const rowLoginUser = String(row?.login_user || "").trim().toLowerCase();
             const rowEmail = String(row?.email || "").trim().toLowerCase();
             if(normalizedStoredName && rowLoginUser && rowLoginUser === normalizedStoredName){
@@ -85,20 +98,27 @@ async function loadDashboardProfileName(){
             if(normalizedStoredEmail && rowEmail && rowEmail === normalizedStoredEmail){
                 return true;
             }
+            const rowUserId = Number(row?.user_id || 0);
+            if((!normalizedStoredName && !normalizedStoredEmail) && Number.isFinite(userId) && userId > 0 && rowUserId === userId){
+                return true;
+            }
             return false;
         });
 
         if(matched){
             const fallbackName = pickProfileDisplayName(matched);
-            if(fallbackName.length >= 2){
+            if(fallbackName.length >= 2 && doesProfileMatchCurrentAccount(matched)){
                 localStorage.setItem("profileName", fallbackName);
                 applyDashboardIdentity(fallbackName);
                 return;
             }
         }
 
+        localStorage.removeItem("profileName");
         applyDashboardIdentity(resolveDashboardDisplayName("", storedName, storedEmail, storedRole));
     }catch(_err){
+        localStorage.removeItem("profileName");
+        applyDashboardIdentity(resolveDashboardDisplayName("", storedName, storedEmail, storedRole));
     }
 }
 

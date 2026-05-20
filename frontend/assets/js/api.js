@@ -166,6 +166,7 @@ function logoutForInactivity(){
     localStorage.removeItem("userId");
     localStorage.removeItem("userEmail");
     localStorage.removeItem("userName");
+    localStorage.removeItem("profileName");
     localStorage.removeItem("selectedDatabaseName");
     localStorage.removeItem(LAST_ACTIVITY_KEY);
     localStorage.removeItem(USER_ALLOWED_CACHE_KEY);
@@ -1247,6 +1248,7 @@ async function login(){
         localStorage.removeItem(USER_ALLOWED_CACHE_KEY);
         localStorage.removeItem(USER_ALLOWED_ACTIONS_CACHE_KEY);
         localStorage.removeItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY);
+        localStorage.removeItem("profileName");
         const res = await request("/auth/login","POST",{email,password});
         if(normalizeRoleValue(res.user.role) !== role){
             alert("Selected role does not match your account role!");
@@ -1257,6 +1259,7 @@ async function login(){
         localStorage.setItem("userId", res.user.id);
         localStorage.setItem("userName", res.user.username || "");
         localStorage.setItem("userEmail", res.user.email || "");
+        localStorage.setItem("profileName", String(res.user.username || res.user.email || "").trim());
         if(res.user && res.user.database_name){
             localStorage.setItem("selectedDatabaseName", String(res.user.database_name).trim().toLowerCase());
         }else{
