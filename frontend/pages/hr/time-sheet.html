@@ -64,14 +64,11 @@
         align-items:center;
         flex-wrap:wrap;
     }
-    .ts-time-entry-btn{
-        border:0;
-        background:transparent;
-        padding:0;
-        color:var(--primary);
-        text-decoration:underline;
+    .ts-entry-row.is-editable{
         cursor:pointer;
-        font:inherit;
+    }
+    .ts-entry-row.is-selected{
+        background:#eaf4ff;
     }
     @media (max-width: 900px){
         .timesheet-editor-grid{

@@ -9,6 +9,7 @@ let currentMonthlyRows = [];
 let currentUserOptions = [];
 let canEditDatesRuntime = false;
 let editorBusy = false;
+let selectedLogId = null;
 
 const TIMESHEET_PATH = "/hr/time-sheet.html";
 
@@ -115,7 +116,17 @@ function toggleEditorAccessUI() {
   const { editor } = getEditorElements();
   if (editor && !canEditDatesRuntime) {
     editor.classList.remove("active");
+    selectedLogId = null;
   }
+}
+
+function syncSelectedRowHighlight() {
+  const body = document.getElementById("tsBody");
+  if (!body) return;
+  body.querySelectorAll("tr.ts-entry-row").forEach((rowEl) => {
+    const rowLogId = Number(rowEl.getAttribute("data-log-id") || 0);
+    rowEl.classList.toggle("is-selected", Number.isFinite(rowLogId) && rowLogId > 0 && rowLogId === selectedLogId);
+  });
 }
 
 function bindEditorUserOptions() {
@@ -145,6 +156,8 @@ function openEditorForNewLog() {
   const { editor, logId, user, checkIn, checkOut } = getEditorElements();
   if (!editor || !logId || !checkIn || !checkOut) return;
 
+  selectedLogId = null;
+  syncSelectedRowHighlight();
   logId.value = "";
   checkIn.value = nowForDateTimeInput();
   checkOut.value = "";
@@ -170,6 +183,8 @@ function openEditorForRow(logIdValue) {
   const { editor, logId: logIdEl, user, checkIn, checkOut } = getEditorElements();
   if (!editor || !logIdEl || !checkIn || !checkOut) return;
 
+  selectedLogId = logId;
+  syncSelectedRowHighlight();
   logIdEl.value = String(logId);
   checkIn.value = formatForDateTimeInput(row.check_in_at);
   checkOut.value = formatForDateTimeInput(row.check_out_at);
@@ -192,6 +207,8 @@ function closeEditor() {
   if (user && canViewAllUsers()) {
     user.disabled = false;
   }
+  selectedLogId = null;
+  syncSelectedRowHighlight();
 }
 
 function setEditorBusy(busy) {
@@ -261,20 +278,12 @@ function renderRows(rows) {
   }
 
   body.innerHTML = list.map((row) => `
-    <tr>
+    <tr class="ts-entry-row ${canEditDatesRuntime ? "is-editable" : ""}" ${canEditDatesRuntime ? `data-log-id="${Number(row.id || 0)}"` : ""}>
       <td>${String(row.username || "-")}</td>
       <td>${String(row.role || "-")}</td>
-      <td>${(() => {
-        const value = fmtDateTime(row.check_in_at);
-        if (!canEditDatesRuntime) return value;
-        return `<button type="button" class="ts-time-entry-btn" data-log-id="${Number(row.id || 0)}" aria-label="Edit check in time">${value}</button>`;
-      })()}</td>
+      <td>${fmtDateTime(row.check_in_at)}</td>
       <td>${gpsLabel(row.check_in_lat, row.check_in_lng, row.check_in_location_label)}</td>
-      <td>${(() => {
-        const value = fmtDateTime(row.check_out_at);
-        if (!canEditDatesRuntime) return value;
-        return `<button type="button" class="ts-time-entry-btn" data-log-id="${Number(row.id || 0)}" aria-label="Edit check out time">${value}</button>`;
-      })()}</td>
+      <td>${fmtDateTime(row.check_out_at)}</td>
       <td>${gpsLabel(row.check_out_lat, row.check_out_lng, row.check_out_location_label)}</td>
       <td>${(() => {
         const hours = toHoursValue(row);
@@ -287,6 +296,7 @@ function renderRows(rows) {
       })()}</td>
     </tr>
   `).join("");
+  syncSelectedRowHighlight();
 }
 
 function exportTimeSheetMonthlyPdf() {
@@ -441,9 +451,9 @@ window.addEventListener("DOMContentLoaded", () => {
   body?.addEventListener("click", (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
-    const clickable = target.closest(".ts-time-entry-btn");
-    if (!clickable) return;
-    const logId = Number(clickable.getAttribute("data-log-id") || 0);
+    const rowEl = target.closest("tr.ts-entry-row[data-log-id]");
+    if (!rowEl) return;
+    const logId = Number(rowEl.getAttribute("data-log-id") || 0);
     if (!Number.isFinite(logId) || logId <= 0) return;
     openEditorForRow(logId);
   });
