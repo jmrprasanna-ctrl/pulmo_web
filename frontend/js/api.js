@@ -418,7 +418,6 @@ function renderSidebarMenuByAccess(){
             children: [
                 { path: "/users/user-list.html", label: "User List" },
                 { path: "/users/profile-list.html", label: "Profile" },
-                { path: "/users/user-preference.html", label: "User Preference" },
                 { path: "/users/preference.html", label: "System Preference" },
                 { path: "/users/user-access.html", label: "Access" },
                 {
