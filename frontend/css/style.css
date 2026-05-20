@@ -634,3 +634,68 @@ body.theme-dark .company-table td {
   color: #cfdeed;
   border-bottom-color: #33495e;
 }
+
+body.theme-darker {
+  --page-bg: #080d14;
+  --page-bg-soft: #0f1620;
+  --surface: #121c27;
+  --surface-2: #182330;
+  --text: #edf4ff;
+  --muted: #a9bdd2;
+  --line: #25384d;
+  --shadow-sm: 0 8px 20px rgba(0, 0, 0, 0.46);
+  --shadow-md: 0 18px 38px rgba(0, 0, 0, 0.58);
+}
+
+body.theme-darker {
+  background:
+    radial-gradient(circle at 8% -10%, rgba(33, 50, 70, 0.5) 0%, transparent 35%),
+    radial-gradient(circle at 95% 110%, rgba(28, 44, 40, 0.42) 0%, transparent 28%),
+    linear-gradient(180deg, var(--page-bg) 0%, var(--page-bg-soft) 100%);
+}
+
+body.theme-darker .card,
+body.theme-darker .form-container,
+body.theme-darker .chart-container,
+body.theme-darker .login-container,
+body.theme-darker .todo-section,
+body.theme-darker .preference-card,
+body.theme-darker .inv-map-card,
+body.theme-darker .mapped-info {
+  background: linear-gradient(180deg, #121c27 0%, #172330 100%);
+}
+
+body.theme-darker input,
+body.theme-darker select,
+body.theme-darker textarea {
+  background: #1a2734;
+  border-color: #2d435a;
+}
+
+body.theme-darker input:focus,
+body.theme-darker select:focus,
+body.theme-darker textarea:focus {
+  background: #1f2d3c;
+}
+
+body.theme-darker .table,
+body.theme-darker table {
+  background: #162230;
+}
+
+body.theme-darker thead {
+  background: linear-gradient(180deg, #1f3246 0%, #253a51 100%);
+}
+
+body.theme-darker tbody tr:nth-child(even) {
+  background: #1b2a38;
+}
+
+body.theme-darker tbody tr:hover {
+  background: #223445;
+}
+
+body.theme-darker .app-global-footer {
+  background: rgba(12, 20, 30, 0.92);
+  border-top-color: #2d435a;
+}

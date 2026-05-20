@@ -26,7 +26,7 @@ const userSelectEl = document.getElementById("userSelect");
             { key: "sign_v", label: "Sign V", source: "Preference > SIGN V" },
             { key: "seal_c", label: "Seal C", source: "Preference > SEAL C" },
             { key: "seal_v", label: "Seal V", source: "Preference > SEAL V" },
-            { key: "theme", label: "Theme", source: "Preference > Theme Settings" }
+            { key: "theme", label: "Theme", source: "User Preference > Theme Settings" }
         ];
 
         function renderFeatureRows(){

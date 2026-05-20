@@ -799,3 +799,48 @@ body.theme-dark .todo-item {
 body.theme-dark .todo-title.done {
   color: #93a8bd;
 }
+
+body.theme-darker .dashboard-topbar,
+body.theme-darker .summary-filters,
+body.theme-darker .health-panel {
+  background: #121e2a;
+}
+
+body.theme-darker .summary-controls select,
+body.theme-darker .summary-controls input[type="date"] {
+  background: #1a2a39;
+  border-color: #2d435a;
+}
+
+body.theme-darker .icon-btn {
+  background: #1a2a39;
+  border-color: #2d435a;
+}
+
+body.theme-darker .attendance-btn {
+  background: #0f2942;
+  border-color: #214a73;
+}
+
+body.theme-darker .attendance-btn.attendance-btn-out {
+  background: #3b1a22;
+  border-color: #603742;
+}
+
+body.theme-darker .user-menu-panel {
+  background: #162636;
+  border-color: #2d435a;
+}
+
+body.theme-darker .user-menu-item:hover {
+  background: #1f3447;
+}
+
+body.theme-darker .health-item {
+  background: #1a2a39;
+  border-color: #2d435a;
+}
+
+body.theme-darker .todo-item {
+  background: linear-gradient(180deg, #182736 0%, #1e2f40 100%);
+}

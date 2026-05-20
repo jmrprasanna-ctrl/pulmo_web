@@ -77,8 +77,7 @@ const MANAGER_BLOCKED_PATHS = [
     "/users/user-list.html",
     "/users/preference.html",
     "/add-user.html",
-    "/user-list.html",
-    "/preference.html"
+    "/user-list.html"
 ];
 
 const USER_ROLE_ALIASES = new Set([
@@ -430,6 +429,7 @@ function renderSidebarMenuByAccess(){
             children: [
                 { path: "/users/user-list.html", label: "User List" },
                 { path: "/users/profile-list.html", label: "Profile" },
+                { path: "/users/user-preference.html", label: "User Preference" },
                 { path: "/users/preference.html", label: "System Preference" },
                 { path: "/users/user-access.html", label: "Access" },
                 {
@@ -723,8 +723,14 @@ function applyUiSettingsToPage(settings){
     }
     if(settings.mode_theme){
         const mode = String(settings.mode_theme || "").trim().toLowerCase();
-        document.body.classList.remove("theme-dark", "theme-light");
-        document.body.classList.add(mode === "dark" ? "theme-dark" : "theme-light");
+        document.body.classList.remove("theme-dark", "theme-darker", "theme-light");
+        if(mode === "darker"){
+            document.body.classList.add("theme-dark", "theme-darker");
+        }else if(mode === "dark"){
+            document.body.classList.add("theme-dark");
+        }else{
+            document.body.classList.add("theme-light");
+        }
     }
     if(settings.app_name){
         const appName = String(settings.app_name);

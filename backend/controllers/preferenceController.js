@@ -483,7 +483,8 @@ exports.updateMyTheme = async (req, res) => {
     const primary = String(req.body?.primary_color || "").trim() || "#0f6abf";
     const background = String(req.body?.background_color || "").trim() || "#edf3fb";
     const button = String(req.body?.button_color || "").trim() || primary;
-    const mode = String(req.body?.mode_theme || "").trim().toLowerCase() === "dark" ? "dark" : "light";
+    const rawMode = String(req.body?.mode_theme || "").trim().toLowerCase();
+    const mode = rawMode === "dark" || rawMode === "darker" ? rawMode : "light";
     await db.query(
       `UPDATE ${USER_PREF_TABLE}
        SET primary_color = $1,

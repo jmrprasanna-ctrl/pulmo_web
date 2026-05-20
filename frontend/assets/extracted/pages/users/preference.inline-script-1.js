@@ -94,25 +94,6 @@ function fileToDataUrl(file){
             return String(localStorage.getItem("selectedDatabaseName") || "").trim().toLowerCase();
         }
 
-        function normalizeHex(value, fallback){
-            const raw = String(value || "").trim();
-            if(/^#[0-9a-fA-F]{6}$/.test(raw)) return raw.toLowerCase();
-            return fallback;
-        }
-
-        function applyThemeForm(settings){
-            const dashboard = normalizeHex(settings.primary_color, "#0f6abf");
-            const bg = normalizeHex(settings.background_color, "#edf3fb");
-            const button = normalizeHex(settings.button_color, dashboard);
-            const mode = String(settings.mode_theme || "light").toLowerCase() === "dark" ? "dark" : "light";
-
-            document.getElementById("dashboardColorPreset").value = dashboard;
-            document.getElementById("backgroundColorInput").value = bg;
-            document.getElementById("buttonColorInput").value = button;
-            document.getElementById("modeThemeSelect").value = mode;
-            document.getElementById("themeStatus").textContent = `Current: Dashboard ${dashboard}, Background ${bg}, Buttons ${button}, Mode ${mode}`;
-        }
-
         async function loadPreferences(){
             const pref = await request("/preferences", "GET");
             setStatuses(pref);
@@ -139,16 +120,6 @@ function fileToDataUrl(file){
                     }
                 }catch(_meErr){
                     setMappedStatuses([]);
-                }
-            }
-            const ui = await request("/preferences/my-ui-settings", "GET");
-            if(ui){
-                applyThemeForm(ui);
-                if(typeof window.applyUiSettingsToPage === "function"){
-                    window.applyUiSettingsToPage(ui);
-                }
-                if(typeof window.cacheUserUiSettings === "function"){
-                    window.cacheUserUiSettings(ui);
                 }
             }
         }
@@ -236,39 +207,6 @@ function fileToDataUrl(file){
             });
             showMessageBox(`${imageType} image updated`);
             input.value = "";
-            await loadPreferences();
-        }
-
-        async function saveThemeSettings(){
-            const dashboardColor = document.getElementById("dashboardColorPreset").value;
-            const backgroundColor = document.getElementById("backgroundColorInput").value;
-            const buttonColor = document.getElementById("buttonColorInput").value;
-            const modeTheme = document.getElementById("modeThemeSelect").value;
-
-            await request("/preferences/theme", "PUT", {
-                primary_color: dashboardColor,
-                background_color: backgroundColor,
-                button_color: buttonColor,
-                mode_theme: modeTheme
-            });
-
-            if(typeof window.applyUiSettingsToPage === "function"){
-                window.applyUiSettingsToPage({
-                    primary_color: dashboardColor,
-                    background_color: backgroundColor,
-                    button_color: buttonColor,
-                    mode_theme: modeTheme
-                });
-            }
-            if(typeof window.cacheUserUiSettings === "function"){
-                window.cacheUserUiSettings({
-                    primary_color: dashboardColor,
-                    background_color: backgroundColor,
-                    button_color: buttonColor,
-                    mode_theme: modeTheme
-                });
-            }
-            showMessageBox("Theme settings updated");
             await loadPreferences();
         }
 

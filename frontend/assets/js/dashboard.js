@@ -331,6 +331,7 @@ const DASHBOARD_MENU_ENTRIES = [
         children: [
             { path: "/users/user-list.html", label: "User List" },
             { path: "/users/profile-list.html", label: "Profile" },
+            { path: "/users/user-preference.html", label: "User Preference" },
             { path: "/users/preference.html", label: "System Preference" },
             { path: "/users/user-access.html", label: "Access" },
             {
@@ -534,7 +535,7 @@ function initDashboardUserMenu(){
             : "users/profile-list.html";
     }
     if(preferenceLink){
-        preferenceLink.href = "users/preference.html";
+        preferenceLink.href = "users/user-preference.html";
     }
 
     const syncUserMenuAccess = () => {
@@ -543,7 +544,7 @@ function initDashboardUserMenu(){
             profileLink.style.display = allowProfile ? "" : "none";
         }
         if(preferenceLink){
-            const allowPreference = hasDashboardAccessFor("/users/preference.html", ["view", "edit"]);
+            const allowPreference = hasDashboardAccessFor("/users/user-preference.html", ["view", "edit"]);
             preferenceLink.style.display = allowPreference ? "" : "none";
         }
     };

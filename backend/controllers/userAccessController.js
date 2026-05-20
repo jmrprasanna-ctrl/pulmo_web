@@ -208,6 +208,7 @@ const ACCESS_MODULE_OPTIONS = [
       { path: "/users/company-create.html", label: "Company Create", actions: ["view", "add", "delete"] },
       { path: "/users/mapped.html", label: "Mapped", actions: ["view", "add"] },
       { path: "/users/inv-map.html", label: "Inv Map", actions: ["view", "add", "delete"] },
+      { path: "/users/user-preference.html", label: "User Preference", actions: ["view", "edit"] },
       { path: "/users/preference.html", label: "System Preference", actions: ["view", "edit"] },
       { path: "/users/user-logged.html", label: "User Logged Times", actions: ["view"] },
       { path: "/support/email-setup.html", label: "Email Setup", actions: ["view", "edit"] },

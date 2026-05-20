@@ -1,0 +1,92 @@
+<!--
+  System: PULMO WEB SYSTEM
+  Owner : CRONIT SOLLUTIONS
+  Author: JMR Prasanna
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Preference - PULMO TECHNOLOGIES</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="../../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../../assets/extracted/pages/users/preference.inline-style-1.css">
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <img src="../../assets/images/logo.png" alt="Company Logo">
+            <span>PULMO TECHNOLOGIES</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="../dashboard.html">Dashboard</a></li>
+            <li><a href="../products/product-list.html">Products</a></li>
+            <li><a href="../products/general-machine.html">Machines</a></li>
+            <li><a href="../customers/customer-list.html">Customers</a></li>
+            <li><a href="../invoices/invoice-list.html">Invoices</a></li>
+            <li><a href="../vendors/list-vendor.html">Vendors</a></li>
+            <li><a href="../expenses/expense-list.html">Expenses</a></li>
+            <li><a href="../reports/sales-report.html">Reports</a></li>
+            <li><a href="../analytics/sales-chart.html">Analytics</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <header class="page-head">
+            <h2>User Preference</h2>
+            <a class="icon-btn" href="../dashboard.html" aria-label="Back to dashboard" title="Back to dashboard">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </a>
+        </header>
+
+        <div class="preference-grid">
+            <div class="preference-card">
+                <h3>Theme Settings</h3>
+                <p>Set your personal dashboard color, background color, button color, and theme mode.</p>
+
+                <label for="dashboardColorPreset">Dashboard Color (16 presets)</label>
+                <select id="dashboardColorPreset">
+                    <option value="#0f6abf">Default Blue</option>
+                    <option value="#0b7285">Teal Blue</option>
+                    <option value="#146c43">Emerald Green</option>
+                    <option value="#7a4cc9">Royal Purple</option>
+                    <option value="#9b6b22">Golden Brown</option>
+                    <option value="#a33a3a">Crimson Red</option>
+                    <option value="#3f5d7d">Steel Blue</option>
+                    <option value="#2c3e50">Slate Navy</option>
+                    <option value="#1f7a8c">Aegean Cyan</option>
+                    <option value="#165d39">Forest Green</option>
+                    <option value="#a24b7f">Rose Plum</option>
+                    <option value="#d46a1f">Sunset Orange</option>
+                    <option value="#1d4ed8">Cobalt Blue</option>
+                    <option value="#475569">Graphite</option>
+                    <option value="#047857">Deep Mint</option>
+                    <option value="#6b21a8">Violet Ink</option>
+                </select>
+
+                <label for="backgroundColorInput">Background Color</label>
+                <input id="backgroundColorInput" type="color" value="#edf3fb">
+
+                <label for="buttonColorInput">Buttons Color</label>
+                <input id="buttonColorInput" type="color" value="#0f6abf">
+
+                <label for="modeThemeSelect">Mode</label>
+                <select id="modeThemeSelect">
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                    <option value="darker">Darker (Extra Dark)</option>
+                </select>
+
+                <button class="btn btn-primary" type="button" onclick="saveThemeSettings()">Save Theme</button>
+                <div class="pref-status" id="themeStatus">Current: -</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../assets/js/api.js"></script>
+    <script src="../../assets/extracted/pages/users/user-preference.inline-script-1.js"></script>
+</body>
+</html>
