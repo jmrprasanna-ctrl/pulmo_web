@@ -18,6 +18,10 @@
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 16px;
         }
+        .user-preference-grid{
+            grid-template-columns: minmax(320px, 680px);
+            justify-content: flex-start;
+        }
         .preference-card{
             background: #fff;
             border: 1px solid #d8e7f6;
@@ -53,4 +57,9 @@
             color: #0b4f93;
             border: 1px solid #cfe1f5;
             text-decoration: none;
+        }
+        @media (max-width: 760px){
+            .user-preference-grid{
+                grid-template-columns: 1fr;
+            }
         }
