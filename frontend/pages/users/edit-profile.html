@@ -23,7 +23,7 @@
     </script>
     <link rel="stylesheet" href="../../assets/css/style.css">
     <link rel="stylesheet" href="../../assets/css/dashboard.css">
-    <link rel="stylesheet" href="../../assets/extracted/pages/users/edit-profile.inline-style-1.css?v=20260521p1">
+    <link rel="stylesheet" href="../../assets/extracted/pages/users/edit-profile.inline-style-1.css?v=20260521p2">
 </head>
 <body>
     <div class="sidebar">
@@ -70,9 +70,18 @@
                 </div>
 
                 <div class="meta-grid">
-                    <div class="meta-card"><span>Login User</span><strong id="metaLoginUser">-</strong></div>
-                    <div class="meta-card"><span>Email</span><strong id="metaEmail">-</strong></div>
-                    <div class="meta-card"><span>Department</span><strong id="metaDepartment">-</strong></div>
+                    <div class="meta-field">
+                        <label for="metaLoginUser">Login User</label>
+                        <input type="text" id="metaLoginUser" readonly>
+                    </div>
+                    <div class="meta-field">
+                        <label for="metaEmail">Email</label>
+                        <input type="text" id="metaEmail" readonly>
+                    </div>
+                    <div class="meta-field">
+                        <label for="metaDepartment">Department</label>
+                        <input type="text" id="metaDepartment" readonly>
+                    </div>
                 </div>
 
                 <label for="profile_name">Profile Name</label>
@@ -107,6 +116,6 @@
     </div>
 
     <script src="../../assets/js/api.js?v=20260324p4"></script>
-    <script src="../../assets/extracted/pages/users/edit-profile.inline-script-1.js?v=20260521p1"></script>
+    <script src="../../assets/extracted/pages/users/edit-profile.inline-script-1.js?v=20260521p2"></script>
 </body>
 </html>
