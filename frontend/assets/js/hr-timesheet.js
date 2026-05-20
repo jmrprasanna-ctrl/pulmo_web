@@ -264,9 +264,17 @@ function renderRows(rows) {
     <tr>
       <td>${String(row.username || "-")}</td>
       <td>${String(row.role || "-")}</td>
-      <td>${fmtDateTime(row.check_in_at)}</td>
+      <td>${(() => {
+        const value = fmtDateTime(row.check_in_at);
+        if (!canEditDatesRuntime) return value;
+        return `<button type="button" class="ts-time-entry-btn" data-log-id="${Number(row.id || 0)}" aria-label="Edit check in time">${value}</button>`;
+      })()}</td>
       <td>${gpsLabel(row.check_in_lat, row.check_in_lng, row.check_in_location_label)}</td>
-      <td>${fmtDateTime(row.check_out_at)}</td>
+      <td>${(() => {
+        const value = fmtDateTime(row.check_out_at);
+        if (!canEditDatesRuntime) return value;
+        return `<button type="button" class="ts-time-entry-btn" data-log-id="${Number(row.id || 0)}" aria-label="Edit check out time">${value}</button>`;
+      })()}</td>
       <td>${gpsLabel(row.check_out_lat, row.check_out_lng, row.check_out_location_label)}</td>
       <td>${(() => {
         const hours = toHoursValue(row);
@@ -423,12 +431,22 @@ window.addEventListener("DOMContentLoaded", () => {
   const savePdfBtn = document.getElementById("tsSavePdfBtn");
   const editLogBtn = document.getElementById("tsEditLogBtn");
   const userFilter = document.getElementById("tsUserFilter");
+  const body = document.getElementById("tsBody");
   const { saveBtn, cancelBtn } = getEditorElements();
 
   savePdfBtn?.addEventListener("click", exportTimeSheetMonthlyPdf);
   editLogBtn?.addEventListener("click", openEditorForNewLog);
   saveBtn?.addEventListener("click", () => saveEditorLog());
   cancelBtn?.addEventListener("click", () => closeEditor());
+  body?.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const clickable = target.closest(".ts-time-entry-btn");
+    if (!clickable) return;
+    const logId = Number(clickable.getAttribute("data-log-id") || 0);
+    if (!Number.isFinite(logId) || logId <= 0) return;
+    openEditorForRow(logId);
+  });
 
   monthEl?.addEventListener("change", () => loadMonthly().catch((err) => {
     if (window.showMessageBox) showMessageBox(err.message || "Failed to load timesheet.", "error");
