@@ -41,6 +41,42 @@
         top:0;
         z-index:1;
     }
+    .timesheet-editor{
+        display:none;
+        margin:14px 0;
+        padding:12px;
+        border:1px solid var(--line);
+        border-radius:var(--radius-md);
+        background:#f8fbff;
+    }
+    .timesheet-editor.active{
+        display:block;
+    }
+    .timesheet-editor-grid{
+        display:grid;
+        grid-template-columns: repeat(3, minmax(180px, 1fr));
+        gap:10px;
+    }
+    .timesheet-editor-actions{
+        margin-top:12px;
+        display:flex;
+        gap:8px;
+        align-items:center;
+        flex-wrap:wrap;
+    }
+    .timesheet-row-action{
+        padding:4px 10px;
+        border:1px solid var(--line);
+        border-radius:999px;
+        background:#fff;
+        cursor:pointer;
+        font-size:12px;
+    }
+    @media (max-width: 900px){
+        .timesheet-editor-grid{
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 </head>
 <body>
@@ -99,6 +135,47 @@
                     <path d="M8.5 12.5h7M8.5 16h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                 </svg>
             </button>
+            <button type="button" class="icon-btn" id="tsEditLogBtn" aria-label="Add or edit timesheet log" title="Add or edit timesheet log" style="display:none;">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4.5 19.5h15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="m7 16.5 9.3-9.3a1.6 1.6 0 0 1 2.3 0l.2.2a1.6 1.6 0 0 1 0 2.3L9.5 19H7Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="timesheet-editor" id="tsEditor">
+            <input type="hidden" id="tsEditLogId" value="">
+            <div class="timesheet-editor-grid">
+                <div class="field">
+                    <label for="tsEditUser">User</label>
+                    <select id="tsEditUser">
+                        <option value="">My Logs</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="tsEditCheckIn">Check In</label>
+                    <input type="datetime-local" id="tsEditCheckIn">
+                </div>
+                <div class="field">
+                    <label for="tsEditCheckOut">Check Out</label>
+                    <input type="datetime-local" id="tsEditCheckOut">
+                </div>
+            </div>
+            <div class="timesheet-editor-actions">
+                <button type="button" class="icon-btn" id="tsEditSaveBtn" aria-label="Save timesheet log" title="Save timesheet log">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5.5 3.5h11l2 2V20.5H5.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M8 3.5v5h7v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M8 14h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <button type="button" class="icon-btn" id="tsEditCancelBtn" aria-label="Cancel edit" title="Cancel edit">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <span class="path-hint">Leave Check Out empty if not available.</span>
+            </div>
         </div>
 
         <div class="timesheet-table-wrap">
@@ -113,6 +190,7 @@
                         <th>Out Location</th>
                         <th>Hours</th>
                         <th>O.T</th>
+                        <th id="tsActionHead" style="display:none;">Action</th>
                     </tr>
                 </thead>
                 <tbody id="tsBody"></tbody>

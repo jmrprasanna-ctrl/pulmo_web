@@ -176,7 +176,7 @@ const ACCESS_MODULE_OPTIONS = [
     module: "HR",
     items: [
       { path: "/hr/inout.html", label: "INOUT", actions: ["view", "add", "edit"] },
-      { path: "/hr/time-sheet.html", label: "Time Sheet", actions: ["view"] },
+      { path: "/hr/time-sheet.html", label: "Time Sheet", actions: ["view", "edit"] },
       { path: "/hr/sallary.html", label: "Sallary", actions: ["view", "edit"] },
       { path: "/hr/sallary-detail.html", label: "Sallary Detail", actions: ["view", "edit"] },
       { path: "/hr/leave.html", label: "Leave", actions: ["view", "add"] },

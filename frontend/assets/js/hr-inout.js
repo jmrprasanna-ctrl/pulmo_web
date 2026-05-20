@@ -59,7 +59,7 @@ function renderStatusCard(status) {
   const hasTodayOut = !!status?.has_today_out;
   const canCheckIn = typeof status?.can_check_in_today === "boolean"
     ? status.can_check_in_today
-    : (!hasTodayIn && !isCheckedIn);
+    : !hasTodayIn;
   const canCheckOut = typeof status?.can_check_out_today === "boolean" ? status.can_check_out_today : (hasTodayIn && !hasTodayOut);
 
   document.getElementById("inoutUserName").value = String(localStorage.getItem("userName") || localStorage.getItem("userEmail") || "User");

@@ -5,6 +5,8 @@ const { sendEmail } = require("../services/emailService");
 const ensuredInOutTableDbs = new Set();
 const ensuredSallaryTableDbs = new Set();
 const ensuredLeaveTableDbs = new Set();
+const INVENTORY_DB_NAME = "inventory";
+const TIMESHEET_ACCESS_PATH = "/hr/time-sheet.html";
 
 const SALLARY_BANK_OPTIONS = new Set([
   "Commercial Bank",
@@ -451,6 +453,89 @@ function parseMonthRange(monthRaw) {
   };
 }
 
+function normalizeUserDatabaseName(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return INVENTORY_DB_NAME;
+  if (!/^[a-z0-9_]+$/.test(normalized)) return INVENTORY_DB_NAME;
+  return normalized;
+}
+
+function toAccessActionKey(path, action) {
+  return `${String(path || "").trim().toLowerCase()}::${String(action || "").trim().toLowerCase()}`;
+}
+
+function parseAllowedActionsFromAccessRow(row) {
+  try {
+    const parsed = JSON.parse(String(row?.allowed_actions_json || "[]"));
+    if (!Array.isArray(parsed)) return [];
+    return Array.from(
+      new Set(
+        parsed
+          .map((entry) => String(entry || "").trim().toLowerCase())
+          .filter((entry) => entry.includes("::"))
+      )
+    );
+  } catch (_err) {
+    return [];
+  }
+}
+
+async function findAccessRowFromInventory(userId, userDatabase = INVENTORY_DB_NAME) {
+  const normalizedDb = normalizeUserDatabaseName(userDatabase);
+  return db.withDatabase(INVENTORY_DB_NAME, async () => {
+    try {
+      const rs = await db.query(
+        `SELECT id, allowed_actions_json, user_database, "updatedAt", "createdAt"
+         FROM user_accesses
+         WHERE user_id = $1
+           AND LOWER(COALESCE(user_database, $2)) = $2
+         ORDER BY "updatedAt" DESC NULLS LAST, "createdAt" DESC NULLS LAST, id DESC
+         LIMIT 1`,
+        { bind: [userId, normalizedDb] }
+      );
+      const rows = Array.isArray(rs?.[0]) ? rs[0] : [];
+      return rows[0] || null;
+    } catch (_err) {
+      return null;
+    }
+  });
+}
+
+async function canEditTimesheetDates(req, targetUserId = null) {
+  const requesterRole = normalizeAccessRole(req.user?.role);
+  const requesterUserId = Number(req.user?.id || req.user?.userId || 0);
+  if (!Number.isFinite(requesterUserId) || requesterUserId <= 0) return false;
+  if (requesterRole !== "admin" && requesterRole !== "manager" && requesterRole !== "user") return false;
+
+  const resolvedTargetUserId = Number(targetUserId || requesterUserId);
+  if (requesterRole === "user" && resolvedTargetUserId !== requesterUserId) return false;
+
+  const userDatabase = normalizeUserDatabaseName(req.databaseName || req.user?.database_name || INVENTORY_DB_NAME);
+  let accessRow = await findAccessRowFromInventory(requesterUserId, userDatabase);
+  if (!accessRow && userDatabase !== INVENTORY_DB_NAME) {
+    accessRow = await findAccessRowFromInventory(requesterUserId, INVENTORY_DB_NAME);
+  }
+
+  if (!accessRow) {
+    return requesterRole === "admin" || requesterRole === "manager";
+  }
+
+  const actionKey = toAccessActionKey(TIMESHEET_ACCESS_PATH, "edit");
+  const allowedActions = parseAllowedActionsFromAccessRow(accessRow);
+  return allowedActions.includes(actionKey);
+}
+
+function normalizeDateTimeMinute(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const normalized = raw.replace(" ", "T");
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(normalized)) return "";
+  const withSeconds = normalized.length === 16 ? `${normalized}:00` : normalized;
+  const parsed = new Date(withSeconds);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return withSeconds;
+}
+
 function normalizeAccessRole(role) {
   const raw = String(role || "").trim().toLowerCase();
   if (raw === "admin") return "admin";
@@ -775,6 +860,24 @@ async function getUserName(userId) {
   return String(rows[0]?.username || "").trim() || `User ${userId}`;
 }
 
+async function getUserIdentity(userId) {
+  const rs = await db.query(
+    `SELECT id, username, role
+     FROM users
+     WHERE id = $1
+     LIMIT 1`,
+    { bind: [userId] }
+  );
+  const rows = Array.isArray(rs?.[0]) ? rs[0] : [];
+  const row = rows[0] || null;
+  if (!row) return null;
+  return {
+    id: Number(row.id || 0),
+    username: String(row.username || "").trim() || `User ${userId}`,
+    role: String(row.role || "").trim().toLowerCase() || "user",
+  };
+}
+
 exports.getInOutStatus = async (req, res) => {
   const userId = Number(req.user?.id || req.user?.userId || 0);
   if (!Number.isFinite(userId) || userId <= 0) {
@@ -795,7 +898,6 @@ exports.getInOutStatus = async (req, res) => {
     );
     const latestRows = Array.isArray(latestRs?.[0]) ? latestRs[0] : [];
     const latest = latestRows[0] || null;
-    const isCheckedIn = !!(latest && !latest.check_out_at);
 
     const todayRs = await db.query(
       `SELECT id, check_in_at, check_out_at
@@ -810,14 +912,15 @@ exports.getInOutStatus = async (req, res) => {
     const todayLog = todayRows[0] || null;
     const hasTodayIn = !!todayLog;
     const hasTodayOut = !!(todayLog && todayLog.check_out_at);
+    const isCheckedInToday = hasTodayIn && !hasTodayOut;
 
     res.json({
       latest,
       today_log: todayLog,
-      is_checked_in: isCheckedIn,
+      is_checked_in: isCheckedInToday,
       has_today_in: hasTodayIn,
       has_today_out: hasTodayOut,
-      can_check_in_today: !hasTodayIn && !isCheckedIn,
+      can_check_in_today: !hasTodayIn,
       can_check_out_today: hasTodayIn && !hasTodayOut,
     });
   } catch (err) {
@@ -835,21 +938,6 @@ exports.checkIn = async (req, res) => {
   try {
     await ensureInOutLogTable();
     const userName = await getUserName(userId);
-
-    const openRs = await db.query(
-      `SELECT id, check_in_at
-       FROM user_inout_logs
-       WHERE user_id = $1 AND check_out_at IS NULL
-       ORDER BY check_in_at DESC, id DESC
-       LIMIT 1`,
-      { bind: [userId] }
-    );
-    const openRows = Array.isArray(openRs?.[0]) ? openRs[0] : [];
-    if (openRows.length) {
-      return res.status(400).json({
-        message: `Already checked in at ${new Date(openRows[0].check_in_at).toLocaleString()}. Please Time Out first.`,
-      });
-    }
 
     const todayRs = await db.query(
       `SELECT id, check_in_at, check_out_at
@@ -931,6 +1019,7 @@ exports.checkOut = async (req, res) => {
       req.body?.location_label,
       Number.isFinite(lat) && Number.isFinite(lng) ? "GPS" : "Computer"
     );
+
     const updateRs = await db.query(
       `UPDATE user_inout_logs
        SET check_out_at = NOW(),
@@ -975,6 +1064,7 @@ exports.getMonthlyTimeSheet = async (req, res) => {
     const whereClause = queryAll
       ? `DATE(check_in_at) >= $1 AND DATE(check_in_at) < $2`
       : `user_id = $1 AND DATE(check_in_at) >= $2 AND DATE(check_in_at) < $3`;
+    const canEditDates = await canEditTimesheetDates(req, queryAll ? requesterUserId : targetUserId);
 
     const rs = await db.query(
       `SELECT id, user_id, username, role,
@@ -994,9 +1084,9 @@ exports.getMonthlyTimeSheet = async (req, res) => {
     let userOptions = [];
     if (canViewAll) {
       const usersRs = await db.query(
-        `SELECT DISTINCT user_id, username
-         FROM user_inout_logs
-         ORDER BY username ASC, user_id ASC`
+        `SELECT id AS user_id, username
+         FROM users
+         ORDER BY LOWER(username) ASC, id ASC`
       );
       const usersRows = Array.isArray(usersRs?.[0]) ? usersRs[0] : [];
       userOptions = usersRows.map((row) => ({
@@ -1010,9 +1100,187 @@ exports.getMonthlyTimeSheet = async (req, res) => {
       rows,
       user_options: userOptions,
       target_user_id: queryAll ? null : targetUserId,
+      can_edit_dates: canEditDates,
     });
   } catch (err) {
     return res.status(500).json({ message: err.message || "Failed to load monthly timesheet." });
+  }
+};
+
+exports.createTimesheetLog = async (req, res) => {
+  const requesterRole = normalizeAccessRole(req.user?.role);
+  const requesterUserId = Number(req.user?.id || req.user?.userId || 0);
+  if (!Number.isFinite(requesterUserId) || requesterUserId <= 0) {
+    return res.status(401).json({ message: "Invalid token user." });
+  }
+
+  const requestedUserId = toPositiveIntOrNull(req.body?.user_id);
+  const targetUserId = requestedUserId || requesterUserId;
+
+  if (requesterRole === "user" && targetUserId !== requesterUserId) {
+    return res.status(403).json({ message: "Forbidden: You can only edit your own timesheet." });
+  }
+
+  const canEdit = await canEditTimesheetDates(req, targetUserId);
+  if (!canEdit) {
+    return res.status(403).json({ message: "Forbidden: Missing Time Sheet edit permission." });
+  }
+
+  const checkInAt = normalizeDateTimeMinute(req.body?.check_in_at);
+  const checkOutAt = normalizeDateTimeMinute(req.body?.check_out_at);
+  if (!checkInAt) {
+    return res.status(400).json({ message: "Valid Check In date/time is required." });
+  }
+  if (checkOutAt && new Date(checkOutAt).getTime() < new Date(checkInAt).getTime()) {
+    return res.status(400).json({ message: "Check Out cannot be before Check In." });
+  }
+
+  const checkInDate = checkInAt.slice(0, 10);
+
+  try {
+    await ensureInOutLogTable();
+    const identity = await getUserIdentity(targetUserId);
+    if (!identity) {
+      return res.status(404).json({ message: "Target user not found." });
+    }
+
+    const duplicateRs = await db.query(
+      `SELECT id
+       FROM user_inout_logs
+       WHERE user_id = $1
+         AND DATE(check_in_at) = $2::date
+       LIMIT 1`,
+      { bind: [targetUserId, checkInDate] }
+    );
+    const duplicateRows = Array.isArray(duplicateRs?.[0]) ? duplicateRs[0] : [];
+    if (duplicateRows.length) {
+      return res.status(400).json({ message: "A timesheet log already exists for this user and date." });
+    }
+
+    const inLabel = toLocationLabel(req.body?.check_in_location_label, "Manual Edit");
+    const outLabel = checkOutAt ? toLocationLabel(req.body?.check_out_location_label, "Manual Edit") : null;
+
+    const insertRs = await db.query(
+      `INSERT INTO user_inout_logs
+       (user_id, username, role, check_in_at, check_in_lat, check_in_lng, check_in_accuracy, check_in_location_label,
+        check_out_at, check_out_lat, check_out_lng, check_out_accuracy, check_out_location_label, "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4::timestamp, NULL, NULL, NULL, $5, $6::timestamp, NULL, NULL, NULL, $7, NOW(), NOW())
+       RETURNING id, user_id, username, role,
+                 check_in_at, check_in_lat, check_in_lng, check_in_accuracy, check_in_location_label,
+                 check_out_at, check_out_lat, check_out_lng, check_out_accuracy, check_out_location_label`,
+      {
+        bind: [
+          targetUserId,
+          identity.username,
+          identity.role,
+          checkInAt,
+          inLabel,
+          checkOutAt || null,
+          outLabel,
+        ],
+      }
+    );
+    const rows = Array.isArray(insertRs?.[0]) ? insertRs[0] : [];
+    return res.json({
+      message: "Timesheet log saved successfully.",
+      log: rows[0] || null,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message || "Failed to save timesheet log." });
+  }
+};
+
+exports.updateTimesheetLog = async (req, res) => {
+  const requesterRole = normalizeAccessRole(req.user?.role);
+  const requesterUserId = Number(req.user?.id || req.user?.userId || 0);
+  const logId = Number(req.params?.logId || 0);
+  if (!Number.isFinite(requesterUserId) || requesterUserId <= 0) {
+    return res.status(401).json({ message: "Invalid token user." });
+  }
+  if (!Number.isFinite(logId) || logId <= 0) {
+    return res.status(400).json({ message: "Invalid log id." });
+  }
+
+  const checkInAt = normalizeDateTimeMinute(req.body?.check_in_at);
+  const checkOutAt = normalizeDateTimeMinute(req.body?.check_out_at);
+  if (!checkInAt) {
+    return res.status(400).json({ message: "Valid Check In date/time is required." });
+  }
+  if (checkOutAt && new Date(checkOutAt).getTime() < new Date(checkInAt).getTime()) {
+    return res.status(400).json({ message: "Check Out cannot be before Check In." });
+  }
+
+  try {
+    await ensureInOutLogTable();
+    const existingRs = await db.query(
+      `SELECT id, user_id, check_in_location_label, check_out_location_label
+       FROM user_inout_logs
+       WHERE id = $1
+       LIMIT 1`,
+      { bind: [logId] }
+    );
+    const existingRows = Array.isArray(existingRs?.[0]) ? existingRs[0] : [];
+    const existing = existingRows[0] || null;
+    if (!existing) {
+      return res.status(404).json({ message: "Timesheet log not found." });
+    }
+
+    const targetUserId = Number(existing.user_id || 0);
+    if (requesterRole === "user" && targetUserId !== requesterUserId) {
+      return res.status(403).json({ message: "Forbidden: You can only edit your own timesheet." });
+    }
+
+    const canEdit = await canEditTimesheetDates(req, targetUserId);
+    if (!canEdit) {
+      return res.status(403).json({ message: "Forbidden: Missing Time Sheet edit permission." });
+    }
+
+    const checkInDate = checkInAt.slice(0, 10);
+    const duplicateRs = await db.query(
+      `SELECT id
+       FROM user_inout_logs
+       WHERE user_id = $1
+         AND DATE(check_in_at) = $2::date
+         AND id <> $3
+       LIMIT 1`,
+      { bind: [targetUserId, checkInDate, logId] }
+    );
+    const duplicateRows = Array.isArray(duplicateRs?.[0]) ? duplicateRs[0] : [];
+    if (duplicateRows.length) {
+      return res.status(400).json({ message: "Another timesheet log already exists for this user and date." });
+    }
+
+    const inLabel = toLocationLabel(
+      req.body?.check_in_location_label,
+      String(existing.check_in_location_label || "Manual Edit")
+    );
+    const outLabel = checkOutAt
+      ? toLocationLabel(req.body?.check_out_location_label, String(existing.check_out_location_label || "Manual Edit"))
+      : null;
+
+    const updateRs = await db.query(
+      `UPDATE user_inout_logs
+       SET check_in_at = $2::timestamp,
+           check_in_location_label = $3,
+           check_out_at = $4::timestamp,
+           check_out_location_label = $5,
+           check_out_lat = CASE WHEN $4::timestamp IS NULL THEN NULL ELSE check_out_lat END,
+           check_out_lng = CASE WHEN $4::timestamp IS NULL THEN NULL ELSE check_out_lng END,
+           check_out_accuracy = CASE WHEN $4::timestamp IS NULL THEN NULL ELSE check_out_accuracy END,
+           "updatedAt" = NOW()
+       WHERE id = $1
+       RETURNING id, user_id, username, role,
+                 check_in_at, check_in_lat, check_in_lng, check_in_accuracy, check_in_location_label,
+                 check_out_at, check_out_lat, check_out_lng, check_out_accuracy, check_out_location_label`,
+      { bind: [logId, checkInAt, inLabel, checkOutAt || null, outLabel] }
+    );
+    const rows = Array.isArray(updateRs?.[0]) ? updateRs[0] : [];
+    return res.json({
+      message: "Timesheet log updated successfully.",
+      log: rows[0] || null,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message || "Failed to update timesheet log." });
   }
 };
 

@@ -6,6 +6,11 @@ function fmtDateTime(value) {
 }
 
 let currentMonthlyRows = [];
+let currentUserOptions = [];
+let canEditDatesRuntime = false;
+let editorBusy = false;
+
+const TIMESHEET_PATH = "/hr/time-sheet.html";
 
 function gpsLabel(lat, lng, label) {
   const savedLabel = String(label || "").trim();
@@ -49,6 +54,20 @@ function canViewAllUsers() {
   return role === "admin" || role === "manager";
 }
 
+function canEditTimesheetDates() {
+  if (typeof window.hasUserActionPermission === "function") {
+    return window.hasUserActionPermission(TIMESHEET_PATH, "edit");
+  }
+  try {
+    const raw = JSON.parse(localStorage.getItem("userAllowedActionsRuntime") || "[]");
+    if (!Array.isArray(raw)) return false;
+    const key = `${TIMESHEET_PATH}::edit`;
+    return raw.map((x) => String(x || "").toLowerCase()).includes(key);
+  } catch (_err) {
+    return false;
+  }
+}
+
 function toHoursValue(row) {
   const providedHours = Number(row?.duration_hours);
   if (Number.isFinite(providedHours)) return providedHours;
@@ -62,14 +81,187 @@ function toOvertimeValue(hours) {
   return Math.max(hours - 8, 0);
 }
 
+function getEditorElements() {
+  return {
+    editor: document.getElementById("tsEditor"),
+    logId: document.getElementById("tsEditLogId"),
+    user: document.getElementById("tsEditUser"),
+    checkIn: document.getElementById("tsEditCheckIn"),
+    checkOut: document.getElementById("tsEditCheckOut"),
+    saveBtn: document.getElementById("tsEditSaveBtn"),
+    cancelBtn: document.getElementById("tsEditCancelBtn"),
+  };
+}
+
+function formatForDateTimeInput(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+function nowForDateTimeInput() {
+  const now = new Date();
+  now.setSeconds(0, 0);
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+function toggleEditorAccessUI() {
+  const editBtn = document.getElementById("tsEditLogBtn");
+  const actionHead = document.getElementById("tsActionHead");
+  if (editBtn) editBtn.style.display = canEditDatesRuntime ? "" : "none";
+  if (actionHead) actionHead.style.display = canEditDatesRuntime ? "" : "none";
+
+  const { editor } = getEditorElements();
+  if (editor && !canEditDatesRuntime) {
+    editor.classList.remove("active");
+  }
+}
+
+function bindEditorUserOptions() {
+  const { user } = getEditorElements();
+  if (!user) return;
+
+  if (!canViewAllUsers()) {
+    user.innerHTML = `<option value="">My Logs</option>`;
+    user.disabled = true;
+    return;
+  }
+
+  const options = Array.isArray(currentUserOptions) ? currentUserOptions : [];
+  user.innerHTML = [
+    `<option value="">Select user</option>`,
+    ...options.map((entry) => {
+      const id = Number(entry.user_id || 0);
+      const name = String(entry.username || `User ${id}`).trim() || `User ${id}`;
+      return `<option value="${id}">${name}</option>`;
+    }),
+  ].join("");
+  user.disabled = false;
+}
+
+function openEditorForNewLog() {
+  if (!canEditDatesRuntime) return;
+  const { editor, logId, user, checkIn, checkOut } = getEditorElements();
+  if (!editor || !logId || !checkIn || !checkOut) return;
+
+  logId.value = "";
+  checkIn.value = nowForDateTimeInput();
+  checkOut.value = "";
+
+  if (user && canViewAllUsers()) {
+    const listUserFilter = document.getElementById("tsUserFilter");
+    const selectedUser = String(listUserFilter?.value || "").trim();
+    user.value = selectedUser || "";
+    user.disabled = false;
+  }
+
+  editor.classList.add("active");
+}
+
+function openEditorForRow(logIdValue) {
+  if (!canEditDatesRuntime) return;
+  const logId = Number(logIdValue || 0);
+  if (!Number.isFinite(logId) || logId <= 0) return;
+
+  const row = currentMonthlyRows.find((entry) => Number(entry?.id || 0) === logId);
+  if (!row) return;
+
+  const { editor, logId: logIdEl, user, checkIn, checkOut } = getEditorElements();
+  if (!editor || !logIdEl || !checkIn || !checkOut) return;
+
+  logIdEl.value = String(logId);
+  checkIn.value = formatForDateTimeInput(row.check_in_at);
+  checkOut.value = formatForDateTimeInput(row.check_out_at);
+
+  if (user && canViewAllUsers()) {
+    user.value = String(Number(row.user_id || 0) || "");
+    user.disabled = true;
+  }
+
+  editor.classList.add("active");
+}
+
+function closeEditor() {
+  const { editor, logId, checkIn, checkOut, user } = getEditorElements();
+  if (!editor) return;
+  editor.classList.remove("active");
+  if (logId) logId.value = "";
+  if (checkIn) checkIn.value = "";
+  if (checkOut) checkOut.value = "";
+  if (user && canViewAllUsers()) {
+    user.disabled = false;
+  }
+}
+
+function setEditorBusy(busy) {
+  editorBusy = !!busy;
+  const { saveBtn, cancelBtn } = getEditorElements();
+  if (saveBtn) saveBtn.disabled = !!busy;
+  if (cancelBtn) cancelBtn.disabled = !!busy;
+}
+
+async function saveEditorLog() {
+  if (!canEditDatesRuntime || editorBusy) return;
+
+  const { logId, user, checkIn, checkOut } = getEditorElements();
+  if (!logId || !checkIn || !checkOut) return;
+
+  const editingLogId = Number(logId.value || 0);
+  const payload = {
+    check_in_at: String(checkIn.value || "").trim(),
+    check_out_at: String(checkOut.value || "").trim() || null,
+  };
+
+  if (!payload.check_in_at) {
+    if (window.showMessageBox) showMessageBox("Check In date/time is required.", "error");
+    return;
+  }
+
+  if (!editingLogId && canViewAllUsers()) {
+    const selectedUserId = Number(user?.value || 0);
+    if (!Number.isFinite(selectedUserId) || selectedUserId <= 0) {
+      if (window.showMessageBox) showMessageBox("Please select a user.", "error");
+      return;
+    }
+    payload.user_id = selectedUserId;
+  }
+
+  setEditorBusy(true);
+  try {
+    const endpoint = editingLogId
+      ? `/hr/timesheet/log/${editingLogId}`
+      : "/hr/timesheet/log";
+    const method = editingLogId ? "PUT" : "POST";
+    const res = await request(endpoint, method, payload);
+    if (window.showMessageBox) {
+      showMessageBox(res?.message || "Timesheet log saved successfully.");
+    }
+    closeEditor();
+    await loadMonthly();
+  } catch (err) {
+    if (window.showMessageBox) {
+      showMessageBox(err.message || "Failed to save timesheet log.", "error");
+    } else {
+      alert(err.message || "Failed to save timesheet log.");
+    }
+  } finally {
+    setEditorBusy(false);
+  }
+}
+
 function renderRows(rows) {
   const body = document.getElementById("tsBody");
   if (!body) return;
+
   const list = Array.isArray(rows) ? rows : [];
   if (!list.length) {
-    body.innerHTML = `<tr><td colspan="8" style="text-align:center;">No timesheet logs found.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="${canEditDatesRuntime ? 9 : 8}" style="text-align:center;">No timesheet logs found.</td></tr>`;
     return;
   }
+
   body.innerHTML = list.map((row) => `
     <tr>
       <td>${String(row.username || "-")}</td>
@@ -87,6 +279,9 @@ function renderRows(rows) {
         const overtime = toOvertimeValue(hours);
         return overtime == null ? "-" : overtime.toFixed(2);
       })()}</td>
+      ${canEditDatesRuntime
+        ? `<td><button type="button" class="timesheet-row-action ts-row-edit" data-log-id="${Number(row.id || 0)}">Edit</button></td>`
+        : ""}
     </tr>
   `).join("");
 }
@@ -129,7 +324,7 @@ function exportTimeSheetMonthlyPdf() {
     { title: "Check Out", x: 415 },
     { title: "Out Location", x: 555 },
     { title: "Hours", x: 700 },
-    { title: "O.T", x: 765 }
+    { title: "O.T", x: 765 },
   ];
 
   const drawHeader = () => {
@@ -180,21 +375,26 @@ function exportTimeSheetMonthlyPdf() {
 
 function bindUserFilter(userOptions) {
   const userFilter = document.getElementById("tsUserFilter");
-  if (!userFilter) return;
+  currentUserOptions = Array.isArray(userOptions) ? userOptions : [];
+  if (!userFilter) {
+    bindEditorUserOptions();
+    return;
+  }
   if (!canViewAllUsers()) {
     userFilter.innerHTML = `<option value="">My Logs</option>`;
     userFilter.disabled = true;
+    bindEditorUserOptions();
     return;
   }
   const prev = String(userFilter.value || "");
-  const options = Array.isArray(userOptions) ? userOptions : [];
   userFilter.innerHTML = [
     `<option value="">All Users</option>`,
-    ...options.map((x) => `<option value="${Number(x.user_id || 0)}">${String(x.username || `User ${x.user_id}`)}</option>`)
+    ...currentUserOptions.map((x) => `<option value="${Number(x.user_id || 0)}">${String(x.username || `User ${x.user_id}`)}</option>`),
   ].join("");
   if (prev && Array.from(userFilter.options).some((o) => o.value === prev)) {
     userFilter.value = prev;
   }
+  bindEditorUserOptions();
 }
 
 async function loadMonthly() {
@@ -208,6 +408,12 @@ async function loadMonthly() {
     params.set("user_id", userId);
   }
   const data = await request(`/hr/timesheet/monthly?${params.toString()}`, "GET");
+  if (typeof data?.can_edit_dates === "boolean") {
+    canEditDatesRuntime = data.can_edit_dates;
+  } else {
+    canEditDatesRuntime = canEditTimesheetDates();
+  }
+  toggleEditorAccessUI();
   bindUserFilter(data?.user_options || []);
   currentMonthlyRows = Array.isArray(data?.rows) ? data.rows : [];
   renderRows(currentMonthlyRows);
@@ -218,15 +424,35 @@ window.addEventListener("DOMContentLoaded", () => {
   if (monthEl) {
     monthEl.value = new Date().toISOString().slice(0, 7);
   }
+
   const savePdfBtn = document.getElementById("tsSavePdfBtn");
+  const editLogBtn = document.getElementById("tsEditLogBtn");
   const userFilter = document.getElementById("tsUserFilter");
+  const body = document.getElementById("tsBody");
+  const { saveBtn, cancelBtn } = getEditorElements();
+
   savePdfBtn?.addEventListener("click", exportTimeSheetMonthlyPdf);
+  editLogBtn?.addEventListener("click", openEditorForNewLog);
+  saveBtn?.addEventListener("click", () => saveEditorLog());
+  cancelBtn?.addEventListener("click", () => closeEditor());
+
+  body?.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const editBtn = target.closest(".ts-row-edit");
+    if (!editBtn) return;
+    const logId = Number(editBtn.getAttribute("data-log-id") || 0);
+    if (!Number.isFinite(logId) || logId <= 0) return;
+    openEditorForRow(logId);
+  });
+
   monthEl?.addEventListener("change", () => loadMonthly().catch((err) => {
     if (window.showMessageBox) showMessageBox(err.message || "Failed to load timesheet.", "error");
   }));
   userFilter?.addEventListener("change", () => loadMonthly().catch((err) => {
     if (window.showMessageBox) showMessageBox(err.message || "Failed to load timesheet.", "error");
   }));
+
   loadMonthly().catch((err) => {
     if (window.showMessageBox) showMessageBox(err.message || "Failed to load timesheet.", "error");
   });

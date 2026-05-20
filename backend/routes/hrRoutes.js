@@ -28,6 +28,18 @@ router.get(
   roleMiddleware(["admin", "manager", "user"]),
   hrController.getMonthlyTimeSheet
 );
+router.post(
+  "/timesheet/log",
+  authMiddleware,
+  roleMiddleware(["admin", "manager", "user"]),
+  hrController.createTimesheetLog
+);
+router.put(
+  "/timesheet/log/:logId",
+  authMiddleware,
+  roleMiddleware(["admin", "manager", "user"]),
+  hrController.updateTimesheetLog
+);
 router.get(
   "/sallary/users",
   authMiddleware,

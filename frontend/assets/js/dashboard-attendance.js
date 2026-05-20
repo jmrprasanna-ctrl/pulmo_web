@@ -53,8 +53,10 @@
         const hasTodayOut = !!status?.has_today_out;
         const canIn = typeof status?.can_check_in_today === "boolean"
             ? status.can_check_in_today
-            : (!hasTodayIn && !status?.is_checked_in);
-        const canOut = typeof status?.can_check_out_today === "boolean" ? status.can_check_out_today : (hasTodayIn && !hasTodayOut);
+            : !hasTodayIn;
+        const canOut = typeof status?.can_check_out_today === "boolean"
+            ? status.can_check_out_today
+            : (hasTodayIn && !hasTodayOut);
 
         const inBusy = timeInBtn.dataset.busy === "1";
         const outBusy = timeOutBtn.dataset.busy === "1";
