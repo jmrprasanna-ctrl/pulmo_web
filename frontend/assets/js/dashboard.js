@@ -309,7 +309,6 @@ const DASHBOARD_MENU_ENTRIES = [
             { path: "/finance/payments.html", label: "Payments" },
             { path: "/finance/pendings.html", label: "Pendings" },
             { path: "/finance/sup-tech-pay.html", label: "Sup.Tech Pay" },
-            { path: "/finance/sup-tech-pay-update.html", label: "Sup.Tech Pay Update" },
             { path: "/support/warrenty.html", label: "Warrenty" }
         ]
     },
