@@ -11,6 +11,8 @@ const RentalMachineCount = require("../models/RentalMachineCount");
 const RentalMachineConsumable = require("../models/RentalMachineConsumable");
 const { Op, fn, col, where: sqWhere } = require("sequelize");
 
+const MONTH_NAMES_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
 function sumTechnicianPaid(rows){
     return (Array.isArray(rows) ? rows : []).reduce((sum, inv) => {
         const technician = String(inv.support_technician || "").trim();
@@ -102,17 +104,109 @@ function buildDateOnlyRangeWhere(columnName, startDate, endDate){
     );
 }
 
+function toNumberSafe(value){
+    const n = Number(value || 0);
+    return Number.isFinite(n) ? n : 0;
+}
+
+function getErrorCode(err){
+    return String(
+        err?.original?.code
+        || err?.parent?.code
+        || err?.code
+        || ""
+    ).trim();
+}
+
+function getErrorMessage(err){
+    return String(
+        err?.original?.message
+        || err?.parent?.message
+        || err?.message
+        || ""
+    ).trim();
+}
+
+function isSchemaCompatibilityError(err){
+    const code = getErrorCode(err);
+    if(code === "42P01" || code === "42703" || code === "42704" || code === "42883"){
+        return true;
+    }
+    const msg = getErrorMessage(err).toLowerCase();
+    return msg.includes("does not exist")
+        || msg.includes("undefined table")
+        || msg.includes("undefined column")
+        || msg.includes("undefined function");
+}
+
+function buildEmptySummaryPayload(period, periodStart, periodEnd, baseDate){
+    const year = Number(baseDate?.getFullYear?.() || new Date().getFullYear());
+    const months = MONTH_NAMES_SHORT.slice();
+    const monthlySales = new Array(12).fill(0);
+    const monthlyProfit = new Array(12).fill(0);
+    return {
+        totalUsers: 0,
+        totalGeneralMachines: 0,
+        totalRentalMachines: 0,
+        totalProducts: 0,
+        totalCustomers: 0,
+        totalVendors: 0,
+        totalSales: 0,
+        receivedPayment: 0,
+        rentalMachinesCountsPrice: 0,
+        rentalConsumablesPrice: 0,
+        totalExpenses: 0,
+        netProfit: 0,
+        technicianPaid: 0,
+        technicianPaidForProfit: 0,
+        vendorPaid: 0,
+        totalSalesAllTime: 0,
+        receivedPaymentAllTime: 0,
+        rentalMachinesCountsPriceAllTime: 0,
+        rentalMachinesCountsPriceAllInputs: 0,
+        rentalConsumablesPriceAllTime: 0,
+        rentalConsumablesPriceAllInputs: 0,
+        totalExpensesAllTime: 0,
+        netProfitAllTime: 0,
+        technicianPaidAllTime: 0,
+        technicianPaidAllTimeForProfit: 0,
+        vendorPaidAllTime: 0,
+        totalSalesPeriod: 0,
+        receivedPaymentPeriod: 0,
+        rentalMachinesCountsPricePeriod: 0,
+        rentalConsumablesPricePeriod: 0,
+        totalExpensesPeriod: 0,
+        netProfitPeriod: 0,
+        technicianPaidPeriod: 0,
+        technicianPaidForProfitPeriod: 0,
+        vendorPaidPeriod: 0,
+        lowStock: [],
+        months,
+        monthlySales,
+        monthlyProfit,
+        period,
+        periodStart,
+        periodEnd,
+        year,
+        fallback_mode: "schema_compatibility"
+    };
+}
+
 exports.getSummary = async (req,res)=>{
+    let period = "day";
+    let baseDate = new Date();
+    let periodStart = new Date(baseDate);
+    let periodEnd = new Date(baseDate);
     try{
-        const period = String(req.query.period || "day").toLowerCase();
+        period = String(req.query.period || "day").toLowerCase();
         const dateStr = req.query.date;
-        const baseDate = parseBaseDateInput(dateStr);
+        baseDate = parseBaseDateInput(dateStr);
         if(isNaN(baseDate.getTime())){
             return res.status(400).json({ message: "Invalid date" });
         }
 
-        let periodStart = new Date(baseDate);
-        let periodEnd = new Date(baseDate);
+        periodStart = new Date(baseDate);
+        periodEnd = new Date(baseDate);
 
         if(period === "week"){
             const day = periodStart.getDay();         
@@ -340,14 +434,17 @@ exports.getSummary = async (req,res)=>{
             let monthSales = 0;
             let monthProfit = 0;
             salesInvoices.forEach(inv=>{
-                monthSales += inv.total_amount;
+                monthSales += toNumberSafe(inv.total_amount);
                 const technician = String(inv.support_technician || "").trim();
                 const rawPct = Number(inv.support_technician_percentage || 0);
                 const pct = Number.isFinite(rawPct) ? Math.min(Math.max(rawPct, 0), 100) : 0;
                 const vendorProductValue = sumVendorPaidFromInvoiceItems(inv.InvoiceItems || []);
-                const balanceForTechnician = Math.max(Number(inv.total_amount || 0) - vendorProductValue, 0);
+                const balanceForTechnician = Math.max(toNumberSafe(inv.total_amount) - vendorProductValue, 0);
                 const technicianPaid = technician ? (balanceForTechnician * pct) / 100 : 0;
-                monthProfit += inv.total_amount - inv.InvoiceItems.reduce((a,b)=>a+b.gross,0) - technicianPaid;
+                const grossFromItems = (Array.isArray(inv.InvoiceItems) ? inv.InvoiceItems : []).reduce((a,b)=>{
+                    return a + toNumberSafe(b?.gross);
+                },0);
+                monthProfit += toNumberSafe(inv.total_amount) - grossFromItems - technicianPaid;
             });
             months.push(start.toLocaleString('default',{month:'short'}));
             monthlySales.push(monthSales);
@@ -400,6 +497,15 @@ exports.getSummary = async (req,res)=>{
         });
 
     }catch(err){
+        if(isSchemaCompatibilityError(err)){
+            const message = getErrorMessage(err);
+            console.warn("[dashboard] Schema compatibility fallback used for summary.", {
+                database: String(req?.databaseName || req?.user?.database_name || ""),
+                code: getErrorCode(err),
+                message
+            });
+            return res.json(buildEmptySummaryPayload(period, periodStart, periodEnd, baseDate));
+        }
         console.error(err);
         res.status(500).json({ message:"Failed to get dashboard summary" });
     }
