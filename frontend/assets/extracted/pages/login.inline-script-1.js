@@ -1,10 +1,136 @@
 const axisLoadingOverlay = document.getElementById("axisLoadingOverlay");
 const axisLoadingTitle = document.getElementById("axisLoadingTitle");
+const SAVED_LOGIN_USERS_KEY = "savedLoginUsers";
+const MAX_SAVED_LOGIN_USERS = 20;
+let hasLoginInputInteraction = false;
 
 function getLoginInputElement(){
     return document.getElementById("email")
         || document.getElementById("User")
         || document.getElementById("user");
+}
+
+function getPasswordInputElement(){
+    return document.getElementById("password");
+}
+
+function normalizeUserIdentity(value){
+    return String(value || "").trim();
+}
+
+function readSavedLoginUsers(){
+    try{
+        const raw = localStorage.getItem(SAVED_LOGIN_USERS_KEY);
+        if(!raw) return [];
+        const parsed = JSON.parse(raw);
+        if(!Array.isArray(parsed)) return [];
+        const out = [];
+        const seen = new Set();
+        parsed.forEach((item) => {
+            const text = normalizeUserIdentity(item);
+            if(!text) return;
+            const key = text.toLowerCase();
+            if(seen.has(key)) return;
+            seen.add(key);
+            out.push(text);
+        });
+        return out.slice(0, MAX_SAVED_LOGIN_USERS);
+    }catch(_err){
+        return [];
+    }
+}
+
+function writeSavedLoginUsers(users){
+    const safeUsers = Array.isArray(users) ? users.map((x) => normalizeUserIdentity(x)).filter(Boolean) : [];
+    localStorage.setItem(SAVED_LOGIN_USERS_KEY, JSON.stringify(safeUsers.slice(0, MAX_SAVED_LOGIN_USERS)));
+}
+
+function recordSavedLoginUser(userIdentity){
+    const incoming = normalizeUserIdentity(userIdentity);
+    if(!incoming) return;
+    const current = readSavedLoginUsers();
+    const next = [incoming, ...current.filter((name) => String(name || "").toLowerCase() !== incoming.toLowerCase())];
+    writeSavedLoginUsers(next);
+}
+
+function populateSavedUsersSelect(){
+    const select = document.getElementById("savedUsersSelect");
+    if(!select) return;
+    const users = readSavedLoginUsers();
+    select.innerHTML = "";
+    const defaultOpt = document.createElement("option");
+    defaultOpt.value = "";
+    defaultOpt.textContent = users.length ? "Select saved user" : "No saved users";
+    select.appendChild(defaultOpt);
+    users.forEach((name) => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        select.appendChild(opt);
+    });
+    select.value = "";
+}
+
+function clearLoginFields(){
+    const loginInput = getLoginInputElement();
+    const passwordInput = getPasswordInputElement();
+    if(loginInput){
+        loginInput.value = "";
+    }
+    if(passwordInput){
+        passwordInput.value = "";
+    }
+    const savedSelect = document.getElementById("savedUsersSelect");
+    if(savedSelect){
+        savedSelect.value = "";
+    }
+}
+
+function setupSavedUserSelector(){
+    const select = document.getElementById("savedUsersSelect");
+    if(!select) return;
+    populateSavedUsersSelect();
+    select.addEventListener("change", () => {
+        const chosen = normalizeUserIdentity(select.value);
+        if(!chosen) return;
+        const loginInput = getLoginInputElement();
+        const passwordInput = getPasswordInputElement();
+        hasLoginInputInteraction = true;
+        if(loginInput){
+            loginInput.value = chosen;
+            loginInput.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+        if(passwordInput){
+            passwordInput.value = "";
+            passwordInput.focus();
+        }
+    });
+}
+
+function setupLoginInputClearOnOpen(){
+    const loginInput = getLoginInputElement();
+    const passwordInput = getPasswordInputElement();
+    const markInteracted = () => {
+        hasLoginInputInteraction = true;
+    };
+
+    [loginInput, passwordInput].forEach((el) => {
+        if(!el) return;
+        el.setAttribute("autocomplete", el === passwordInput ? "new-password" : "off");
+        ["focus", "input", "keydown", "change"].forEach((evt) => {
+            el.addEventListener(evt, markInteracted);
+        });
+    });
+
+    const clearIfUntouched = () => {
+        if(hasLoginInputInteraction) return;
+        clearLoginFields();
+    };
+
+    clearIfUntouched();
+    window.setTimeout(clearIfUntouched, 80);
+    window.setTimeout(clearIfUntouched, 320);
+    window.setTimeout(clearIfUntouched, 900);
 }
 
 function setLoadingOverlay(visible, message){
@@ -61,6 +187,7 @@ async function login(){
         } else {
             localStorage.removeItem("mappedCompanyLogoUrl");
         }
+        recordSavedLoginUser(res.user.username || res.user.email || email);
         window.location.href = "dashboard.html";
     }catch(err){
         setLoadingOverlay(false);
@@ -132,6 +259,13 @@ if(passwordToggle){
 });
 
 window.addEventListener("DOMContentLoaded", () => {
+    setupSavedUserSelector();
+    setupLoginInputClearOnOpen();
     setLoadingOverlay(true, "Starting AXIS CMS SYSTEM...");
     window.setTimeout(() => setLoadingOverlay(false), 950);
+});
+
+window.addEventListener("pageshow", () => {
+    hasLoginInputInteraction = false;
+    setupLoginInputClearOnOpen();
 });

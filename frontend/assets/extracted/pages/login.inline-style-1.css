@@ -163,6 +163,16 @@ body{
     font-size:16px;
     color:#222;
 }
+.login-container select{
+    width:100%;
+    height:52px;
+    border:1px solid #d0d0d0;
+    border-radius:12px;
+    background:#fdfdfd;
+    padding:0 16px;
+    font-size:16px;
+    color:#222;
+}
 
 .password-wrap{
     position:relative;
@@ -200,6 +210,11 @@ body{
 }
 
 .login-container input:focus{
+    outline:none;
+    border-color:#4f7ea9;
+    box-shadow:0 0 0 3px rgba(79,126,169,0.2);
+}
+.login-container select:focus{
     outline:none;
     border-color:#4f7ea9;
     box-shadow:0 0 0 3px rgba(79,126,169,0.2);
@@ -289,6 +304,7 @@ body{
     }
 
     .login-container input,
+    .login-container select,
     .login-btn{
         height:48px;
         font-size:16px;
