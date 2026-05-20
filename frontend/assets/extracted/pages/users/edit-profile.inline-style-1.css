@@ -38,6 +38,24 @@ html.profile-view-mode .profile-picture-actions,
 html.profile-view-mode .form-actions{
     display: none !important;
 }
+html.profile-view-mode #editProfileForm .view-only-text{
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 2px 0 10px 0 !important;
+    color: #223244 !important;
+    font-weight: 600;
+    cursor: text;
+}
+html.profile-view-mode #editProfileForm textarea.view-only-text{
+    resize: none;
+    overflow: hidden;
+    min-height: 28px;
+    line-height: 1.45;
+}
+html.profile-view-mode #editProfileForm .view-only-text:focus{
+    outline: none;
+}
 .is-hidden{
     display:none;
 }

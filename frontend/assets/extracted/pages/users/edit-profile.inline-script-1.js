@@ -33,6 +33,16 @@ function setPreviewFallback(name){
     preview.style.visibility = "visible";
 }
 
+function syncViewOnlyFieldHeights(){
+    if(!isViewOnlyMode()) return;
+    const textareas = document.querySelectorAll("#editProfileForm textarea");
+    textareas.forEach((el) => {
+        el.style.height = "auto";
+        const next = Math.max(el.scrollHeight, 28);
+        el.style.height = `${next}px`;
+    });
+}
+
 function toBase64(file){
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -130,6 +140,7 @@ async function loadProfile(){
             if(titleEl){
                 titleEl.innerText = "Profile View";
             }
+            syncViewOnlyFieldHeights();
         }
     }catch(err){
         alert(err.message || "Failed to load profile");
@@ -147,7 +158,8 @@ function applyViewOnlyState(){
             return;
         }
         el.setAttribute("readonly", "readonly");
-        el.setAttribute("disabled", "disabled");
+        el.removeAttribute("disabled");
+        el.classList.add("view-only-text");
     });
     const pictureActions = document.querySelector(".profile-picture-actions");
     if(pictureActions){
