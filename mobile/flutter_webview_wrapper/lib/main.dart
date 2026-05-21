@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -12,6 +14,7 @@ const String kWebAppUrl = String.fromEnvironment(
   defaultValue: 'http://54.242.44.172/pages/login.html',
 );
 const String _credentialsChannelName = 'AxisCredentialsBridge';
+const String _pdfChannelName = 'AxisPdfBridge';
 const String _credentialsListStorageKey = 'axis_saved_credentials_v1';
 const String _legacyUsernameStorageKey = 'axis_saved_username';
 const String _legacyPasswordStorageKey = 'axis_saved_password';
@@ -107,6 +110,12 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
         _credentialsChannelName,
         onMessageReceived: (JavaScriptMessage message) {
           _handleCredentialsBridgeMessage(message.message);
+        },
+      )
+      ..addJavaScriptChannel(
+        _pdfChannelName,
+        onMessageReceived: (JavaScriptMessage message) {
+          _handlePdfBridgeMessage(message.message);
         },
       )
       ..setNavigationDelegate(
@@ -287,10 +296,12 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
 
     if (_isLoginPageUrl(url)) {
       await _enhanceLoginAutofill(url);
+      await _installPdfSaveBridge();
       await _maybeShowSavedAccountsPrompt();
       return;
     }
     await _enhanceLoginAutofill(url);
+    await _installPdfSaveBridge();
   }
 
   Future<void> _applyCredentialToLoginForm(_SavedCredential credential) async {
@@ -474,6 +485,150 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
       await _controller.runJavaScript(js);
     } catch (_) {
       // Keep app stable even if injected script fails on some pages.
+    }
+  }
+
+  void _handlePdfBridgeMessage(String rawMessage) {
+    unawaited(_processPdfBridgeMessage(rawMessage));
+  }
+
+  Future<void> _processPdfBridgeMessage(String rawMessage) async {
+    try {
+      final dynamic payload = jsonDecode(rawMessage);
+      if (payload is! Map) return;
+      final String type = (payload['type'] ?? '').toString().trim();
+      if (type != 'pdf-base64') return;
+      final String encodedData = (payload['data'] ?? '').toString().trim();
+      if (encodedData.isEmpty) return;
+      final String fileName = _sanitizePdfFileName(
+        (payload['filename'] ?? 'Document.pdf').toString(),
+      );
+      await _saveAndOpenPdf(fileName, encodedData);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to open PDF from app view.')),
+      );
+    }
+  }
+
+  String _sanitizePdfFileName(String input) {
+    final String cleaned = input.trim().replaceAll(
+      RegExp(r'[\\/:*?"<>|]+'),
+      '_',
+    );
+    if (cleaned.isEmpty) return 'Document.pdf';
+    return cleaned.toLowerCase().endsWith('.pdf') ? cleaned : '$cleaned.pdf';
+  }
+
+  Future<void> _saveAndOpenPdf(String fileName, String encodedData) async {
+    final List<int> bytes = base64Decode(encodedData);
+    final Directory tempDir = await Directory.systemTemp.createTemp('axis_pdf_');
+    final File pdfFile = File('${tempDir.path}${Platform.pathSeparator}$fileName');
+    await pdfFile.writeAsBytes(bytes, flush: true);
+
+    final bool opened = await launchUrl(
+      Uri.file(pdfFile.path),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('PDF saved but cannot open: ${pdfFile.path}')),
+      );
+    }
+  }
+
+  Future<void> _installPdfSaveBridge() async {
+    final String channelNameJs = jsonEncode(_pdfChannelName);
+    final String js = '''
+      (function () {
+        try {
+          if (window.__axisPdfBridgeInstallStarted) return;
+          window.__axisPdfBridgeInstallStarted = true;
+          var bridgeName = $channelNameJs;
+          var maxAttempts = 40;
+          var attempt = 0;
+
+          function installPatch() {
+            attempt += 1;
+            try {
+              var jsPdfCtor = window.jspdf && window.jspdf.jsPDF ? window.jspdf.jsPDF : null;
+              if (!jsPdfCtor || !jsPdfCtor.API) {
+                if (attempt < maxAttempts) {
+                  window.setTimeout(installPatch, 250);
+                }
+                return;
+              }
+
+              var api = jsPdfCtor.API;
+              if (api.__axisPdfSavePatched) return;
+
+              var originalSave = typeof api.save === 'function' ? api.save : null;
+              api.__axisPdfSavePatched = true;
+              api.__axisOriginalSave = originalSave;
+
+              api.save = function (fileName, options) {
+                try {
+                  var safeFileName = typeof fileName === 'string' && fileName.trim()
+                    ? fileName.trim()
+                    : 'Document.pdf';
+                  if (!/\\.pdf$/i.test(safeFileName)) {
+                    safeFileName += '.pdf';
+                  }
+
+                  var bridge = window[bridgeName];
+                  if (!bridge || typeof bridge.postMessage !== 'function') {
+                    if (originalSave) {
+                      return originalSave.call(this, fileName, options);
+                    }
+                    return this;
+                  }
+
+                  var pdfBlob = this.output('blob');
+                  var reader = new FileReader();
+                  reader.onloadend = function () {
+                    try {
+                      var dataUrl = String(reader.result || '');
+                      var commaIndex = dataUrl.indexOf(',');
+                      var base64 = commaIndex >= 0 ? dataUrl.substring(commaIndex + 1) : dataUrl;
+                      bridge.postMessage(JSON.stringify({
+                        type: 'pdf-base64',
+                        filename: safeFileName,
+                        data: base64
+                      }));
+                    } catch (_) {
+                      if (originalSave) {
+                        originalSave.call(this, fileName, options);
+                      }
+                    }
+                  }.bind(this);
+
+                  reader.onerror = function () {
+                    if (originalSave) {
+                      originalSave.call(this, fileName, options);
+                    }
+                  }.bind(this);
+
+                  reader.readAsDataURL(pdfBlob);
+                  return this;
+                } catch (_) {
+                  if (originalSave) {
+                    return originalSave.call(this, fileName, options);
+                  }
+                  return this;
+                }
+              };
+            } catch (_) {}
+          }
+
+          installPatch();
+        } catch (_) {}
+      })();
+    ''';
+    try {
+      await _controller.runJavaScript(js);
+    } catch (_) {
+      // Ignore patch install failures and keep default page behavior.
     }
   }
 
