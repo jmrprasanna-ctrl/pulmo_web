@@ -603,7 +603,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
                   var safeFileName = typeof fileName === 'string' && fileName.trim()
                     ? fileName.trim()
                     : 'Document.pdf';
-                  if (!/\\.pdf$/i.test(safeFileName)) {
+                  if (!/\\.pdf\$/i.test(safeFileName)) {
                     safeFileName += '.pdf';
                   }
 
