@@ -662,10 +662,10 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
       pdfFile.path,
       type: 'application/pdf',
     );
-    final String resultType = String(openResult?.type ?? '').toLowerCase();
+    final String resultType = (openResult?.type ?? '').toString().toLowerCase();
     final bool opened = resultType.contains('done');
     if (!opened && mounted) {
-      final String message = String(openResult?.message ?? '').trim();
+      final String message = (openResult?.message ?? '').toString().trim();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
