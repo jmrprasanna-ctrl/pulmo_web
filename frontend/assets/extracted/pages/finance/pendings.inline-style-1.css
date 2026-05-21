@@ -21,6 +21,18 @@
     .summary-box .label{font-size:12px;color:#556b84;margin-bottom:4px;}
     .summary-box .value{font-weight:700;color:#0f6abf;}
     .status-badge{padding:3px 8px;border-radius:999px;font-size:12px;font-weight:700;display:inline-block;background:#fde7e9;color:#b02a37;}
+    .pending-table-wrap{
+        width:100%;
+        overflow-x:auto;
+        -webkit-overflow-scrolling:touch;
+    }
+    #pendingTable{
+        min-width:980px;
+    }
+    #pendingTable th,
+    #pendingTable td{
+        white-space:nowrap;
+    }
 
 @media (max-width: 900px){
     .pendings-list-toolbar{
@@ -37,5 +49,14 @@
         min-width: 40px !important;
         max-width: 40px !important;
         align-self: flex-start !important;
+    }
+    #pendingTable{
+        min-width:980px !important;
+    }
+}
+
+@media (min-width: 901px){
+    #pendingTable{
+        min-width:0;
     }
 }
