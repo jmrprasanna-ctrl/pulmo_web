@@ -121,17 +121,25 @@ function buildPagesPath(fileName){
     return `/${fileName}`;
 }
 
+function isPublicAuthPagePath(pathname){
+    const path = String(pathname || window.location.pathname || "").replace(/\\/g, "/").toLowerCase();
+    return path.endsWith("/login.html")
+        || path.endsWith("login.html")
+        || path.endsWith("/forgot-password.html")
+        || path.endsWith("forgot-password.html");
+}
+
 function enforceAuthentication(){
     const path = window.location.pathname.replace(/\\/g, "/").toLowerCase();
-    const isLoginPage = path.endsWith("/login.html") || path.endsWith("login.html");
+    const isPublicAuthPage = isPublicAuthPagePath(path);
     const token = localStorage.getItem("token");
 
-    if(!token && !isLoginPage){
+    if(!token && !isPublicAuthPage){
         window.location.replace(buildPagesPath("login.html"));
         return false;
     }
 
-    if(isLoginPage){
+    if(isPublicAuthPage){
         return true;
     }
 
@@ -155,8 +163,7 @@ function setupActivityTracking(){
 }
 
 function isLoginPagePath(){
-    const path = window.location.pathname.replace(/\\/g, "/").toLowerCase();
-    return path.endsWith("/login.html") || path.endsWith("login.html");
+    return isPublicAuthPagePath(window.location.pathname);
 }
 
 function logoutForInactivity(){
@@ -223,6 +230,8 @@ function getAccessConfigState(){
 }
 
 function enforceUserAccess(){
+    const token = localStorage.getItem("token");
+    if(!token) return;
     const role = normalizeRoleValue(localStorage.getItem("role"));
     if(role !== "user" && role !== "admin" && role !== "manager") return;
     const selectedDb = String(localStorage.getItem("selectedDatabaseName") || "").trim().toLowerCase();
