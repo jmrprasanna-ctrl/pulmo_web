@@ -7,6 +7,18 @@ function getLoginInputElement(){
         || document.getElementById("user");
 }
 
+function clearCredentialFields(){
+    const userEl = getLoginInputElement();
+    const passEl = document.getElementById("password");
+    [userEl, passEl].forEach((el) => {
+        if(!el) return;
+        if(String(el.value || "").length === 0) return;
+        el.value = "";
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+}
+
 
 function setLoadingOverlay(visible, message){
     if(!axisLoadingOverlay) return;
@@ -134,5 +146,20 @@ if(passwordToggle){
 
 window.addEventListener("DOMContentLoaded", () => {
     setLoadingOverlay(true, "Starting AXIS CMS SYSTEM...");
+    const loginForm = document.getElementById("loginForm");
+    const userEl = getLoginInputElement();
+    const passEl = document.getElementById("password");
+    if(loginForm){
+        loginForm.setAttribute("autocomplete", "off");
+    }
+    if(userEl){
+        userEl.setAttribute("autocomplete", "off");
+    }
+    if(passEl){
+        passEl.setAttribute("autocomplete", "off");
+    }
+    clearCredentialFields();
+    window.setTimeout(clearCredentialFields, 120);
+    window.setTimeout(clearCredentialFields, 320);
     window.setTimeout(() => setLoadingOverlay(false), 950);
 });

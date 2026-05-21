@@ -131,9 +131,8 @@ function enforceAuthentication(){
         return false;
     }
 
-    if(token && isLoginPage){
-        window.location.replace(buildPagesPath("dashboard.html"));
-        return false;
+    if(isLoginPage){
+        return true;
     }
 
     return true;

@@ -355,7 +355,6 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     if (_isLoginPageUrl(url)) {
       await _enhanceLoginAutofill(url);
       await _installPdfSaveBridge();
-      await _maybeShowSavedAccountsPrompt();
       return;
     }
     await _enhanceLoginAutofill(url);
@@ -450,22 +449,16 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
 
   Future<void> _enhanceLoginAutofill(String url) async {
     if (!_isLoginPageUrl(url)) return;
-    await (_credentialsLoadFuture ?? Future<void>.value());
-    final _SavedCredential? latest =
-        _savedCredentials.isNotEmpty ? _savedCredentials.first : null;
     final String preferredUser = _preferredLoginUsername.trim();
     final String preferredPassword = _preferredLoginPassword;
-    final String savedUserJs = jsonEncode(
-      preferredUser.isNotEmpty ? preferredUser : (latest?.username ?? ''),
-    );
-    final String savedPasswordJs = jsonEncode(
-      preferredUser.isNotEmpty ? preferredPassword : (latest?.password ?? ''),
-    );
+    final String preferredUserJs = jsonEncode(preferredUser);
+    final String preferredPasswordJs = jsonEncode(preferredPassword);
     final String js = '''
       (function () {
         try {
-          var savedUser = $savedUserJs;
-          var savedPassword = $savedPasswordJs;
+          var preferredUser = $preferredUserJs;
+          var preferredPassword = $preferredPasswordJs;
+          var hasPreferred = !!String(preferredUser || '').trim() && !!String(preferredPassword || '');
           var form = document.getElementById('loginForm');
           var user = document.getElementById('User') || document.getElementById('user') || document.getElementById('email');
           var pass = document.getElementById('password');
@@ -474,33 +467,50 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
 
           if (form) {
             form.setAttribute('method', 'post');
-            form.setAttribute('autocomplete', 'on');
+            form.setAttribute('autocomplete', 'off');
           }
           if (user) {
             user.setAttribute('name', user.getAttribute('name') || 'username');
-            user.setAttribute('autocomplete', 'username');
+            user.setAttribute('autocomplete', 'off');
             user.setAttribute('autocapitalize', 'none');
             user.setAttribute('autocorrect', 'off');
             user.setAttribute('spellcheck', 'false');
           }
           if (pass) {
             pass.setAttribute('name', pass.getAttribute('name') || 'password');
-            pass.setAttribute('autocomplete', 'current-password');
+            pass.setAttribute('autocomplete', 'off');
           }
           if (loginBtn && loginBtn.tagName === 'BUTTON') {
             loginBtn.setAttribute('type', 'submit');
           }
 
-          var syncFilledValues = function () {
-            if (user && savedUser && !String(user.value || '').trim()) {
-              user.value = savedUser;
-              user.dispatchEvent(new Event('input', { bubbles: true }));
-              user.dispatchEvent(new Event('change', { bubbles: true }));
+          var dispatchFieldEvents = function (inputEl) {
+            if (!inputEl) return;
+            inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+            inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+          };
+
+          var clearLoginValues = function () {
+            if (hasPreferred) return;
+            if (user && String(user.value || '').trim()) {
+              user.value = '';
+              dispatchFieldEvents(user);
             }
-            if (pass && savedPassword && !String(pass.value || '')) {
-              pass.value = savedPassword;
-              pass.dispatchEvent(new Event('input', { bubbles: true }));
-              pass.dispatchEvent(new Event('change', { bubbles: true }));
+            if (pass && String(pass.value || '')) {
+              pass.value = '';
+              dispatchFieldEvents(pass);
+            }
+          };
+
+          var fillPreferredValues = function () {
+            if (!hasPreferred) return;
+            if (user && !String(user.value || '').trim()) {
+              user.value = preferredUser;
+              dispatchFieldEvents(user);
+            }
+            if (pass && !String(pass.value || '')) {
+              pass.value = preferredPassword;
+              dispatchFieldEvents(pass);
             }
           };
 
@@ -536,9 +546,13 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
             }
           }
 
+          clearLoginValues();
+          fillPreferredValues();
+
           if (user) {
             window.setTimeout(function () {
-              syncFilledValues();
+              clearLoginValues();
+              fillPreferredValues();
               try { user.focus(); } catch (_) {}
             }, 120);
           }
