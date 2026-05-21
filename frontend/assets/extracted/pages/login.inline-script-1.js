@@ -82,20 +82,15 @@ async function login(){
     }
 }
 
-async function forgotPassword(){
+function goToForgotPasswordPage(){
     const emailInput = getLoginInputElement();
     const email = String(emailInput && emailInput.value ? emailInput.value : "").trim();
-    if(!email){
-        alert("Enter your email address first.");
-        if(emailInput) emailInput.focus();
-        return;
+    const query = new URLSearchParams();
+    if(email){
+        query.set("email", email);
     }
-    try{
-        await request("/auth/forgot-password","POST",{email});
-        alert("Email matched. Password details sent to your email.");
-    }catch(err){
-        alert(err.message || "Failed to send email");
-    }
+    const suffix = query.toString();
+    window.location.href = suffix ? `forgot-password.html?${suffix}` : "forgot-password.html";
 }
 
 function togglePassword(){
@@ -126,7 +121,7 @@ const forgotPasswordLink = document.getElementById("forgotPasswordLink");
 if(forgotPasswordLink){
     forgotPasswordLink.addEventListener("click", (e) => {
         e.preventDefault();
-        forgotPassword();
+        goToForgotPasswordPage();
     });
 }
 const passwordToggle = document.getElementById("passwordToggle");
