@@ -764,7 +764,12 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('AXIS CMS PULMO'),
+          title: const Text(
+            'AXIS CMS PULMO',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
           actions: [
             if (_isLoginPageUrl(_currentUrl) && _savedCredentials.isNotEmpty)
               IconButton(
