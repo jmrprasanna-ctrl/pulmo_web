@@ -1,6 +1,26 @@
 html, body { overflow-x: hidden; }
 .main-content.add-product-main { overflow-x: hidden; }
 .invoice-shell { margin-bottom: 16px; }
+.add-product-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: nowrap;
+    width: 100%;
+    margin-bottom: 12px;
+}
+.add-product-header > div {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.add-product-title {
+    margin: 0;
+}
+.add-product-header .icon-btn {
+    margin-left: auto;
+    flex: 0 0 auto;
+}
 .is-hidden { display: none; }
 .sup-tech-hidden { display: none; }
 .card-mt-12 { margin-top: 12px; }
@@ -209,6 +229,9 @@ html, body { overflow-x: hidden; }
         max-width: 100% !important;
         padding: 14px !important;
         box-sizing: border-box !important;
+    }
+    .main-content.add-product-main .add-product-header {
+        padding-left: 50px;
     }
     .invoice-shell { width: 100%; max-width: 100%; box-sizing: border-box; }
     .invoice-grid .field,
