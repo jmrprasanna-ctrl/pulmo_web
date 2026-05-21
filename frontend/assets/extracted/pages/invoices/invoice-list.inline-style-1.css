@@ -42,6 +42,15 @@
             vertical-align: middle;
             height: 40px;
         }
+        .month-inline{
+            width: 170px;
+            max-width: 100%;
+            margin-top: 0;
+            margin-left: 0;
+            display: inline-block;
+            vertical-align: middle;
+            height: 40px;
+        }
         #invoice-table-body tr.invoice-row-clickable{
             cursor:pointer;
         }

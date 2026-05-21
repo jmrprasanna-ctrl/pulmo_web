@@ -1,5 +1,6 @@
 const invoiceSearchEl = document.getElementById("invoiceSearch");
 const invoiceYearEl = document.getElementById("invoiceYearFilter");
+const invoiceMonthEl = document.getElementById("invoiceMonthFilter");
 const addInvoiceBtn = document.getElementById("addInvoiceBtn");
 let allInvoices = [];
 const MONTH_SHORT = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
@@ -18,11 +19,7 @@ const MONTH_LONG = [
     "DECEMBER"
 ];
 let selectedYear = "";
-
-        function getCurrentYearKey(){
-            const now = new Date();
-            return String(now.getFullYear());
-        }
+let selectedMonth = "";
 
         function getInvoiceDate(inv){
             const raw = String(inv?.invoice_date || "").trim();
@@ -38,10 +35,15 @@ let selectedYear = "";
             return String(dt.getFullYear());
         }
 
+        function getInvoiceMonthKey(inv){
+            const dt = getInvoiceDate(inv);
+            if(!dt) return "";
+            return String(dt.getMonth() + 1).padStart(2, "0");
+        }
+
         function initYearFilter(){
             if(!invoiceYearEl) return;
-            const currentYear = getCurrentYearKey();
-            const years = new Set([currentYear]);
+            const years = new Set();
             allInvoices.forEach(inv => {
                 const year = getInvoiceYearKey(inv);
                 if(year) years.add(year);
@@ -58,9 +60,29 @@ let selectedYear = "";
                 opt.textContent = year;
                 invoiceYearEl.appendChild(opt);
             });
-            // Default: show full current year (all months in that year).
-            selectedYear = sortedYears.includes(currentYear) ? currentYear : "";
+            // Default: show invoices for all years.
+            selectedYear = "";
             invoiceYearEl.value = selectedYear;
+        }
+
+        function initMonthFilter(){
+            if(!invoiceMonthEl) return;
+            invoiceMonthEl.innerHTML = "";
+            const allOption = document.createElement("option");
+            allOption.value = "";
+            allOption.textContent = "All Months";
+            invoiceMonthEl.appendChild(allOption);
+
+            MONTH_SHORT.forEach((label, index) => {
+                const monthKey = String(index + 1).padStart(2, "0");
+                const opt = document.createElement("option");
+                opt.value = monthKey;
+                opt.textContent = label;
+                invoiceMonthEl.appendChild(opt);
+            });
+
+            selectedMonth = "";
+            invoiceMonthEl.value = selectedMonth;
         }
 
         function renderInvoices(invoices){
@@ -93,8 +115,10 @@ let selectedYear = "";
         function applyInvoiceFilter(){
             const query = (invoiceSearchEl?.value || "").trim().toLowerCase();
             const year = String(selectedYear || "").trim();
+            const month = String(selectedMonth || "").trim();
             const filtered = allInvoices.filter(inv => {
                 if(year && getInvoiceYearKey(inv) !== year) return false;
+                if(month && getInvoiceMonthKey(inv) !== month) return false;
                 const dt = getInvoiceDate(inv);
                 const dateText = dt ? dt.toLocaleDateString() : "";
                 const monthShort = dt ? MONTH_SHORT[dt.getMonth()] : "";
@@ -118,6 +142,7 @@ let selectedYear = "";
             try{
                 allInvoices = await request("/invoices","GET");
                 initYearFilter();
+                initMonthFilter();
                 applyInvoiceFilter();
             }catch(err){
                 const tbody = document.getElementById('invoice-table-body');
@@ -149,6 +174,12 @@ let selectedYear = "";
 if(invoiceYearEl){
     invoiceYearEl.addEventListener("change", () => {
         selectedYear = String(invoiceYearEl.value || "");
+        applyInvoiceFilter();
+    });
+}
+if(invoiceMonthEl){
+    invoiceMonthEl.addEventListener("change", () => {
+        selectedMonth = String(invoiceMonthEl.value || "");
         applyInvoiceFilter();
     });
 }
