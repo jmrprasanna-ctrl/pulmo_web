@@ -5,8 +5,8 @@ const storedName = localStorage.getItem("userName") || "";
 const storedProfileName = localStorage.getItem("profileName") || "";
 function resolveDashboardDisplayName(profileName, userName, userEmail, userRole){
     const candidates = [
-        String(userName || "").trim(),
         String(profileName || "").trim(),
+        String(userName || "").trim(),
         String(userEmail || "").trim(),
         String(userRole || "").trim(),
     ];
