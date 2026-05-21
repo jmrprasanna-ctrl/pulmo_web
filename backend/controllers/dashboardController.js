@@ -281,6 +281,24 @@ async function buildSchemaCompatibleSummary(period, periodStart, periodEnd, base
         if(monthSales === null){
             monthSales = await safe(() => Invoice.sum("total_amount", { where: monthCreatedWhere }), 0);
         }
+        let monthReceivedPayment = await safe(() => Invoice.sum("total_amount", {
+            where: {
+                [Op.and]: [
+                    monthDateWhere,
+                    { payment_status: getReceivedPaymentStatusFilter() }
+                ]
+            }
+        }), null);
+        if(monthReceivedPayment === null){
+            monthReceivedPayment = await safe(() => Invoice.sum("total_amount", {
+                where: {
+                    [Op.and]: [
+                        monthCreatedWhere,
+                        { payment_status: getReceivedPaymentStatusFilter() }
+                    ]
+                }
+            }), 0);
+        }
 
         let monthExpenses = await safe(() => Expense.sum("amount", {
             where: buildDateOnlyRangeWhere("date", startText, endText)
@@ -290,7 +308,7 @@ async function buildSchemaCompatibleSummary(period, periodStart, periodEnd, base
         }
 
         monthlySales.push(toNumberSafe(monthSales));
-        monthlyProfit.push(toNumberSafe(monthSales) - toNumberSafe(monthExpenses));
+        monthlyProfit.push(toNumberSafe(monthReceivedPayment) - toNumberSafe(monthExpenses));
     }
 
     const totalSalesPeriodSafe = toNumberSafe(totalSalesPeriod);
@@ -572,38 +590,102 @@ exports.getSummary = async (req,res)=>{
         const currentYear = baseDate.getFullYear();
 
         for(let m=0;m<12;m++){
-            const start = new Date(currentYear,m,1);
-            const end = new Date(currentYear,m+1,0);
+            const start = new Date(currentYear,m,1,0,0,0,0);
+            const end = new Date(currentYear,m+1,0,23,59,59,999);
             const startText = toDateOnlyText(start);
             const endText = toDateOnlyText(end);
+            const monthInvoiceDateWhere = buildDateOnlyRangeWhere("invoice_date", startText, endText);
 
-            const salesInvoices = await Invoice.findAll({
-                where: buildDateOnlyRangeWhere("invoice_date", startText, endText),
-                include:[{
-                    model: InvoiceItem,
-                    required: false,
-                    include: [{ model: Product, required: false, attributes: ["dealer_price"] }]
-                }]
+            const monthSales = await Invoice.sum("total_amount",{
+                where: monthInvoiceDateWhere
+            }) || 0;
+            const monthExpenses = await Expense.sum("amount",{
+                where: buildDateOnlyRangeWhere("date", startText, endText)
+            }) || 0;
+            const monthReceivedPayment = await Invoice.sum("total_amount",{
+                include: [getGeneralCustomerInclude()],
+                where:{
+                    [Op.and]: [
+                        monthInvoiceDateWhere,
+                        { payment_status: getReceivedPaymentStatusFilter() }
+                    ]
+                }
+            }) || 0;
+            const monthInvoicesForTechnician = await Invoice.findAll({
+                where:{
+                    [Op.and]: [
+                        monthInvoiceDateWhere,
+                        { support_technician: { [Op.not]: null } }
+                    ]
+                },
+                attributes:["id","total_amount","support_technician","support_technician_percentage"],
+                include: [
+                    {
+                        model: InvoiceItem,
+                        required: false,
+                        attributes: ["qty"],
+                        include: [{ model: Product, required: false, attributes: ["dealer_price"] }]
+                    }
+                ]
             });
+            const monthTechnicianPaid = sumTechnicianPaid(monthInvoicesForTechnician);
+            const monthInvoiceItemsForVendor = await InvoiceItem.findAll({
+                include: [
+                    {
+                        model: Invoice,
+                        required: true,
+                        attributes: ["id", "invoice_date", "payment_status"],
+                        where: {
+                            [Op.and]: [
+                                monthInvoiceDateWhere,
+                                { payment_status: getReceivedPaymentStatusFilter() }
+                            ]
+                        },
+                        include: [getGeneralCustomerInclude()]
+                    },
+                    { model: Product, required: false, attributes: ["id", "dealer_price"] }
+                ],
+                attributes: ["qty"]
+            });
+            const monthVendorPaid = sumVendorPaidFromInvoiceItems(monthInvoiceItemsForVendor);
+            const monthRentalCountsRows = await RentalMachineCount.findAll({
+                where: {
+                    [Op.or]: [
+                        { entry_date: { [Op.between]: [startText, endText] } },
+                        {
+                            entry_date: { [Op.is]: null },
+                            createdAt: { [Op.between]: [start, end] }
+                        }
+                    ]
+                },
+                attributes: ["input_count", "updated_count"]
+            });
+            const monthRentalMachinesCountsPrice = sumRentalCountPrice(monthRentalCountsRows);
+            const monthRentalConsumablesRows = await RentalMachineConsumable.findAll({
+                where: {
+                    [Op.or]: [
+                        { entry_date: { [Op.between]: [startText, endText] } },
+                        {
+                            entry_date: { [Op.is]: null },
+                            createdAt: { [Op.between]: [start, end] }
+                        }
+                    ]
+                },
+                include: [{ model: Product, required: false, attributes: ["id", "dealer_price"] }],
+                attributes: ["quantity"]
+            });
+            const monthRentalConsumablesPrice = sumRentalConsumablesPrice(monthRentalConsumablesRows);
 
-            let monthSales = 0;
-            let monthProfit = 0;
-            salesInvoices.forEach(inv=>{
-                monthSales += toNumberSafe(inv.total_amount);
-                const technician = String(inv.support_technician || "").trim();
-                const rawPct = Number(inv.support_technician_percentage || 0);
-                const pct = Number.isFinite(rawPct) ? Math.min(Math.max(rawPct, 0), 100) : 0;
-                const vendorProductValue = sumVendorPaidFromInvoiceItems(inv.InvoiceItems || []);
-                const balanceForTechnician = Math.max(toNumberSafe(inv.total_amount) - vendorProductValue, 0);
-                const technicianPaid = technician ? (balanceForTechnician * pct) / 100 : 0;
-                const grossFromItems = (Array.isArray(inv.InvoiceItems) ? inv.InvoiceItems : []).reduce((a,b)=>{
-                    return a + toNumberSafe(b?.gross);
-                },0);
-                monthProfit += toNumberSafe(inv.total_amount) - grossFromItems - technicianPaid;
-            });
+            const monthProfit =
+                toNumberSafe(monthReceivedPayment)
+                + toNumberSafe(monthRentalMachinesCountsPrice)
+                - toNumberSafe(monthRentalConsumablesPrice)
+                - toNumberSafe(monthExpenses)
+                - toNumberSafe(monthTechnicianPaid)
+                - toNumberSafe(monthVendorPaid);
             months.push(start.toLocaleString('default',{month:'short'}));
-            monthlySales.push(monthSales);
-            monthlyProfit.push(monthProfit);
+            monthlySales.push(toNumberSafe(monthSales));
+            monthlyProfit.push(Number(monthProfit.toFixed(2)));
         }
 
         res.json({

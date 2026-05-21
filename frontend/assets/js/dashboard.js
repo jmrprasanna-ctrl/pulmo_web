@@ -765,7 +765,7 @@ async function fetchSummary(){
             type:"bar",
             data:{
                 labels,
-                datasets:[{label:"Profit",data:monthlyProfit,backgroundColor:"#9ad9a6",borderColor:"#6fbd84",borderWidth:1}]
+                datasets:[{label:"Net Profit",data:monthlyProfit,backgroundColor:"#9ad9a6",borderColor:"#6fbd84",borderWidth:1}]
             }
         });
 
