@@ -2,12 +2,26 @@ const invoiceSearchEl = document.getElementById("invoiceSearch");
 const invoiceYearEl = document.getElementById("invoiceYearFilter");
 const addInvoiceBtn = document.getElementById("addInvoiceBtn");
 let allInvoices = [];
-const MONTH_SHORT = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
-let selectedPeriod = "";
+const MONTH_SHORT = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+const MONTH_LONG = [
+    "JANUARY",
+    "FEBRUARY",
+    "MARCH",
+    "APRIL",
+    "MAY",
+    "JUNE",
+    "JULY",
+    "AUGUST",
+    "SEPTEMBER",
+    "OCTOBER",
+    "NOVEMBER",
+    "DECEMBER"
+];
+let selectedYear = "";
 
-        function getCurrentPeriodKey(){
+        function getCurrentYearKey(){
             const now = new Date();
-            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+            return String(now.getFullYear());
         }
 
         function getInvoiceDate(inv){
@@ -18,38 +32,35 @@ let selectedPeriod = "";
             return dt;
         }
 
-        function getInvoicePeriodKey(inv){
+        function getInvoiceYearKey(inv){
             const dt = getInvoiceDate(inv);
             if(!dt) return "";
-            return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
-        }
-
-        function formatPeriodLabel(periodKey){
-            const [year, month] = String(periodKey || "").split("-");
-            const monthNum = Number(month);
-            const monthText = MONTH_SHORT[monthNum - 1] || month || "";
-            return `${year || ""} ${monthText}`.trim();
+            return String(dt.getFullYear());
         }
 
         function initYearFilter(){
             if(!invoiceYearEl) return;
-            const currentPeriod = getCurrentPeriodKey();
-            const periods = new Set([currentPeriod]);
+            const currentYear = getCurrentYearKey();
+            const years = new Set([currentYear]);
             allInvoices.forEach(inv => {
-                const period = getInvoicePeriodKey(inv);
-                if(period) periods.add(period);
+                const year = getInvoiceYearKey(inv);
+                if(year) years.add(year);
             });
-            const sortedPeriods = Array.from(periods).sort((a, b) => b.localeCompare(a));
+            const sortedYears = Array.from(years).sort((a, b) => b.localeCompare(a));
             invoiceYearEl.innerHTML = "";
-            sortedPeriods.forEach(period => {
+            const allOption = document.createElement("option");
+            allOption.value = "";
+            allOption.textContent = "All Years";
+            invoiceYearEl.appendChild(allOption);
+            sortedYears.forEach(year => {
                 const opt = document.createElement("option");
-                opt.value = period;
-                opt.textContent = formatPeriodLabel(period);
+                opt.value = year;
+                opt.textContent = year;
                 invoiceYearEl.appendChild(opt);
             });
-            selectedPeriod = selectedPeriod || currentPeriod;
-            invoiceYearEl.value = sortedPeriods.includes(selectedPeriod) ? selectedPeriod : sortedPeriods[0];
-            selectedPeriod = String(invoiceYearEl.value || selectedPeriod);
+            // Default: show full current year (all months in that year).
+            selectedYear = sortedYears.includes(currentYear) ? currentYear : "";
+            invoiceYearEl.value = selectedYear;
         }
 
         function renderInvoices(invoices){
@@ -81,16 +92,23 @@ let selectedPeriod = "";
 
         function applyInvoiceFilter(){
             const query = (invoiceSearchEl?.value || "").trim().toLowerCase();
-            const period = String(selectedPeriod || "").trim();
+            const year = String(selectedYear || "").trim();
             const filtered = allInvoices.filter(inv => {
-                if(period && getInvoicePeriodKey(inv) !== period) return false;
-                const dateText = inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString() : "";
+                if(year && getInvoiceYearKey(inv) !== year) return false;
+                const dt = getInvoiceDate(inv);
+                const dateText = dt ? dt.toLocaleDateString() : "";
+                const monthShort = dt ? MONTH_SHORT[dt.getMonth()] : "";
+                const monthLong = dt ? MONTH_LONG[dt.getMonth()] : "";
+                const yearMonth = dt ? `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}` : "";
                 if(!query) return true;
                 return [
                     inv.invoice_no,
                     inv.customer_name,
                     dateText,
-                    inv.total
+                    inv.total,
+                    monthShort,
+                    monthLong,
+                    yearMonth
                 ].some(v => String(v || "").toLowerCase().includes(query));
             });
             renderInvoices(filtered);
@@ -130,7 +148,7 @@ let selectedPeriod = "";
         }
 if(invoiceYearEl){
     invoiceYearEl.addEventListener("change", () => {
-        selectedPeriod = String(invoiceYearEl.value || "");
+        selectedYear = String(invoiceYearEl.value || "");
         applyInvoiceFilter();
     });
 }
