@@ -226,11 +226,10 @@ function buildPayslipPdfDoc() {
     }
   };
 
-  const drawAmountRow = (name, type, amount, options = {}) => {
+  const drawAmountRow = (name, amount, options = {}) => {
     ensureSpace(rowHeight);
     doc.setFont("helvetica", options.total ? "bold" : "normal");
     doc.text(String(name || "-"), left, y);
-    doc.text(String(type || "-"), left + 250, y);
     const formattedAmount = formatAmount(amount, { dashForZero: options.dashForZero });
     doc.text(formattedAmount, right - doc.getTextWidth(formattedAmount), y);
     y += rowHeight;
@@ -264,30 +263,34 @@ function buildPayslipPdfDoc() {
   doc.line(left, y, right, y);
   y += 14;
 
-  drawAmountRow("Basic Salary", "Salary", salary.basic_sallary);
-  drawAmountRow("Nopay", "Less", salary.no_pay_amount, { dashForZero: true });
-  drawAmountRow("Salary For MSPS", "Net Basic", salary.salary_for_msps, { total: true });
+  drawAmountRow("Basic Salary", salary.basic_sallary);
+  drawAmountRow("Nopay", salary.no_pay_amount, { dashForZero: true });
+  drawAmountRow("Salary For MSPS", salary.salary_for_msps, { total: true });
   y += 8;
 
-  drawAmountRow("Add:", "Allowances", 0, { dashForZero: true });
+  drawAmountRow("Add:", 0, { dashForZero: true });
   const allowances = Array.isArray(salary.allowances) ? salary.allowances : [];
   allowances.forEach((item) => {
-    drawAmountRow(String(item?.name || "Allowance"), "Amount", Number(item?.amount || 0), { dashForZero: true });
+    drawAmountRow(String(item?.name || "Allowance"), Number(item?.amount || 0), { dashForZero: true });
   });
-  drawAmountRow("OT Payment", `${formatAmount(salary.ot_pay_per_hour)} x ${formatAmount(attendance.ot_hours)} hrs`, salary.ot_pay_amount, { dashForZero: true });
-  drawAmountRow("Total Additions", "Total", toNumber(salary.allowances_total) + toNumber(salary.ot_pay_amount), { total: true });
-  drawAmountRow("Gross Pay", "Final", salary.gross_pay, { total: true });
+  drawAmountRow(
+    `OT Payment (${formatAmount(salary.ot_pay_per_hour)} x ${formatAmount(attendance.ot_hours)} hrs)`,
+    salary.ot_pay_amount,
+    { dashForZero: true }
+  );
+  drawAmountRow("Total Additions", toNumber(salary.allowances_total) + toNumber(salary.ot_pay_amount), { total: true });
+  drawAmountRow("Gross Pay", salary.gross_pay, { total: true });
   y += 8;
 
-  drawAmountRow("Less:", "Deductions", 0, { dashForZero: true });
+  drawAmountRow("Less:", 0, { dashForZero: true });
   const deductions = Array.isArray(salary.deductions) ? salary.deductions : [];
   deductions.forEach((item) => {
-    drawAmountRow(String(item?.name || "Deduction"), "Amount", Number(item?.amount || 0), { dashForZero: true });
+    drawAmountRow(String(item?.name || "Deduction"), Number(item?.amount || 0), { dashForZero: true });
   });
-  drawAmountRow("Total Deduction", "Total", salary.deductions_total, { total: true });
-  drawAmountRow("Net Salary", "Take Home", salary.net_sallary, { total: true });
-  drawAmountRow("Co. Cont. To MSPS @ 12%", "Company", salary.company_cont_msps, { dashForZero: true });
-  drawAmountRow("Co. Cont. To ETF @ 3%", "Company", salary.company_cont_etf, { dashForZero: true });
+  drawAmountRow("Total Deduction", salary.deductions_total, { total: true });
+  drawAmountRow("Net Salary", salary.net_sallary, { total: true });
+  drawAmountRow("Co. Cont. To MSPS @ 12%", salary.company_cont_msps, { dashForZero: true });
+  drawAmountRow("Co. Cont. To ETF @ 3%", salary.company_cont_etf, { dashForZero: true });
 
   y += 10;
   ensureSpace(70);
