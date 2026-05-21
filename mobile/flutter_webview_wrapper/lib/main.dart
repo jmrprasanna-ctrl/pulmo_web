@@ -83,6 +83,10 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
+  final TextEditingController _offlineUsernameController =
+      TextEditingController();
+  final TextEditingController _offlinePasswordController =
+      TextEditingController();
 
   late final WebViewController _controller;
   late final Uri _startUri;
@@ -97,6 +101,10 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
   List<_SavedCredential> _savedCredentials = <_SavedCredential>[];
   String _pendingUsername = '';
   String _pendingPassword = '';
+  String _preferredLoginUsername = '';
+  String _preferredLoginPassword = '';
+  bool _offlinePasswordVisible = false;
+  bool _isOfflineRetryInProgress = false;
 
   @override
   void initState() {
@@ -143,6 +151,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
               setState(() {
                 _hasMainFrameError = true;
                 _errorText = error.description;
+                _isOfflineRetryInProgress = false;
               });
             }
           },
@@ -171,6 +180,13 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     }
 
     _controller = controller;
+  }
+
+  @override
+  void dispose() {
+    _offlineUsernameController.dispose();
+    _offlinePasswordController.dispose();
+    super.dispose();
   }
 
   bool _isLoginPageUrl(String url) {
@@ -218,8 +234,14 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
       }
 
       _savedCredentials.sort((a, b) => b.updatedAtMs.compareTo(a.updatedAtMs));
+      if (mounted) {
+        setState(() {});
+      }
     } catch (_) {
       _savedCredentials = <_SavedCredential>[];
+      if (mounted) {
+        setState(() {});
+      }
     }
   }
 
@@ -281,6 +303,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     if (mounted) {
       setState(() {
         _currentUrl = url;
+        _isOfflineRetryInProgress = false;
       });
     } else {
       _currentUrl = url;
@@ -292,6 +315,8 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
       await _saveCredentials(_pendingUsername, _pendingPassword);
       _pendingUsername = '';
       _pendingPassword = '';
+      _preferredLoginUsername = '';
+      _preferredLoginPassword = '';
     }
 
     if (_isLoginPageUrl(url)) {
@@ -395,8 +420,14 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     await (_credentialsLoadFuture ?? Future<void>.value());
     final _SavedCredential? latest =
         _savedCredentials.isNotEmpty ? _savedCredentials.first : null;
-    final String savedUserJs = jsonEncode(latest?.username ?? '');
-    final String savedPasswordJs = jsonEncode(latest?.password ?? '');
+    final String preferredUser = _preferredLoginUsername.trim();
+    final String preferredPassword = _preferredLoginPassword;
+    final String savedUserJs = jsonEncode(
+      preferredUser.isNotEmpty ? preferredUser : (latest?.username ?? ''),
+    );
+    final String savedPasswordJs = jsonEncode(
+      preferredUser.isNotEmpty ? preferredPassword : (latest?.password ?? ''),
+    );
     final String js = '''
       (function () {
         try {
@@ -632,6 +663,64 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     }
   }
 
+  _SavedCredential? _findSavedCredentialByUsername(String username) {
+    final String key = username.trim().toLowerCase();
+    if (key.isEmpty) return null;
+    for (final _SavedCredential credential in _savedCredentials) {
+      if (credential.username.trim().toLowerCase() == key) {
+        return credential;
+      }
+    }
+    return null;
+  }
+
+  void _onOfflineSavedUserPicked(String? username) {
+    if (username == null || username.trim().isEmpty) return;
+    final _SavedCredential? credential = _findSavedCredentialByUsername(username);
+    if (credential == null) return;
+    setState(() {
+      _offlineUsernameController.text = credential.username;
+      _offlinePasswordController.text = credential.password;
+    });
+  }
+
+  Future<void> _retryOnlineLoginFromOffline() async {
+    if (_isOfflineRetryInProgress) return;
+    final String username = _offlineUsernameController.text.trim();
+    final String password = _offlinePasswordController.text;
+    if (username.isEmpty || password.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter username and password.')),
+      );
+      return;
+    }
+
+    _pendingUsername = username;
+    _pendingPassword = password;
+    _preferredLoginUsername = username;
+    _preferredLoginPassword = password;
+
+    if (mounted) {
+      setState(() {
+        _hasMainFrameError = false;
+        _errorText = '';
+        _isOfflineRetryInProgress = true;
+      });
+    }
+
+    try {
+      await _controller.loadRequest(_startUri);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _hasMainFrameError = true;
+        _isOfflineRetryInProgress = false;
+        _errorText = error.toString();
+      });
+    }
+  }
+
   Future<void> _reload() async {
     await _controller.reload();
   }
@@ -698,7 +787,22 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
         ),
         body: SafeArea(
           child: _hasMainFrameError
-              ? _ErrorView(message: _errorText, onRetry: _reload)
+              ? _OfflineLoginView(
+                  message: _errorText,
+                  usernameController: _offlineUsernameController,
+                  passwordController: _offlinePasswordController,
+                  passwordVisible: _offlinePasswordVisible,
+                  onTogglePasswordVisible: () {
+                    setState(() {
+                      _offlinePasswordVisible = !_offlinePasswordVisible;
+                    });
+                  },
+                  savedCredentials: _savedCredentials,
+                  retryInProgress: _isOfflineRetryInProgress,
+                  onSavedCredentialSelected: _onOfflineSavedUserPicked,
+                  onRetryOnlineLogin: _retryOnlineLoginFromOffline,
+                  onTryAgain: _reload,
+                )
               : WebViewWidget(controller: _controller),
         ),
       ),
@@ -706,35 +810,127 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
   }
 }
 
-class _ErrorView extends StatelessWidget {
-  const _ErrorView({required this.message, required this.onRetry});
+class _OfflineLoginView extends StatelessWidget {
+  const _OfflineLoginView({
+    required this.message,
+    required this.usernameController,
+    required this.passwordController,
+    required this.passwordVisible,
+    required this.onTogglePasswordVisible,
+    required this.savedCredentials,
+    required this.retryInProgress,
+    required this.onSavedCredentialSelected,
+    required this.onRetryOnlineLogin,
+    required this.onTryAgain,
+  });
 
   final String message;
-  final Future<void> Function() onRetry;
+  final TextEditingController usernameController;
+  final TextEditingController passwordController;
+  final bool passwordVisible;
+  final VoidCallback onTogglePasswordVisible;
+  final List<_SavedCredential> savedCredentials;
+  final bool retryInProgress;
+  final ValueChanged<String?> onSavedCredentialSelected;
+  final Future<void> Function() onRetryOnlineLogin;
+  final Future<void> Function() onTryAgain;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Icon(Icons.cloud_off, size: 48),
+            const SizedBox(height: 16),
+            const Icon(Icons.cloud_off, size: 56),
             const SizedBox(height: 12),
             const Text(
-              'Failed to load the web app.',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              'Offline Login',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              message.isEmpty ? 'Unknown network or server error.' : message,
+              message.isEmpty ? 'Server is unreachable right now.' : message,
+              style: const TextStyle(fontSize: 14),
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            if (savedCredentials.isNotEmpty)
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                  labelText: 'Saved Users',
+                  border: OutlineInputBorder(),
+                ),
+                items: savedCredentials
+                    .map(
+                      (item) => DropdownMenuItem<String>(
+                        value: item.username,
+                        child: Text(item.username),
+                      ),
+                    )
+                    .toList(),
+                onChanged: onSavedCredentialSelected,
+              ),
+            if (savedCredentials.isNotEmpty) const SizedBox(height: 14),
+            TextField(
+              controller: usernameController,
+              autocorrect: false,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'Username',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: passwordController,
+              obscureText: !passwordVisible,
+              textInputAction: TextInputAction.done,
+              decoration: InputDecoration(
+                labelText: 'Password',
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  onPressed: onTogglePasswordVisible,
+                  icon: Icon(
+                    passwordVisible ? Icons.visibility_off : Icons.visibility,
+                  ),
+                ),
+              ),
+              onSubmitted: (_) {
+                unawaited(onRetryOnlineLogin());
+              },
             ),
             const SizedBox(height: 16),
             FilledButton.icon(
-              onPressed: onRetry,
+              onPressed: retryInProgress
+                  ? null
+                  : () {
+                      unawaited(onRetryOnlineLogin());
+                    },
+              icon: retryInProgress
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.login),
+              label: Text(
+                retryInProgress ? 'Opening Login...' : 'Login When Online',
+              ),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: retryInProgress
+                  ? null
+                  : () {
+                      unawaited(onTryAgain());
+                    },
               icon: const Icon(Icons.refresh),
               label: const Text('Try Again'),
             ),
