@@ -762,10 +762,10 @@ async function fetchSummary(){
             profitChartInstance.destroy();
         }
         profitChartInstance = new Chart(profitCtx,{
-            type:"line",
+            type:"bar",
             data:{
                 labels,
-                datasets:[{label:"Profit",data:monthlyProfit,borderColor:"#2980b9",fill:false}]
+                datasets:[{label:"Profit",data:monthlyProfit,backgroundColor:"#9ad9a6",borderColor:"#6fbd84",borderWidth:1}]
             }
         });
 
