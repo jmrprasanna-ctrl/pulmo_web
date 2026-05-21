@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
@@ -48,6 +50,34 @@ class _SavedCredential {
       password: password,
       updatedAtMs: updatedAtMs,
     );
+  }
+}
+
+class _PendingPdfTransfer {
+  _PendingPdfTransfer({
+    required this.fileName,
+    required this.totalChunks,
+  }) : chunks = List<String?>.filled(totalChunks, null, growable: false);
+
+  final String fileName;
+  final int totalChunks;
+  final List<String?> chunks;
+
+  void setChunk(int index, String data) {
+    if (index < 0 || index >= totalChunks) return;
+    chunks[index] = data;
+  }
+
+  String assembleBase64() {
+    final StringBuffer buffer = StringBuffer();
+    for (int index = 0; index < chunks.length; index += 1) {
+      final String? part = chunks[index];
+      if (part == null) {
+        throw StateError('Missing PDF chunk $index/$totalChunks');
+      }
+      buffer.write(part);
+    }
+    return buffer.toString();
   }
 }
 
@@ -105,6 +135,8 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
   String _preferredLoginPassword = '';
   bool _offlinePasswordVisible = false;
   bool _isOfflineRetryInProgress = false;
+  final Map<String, _PendingPdfTransfer> _pendingPdfTransfers =
+      <String, _PendingPdfTransfer>{};
 
   @override
   void initState() {
@@ -138,6 +170,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
               _hasMainFrameError = false;
               _errorText = '';
               _currentUrl = url;
+              _pendingPdfTransfers.clear();
               if (_isLoginPageUrl(url)) {
                 _credentialPromptShownForCurrentLogin = false;
               }
@@ -528,19 +561,72 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
       final dynamic payload = jsonDecode(rawMessage);
       if (payload is! Map) return;
       final String type = (payload['type'] ?? '').toString().trim();
-      if (type != 'pdf-base64') return;
-      final String encodedData = (payload['data'] ?? '').toString().trim();
-      if (encodedData.isEmpty) return;
-      final String fileName = _sanitizePdfFileName(
-        (payload['filename'] ?? 'Document.pdf').toString(),
-      );
-      await _saveAndOpenPdf(fileName, encodedData);
-    } catch (_) {
+      switch (type) {
+        case 'pdf-base64':
+          await _handleSinglePdfPayload(payload);
+          return;
+        case 'pdf-start':
+          _handleChunkedPdfStart(payload);
+          return;
+        case 'pdf-chunk':
+          _handleChunkedPdfData(payload);
+          return;
+        case 'pdf-complete':
+          await _handleChunkedPdfComplete(payload);
+          return;
+        default:
+          return;
+      }
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to open PDF from app view.')),
+        SnackBar(content: Text('Failed to open PDF from app view. $error')),
       );
     }
+  }
+
+  Future<void> _handleSinglePdfPayload(Map payload) async {
+    final String encodedData = (payload['data'] ?? '').toString().trim();
+    if (encodedData.isEmpty) return;
+    final String fileName = _sanitizePdfFileName(
+      (payload['filename'] ?? 'Document.pdf').toString(),
+    );
+    await _saveAndOpenPdf(fileName, encodedData);
+  }
+
+  void _handleChunkedPdfStart(Map payload) {
+    final String transferId = (payload['transferId'] ?? '').toString().trim();
+    final String fileName = _sanitizePdfFileName(
+      (payload['filename'] ?? 'Document.pdf').toString(),
+    );
+    final int totalChunks = int.tryParse(
+          (payload['totalChunks'] ?? '').toString(),
+        ) ??
+        0;
+    if (transferId.isEmpty || totalChunks <= 0) return;
+    _pendingPdfTransfers[transferId] = _PendingPdfTransfer(
+      fileName: fileName,
+      totalChunks: totalChunks,
+    );
+  }
+
+  void _handleChunkedPdfData(Map payload) {
+    final String transferId = (payload['transferId'] ?? '').toString().trim();
+    final int index = int.tryParse((payload['index'] ?? '').toString()) ?? -1;
+    final String chunk = (payload['data'] ?? '').toString();
+    if (transferId.isEmpty || index < 0 || chunk.isEmpty) return;
+    final _PendingPdfTransfer? transfer = _pendingPdfTransfers[transferId];
+    if (transfer == null) return;
+    transfer.setChunk(index, chunk);
+  }
+
+  Future<void> _handleChunkedPdfComplete(Map payload) async {
+    final String transferId = (payload['transferId'] ?? '').toString().trim();
+    if (transferId.isEmpty) return;
+    final _PendingPdfTransfer? transfer = _pendingPdfTransfers.remove(transferId);
+    if (transfer == null) return;
+    final String encodedData = transfer.assembleBase64();
+    await _saveAndOpenPdf(transfer.fileName, encodedData);
   }
 
   String _sanitizePdfFileName(String input) {
@@ -553,20 +639,67 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
   }
 
   Future<void> _saveAndOpenPdf(String fileName, String encodedData) async {
-    final List<int> bytes = base64Decode(encodedData);
-    final Directory tempDir = await Directory.systemTemp.createTemp('axis_pdf_');
-    final File pdfFile = File('${tempDir.path}${Platform.pathSeparator}$fileName');
+    final List<int> bytes = base64Decode(base64.normalize(encodedData));
+    final Directory saveDir = await _resolvePdfSaveDirectory();
+    final File pdfFile = File('${saveDir.path}${Platform.pathSeparator}$fileName');
     await pdfFile.writeAsBytes(bytes, flush: true);
 
-    final bool opened = await launchUrl(
-      Uri.file(pdfFile.path),
-      mode: LaunchMode.externalApplication,
+    final dynamic openResult = await OpenFilex.open(
+      pdfFile.path,
+      type: 'application/pdf',
     );
+    final String resultType = String(openResult?.type ?? '').toLowerCase();
+    final bool opened = resultType.contains('done');
     if (!opened && mounted) {
+      final String message = String(openResult?.message ?? '').trim();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('PDF saved but cannot open: ${pdfFile.path}')),
+        SnackBar(
+          content: Text(
+            message.isNotEmpty
+                ? 'PDF saved to ${pdfFile.path}, but open failed: $message'
+                : 'PDF saved to ${pdfFile.path}, but no app could open it.',
+          ),
+        ),
+      );
+    } else if (opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('PDF saved to ${pdfFile.path}')),
       );
     }
+  }
+
+  Future<Directory> _resolvePdfSaveDirectory() async {
+    if (Platform.isAndroid) {
+      try {
+        final Directory publicDownloadDir =
+            Directory('/storage/emulated/0/Download');
+        if (!await publicDownloadDir.exists()) {
+          await publicDownloadDir.create(recursive: true);
+        }
+        return publicDownloadDir;
+      } catch (_) {
+        // Fallback to app-specific external storage when public download
+        // directory is not writable on this Android version/device.
+      }
+
+      final Directory? externalDir = await getExternalStorageDirectory();
+      if (externalDir != null) {
+        final Directory downloadDir =
+            Directory('${externalDir.path}${Platform.pathSeparator}downloads');
+        if (!await downloadDir.exists()) {
+          await downloadDir.create(recursive: true);
+        }
+        return downloadDir;
+      }
+    }
+
+    final Directory docsDir = await getApplicationDocumentsDirectory();
+    final Directory downloadDir =
+        Directory('${docsDir.path}${Platform.pathSeparator}downloads');
+    if (!await downloadDir.exists()) {
+      await downloadDir.create(recursive: true);
+    }
+    return downloadDir;
   }
 
   Future<void> _installPdfSaveBridge() async {
@@ -622,11 +755,40 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
                       var dataUrl = String(reader.result || '');
                       var commaIndex = dataUrl.indexOf(',');
                       var base64 = commaIndex >= 0 ? dataUrl.substring(commaIndex + 1) : dataUrl;
-                      bridge.postMessage(JSON.stringify({
-                        type: 'pdf-base64',
+                      var postPayload = function(payload) {
+                        bridge.postMessage(JSON.stringify(payload));
+                      };
+                      var chunkSize = 120000;
+                      if (base64.length <= chunkSize) {
+                        postPayload({
+                          type: 'pdf-base64',
+                          filename: safeFileName,
+                          data: base64
+                        });
+                        return;
+                      }
+                      var transferId = 'pdf_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2);
+                      var totalChunks = Math.ceil(base64.length / chunkSize);
+                      postPayload({
+                        type: 'pdf-start',
+                        transferId: transferId,
                         filename: safeFileName,
-                        data: base64
-                      }));
+                        totalChunks: totalChunks
+                      });
+                      for (var chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
+                        var start = chunkIndex * chunkSize;
+                        var end = Math.min(start + chunkSize, base64.length);
+                        postPayload({
+                          type: 'pdf-chunk',
+                          transferId: transferId,
+                          index: chunkIndex,
+                          data: base64.slice(start, end)
+                        });
+                      }
+                      postPayload({
+                        type: 'pdf-complete',
+                        transferId: transferId
+                      });
                     } catch (_) {
                       if (originalSave) {
                         originalSave.call(this, fileName, options);
