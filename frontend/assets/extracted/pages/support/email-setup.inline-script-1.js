@@ -1,5 +1,6 @@
 const DEFAULT_COMPANY_NAME = "PULMO TECHNOLOGIES";
 const DEFAULT_MAPPED_DB = "inventory";
+const DEFAULT_FROM_EMAIL = "pulmotechnologies@gmail.com";
 let isLoadingMappedSetup = false;
 let adminMappedOptionsCache = null;
 
@@ -29,7 +30,11 @@ function normalizeDbName(value) {
 }
 
 function normalizeEmail(value) {
-    return String(value || "").trim().toLowerCase();
+    const normalized = String(value || "").trim().toLowerCase();
+    if (normalized === "pulmotechnoogies@gmail.com") {
+        return DEFAULT_FROM_EMAIL;
+    }
+    return normalized;
 }
 
 function normalizeCompanyName(value) {
@@ -60,7 +65,7 @@ function mergeMappedOptionArrays(primary = [], secondary = []) {
         upsertMappedOption(map, {
             database_name: DEFAULT_MAPPED_DB,
             company_name: DEFAULT_COMPANY_NAME,
-            email: "pulmotechnoogies@gmail.com",
+            email: DEFAULT_FROM_EMAIL,
         });
     }
     return Array.from(map.values()).sort((a, b) => {
@@ -137,7 +142,7 @@ function getSelectedMappedOption(setup) {
     return mappedOptions.find((item) => item.database_name === selectedDb) || mappedOptions[0] || {
         database_name: DEFAULT_MAPPED_DB,
         company_name: DEFAULT_COMPANY_NAME,
-        email: "pulmotechnoogies@gmail.com",
+        email: DEFAULT_FROM_EMAIL,
     };
 }
 
@@ -196,12 +201,19 @@ function applyMappedSelectionToBranding(setup, options = {}) {
     const smtpUserEl = document.getElementById("smtp_user");
     const subjectEl = document.getElementById("subject_template");
 
-    if (fromNameEl) fromNameEl.value = companyName;
-    if (companyEmail) {
-        if (fromEmailEl) fromEmailEl.value = companyEmail;
-        if (smtpUserEl) smtpUserEl.value = companyEmail;
+    const fillIfEmpty = !!options.fillIfEmpty;
+    if (fromNameEl && (fillIfEmpty || !String(fromNameEl.value || "").trim())) {
+        fromNameEl.value = companyName;
     }
-    if (!options.keepSubject && subjectEl) {
+    if (companyEmail) {
+        if (fromEmailEl && (fillIfEmpty || !String(fromEmailEl.value || "").trim())) {
+            fromEmailEl.value = companyEmail;
+        }
+        if (smtpUserEl && (fillIfEmpty || !String(smtpUserEl.value || "").trim())) {
+            smtpUserEl.value = companyEmail;
+        }
+    }
+    if (!options.keepSubject && subjectEl && (fillIfEmpty || !String(subjectEl.value || "").trim())) {
         subjectEl.value = buildCompanySubject(subjectEl.value, companyName);
     }
     refreshMappedHint(setup);
@@ -220,7 +232,7 @@ function setForm(setup) {
     document.getElementById("from_email").value = setup.from_email || "";
     document.getElementById("subject_template").value = setup.subject_template || `Invoice {{invoice_no}} - ${DEFAULT_COMPANY_NAME}`;
     document.getElementById("body_template").value = setup.body_template || `Dear {{customer_name}},\n\nPlease find attached your invoice {{invoice_no}}.\n\nThank you.\n${DEFAULT_COMPANY_NAME}`;
-    applyMappedSelectionToBranding(setup || {}, { keepSubject: false });
+    applyMappedSelectionToBranding(setup || {}, { keepSubject: false, fillIfEmpty: false });
 }
 
 function applyTemplateByType() {

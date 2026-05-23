@@ -4,7 +4,7 @@ const db = require("../config/database");
 
 const INVENTORY_DB_NAME = "inventory";
 const DEFAULT_COMPANY_NAME = "PULMO TECHNOLOGIES";
-const DEFAULT_FROM_EMAIL = "pulmotechnoogies@gmail.com";
+const DEFAULT_FROM_EMAIL = "pulmotechnologies@gmail.com";
 const RESERVED_DATABASES = new Set(["postgres", "template0", "template1"]);
 const CONTROL_DB_NAME = normalizeDatabaseName(process.env.DB_NAME || INVENTORY_DB_NAME) || INVENTORY_DB_NAME;
 
@@ -15,6 +15,9 @@ function normalizeDatabaseName(value) {
 function normalizeEmail(value) {
   const normalized = String(value || "").trim().toLowerCase();
   if (!normalized) return "";
+  if (normalized === "pulmotechnoogies@gmail.com") {
+    return "pulmotechnologies@gmail.com";
+  }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return "";
   return normalized;
 }
@@ -370,15 +373,22 @@ function applyMappedCompanyBranding(setupLike = {}, mappedOption = {}) {
   const companyName = normalizeCompanyName(mappedOption.company_name);
   const companyEmail = normalizeEmail(mappedOption.email);
   const src = setupLike && typeof setupLike.toJSON === "function" ? setupLike.toJSON() : { ...(setupLike || {}) };
-  if (!companyName) {
-    return src;
-  }
   const branded = { ...src };
-  branded.from_name = companyName;
-  branded.subject_template = buildCompanySubject(src.subject_template, companyName);
+  if (companyName) {
+    if (!String(branded.from_name || "").trim()) {
+      branded.from_name = companyName;
+    }
+    if (!String(branded.subject_template || "").trim()) {
+      branded.subject_template = buildCompanySubject("", companyName);
+    }
+  }
   if (companyEmail) {
-    branded.from_email = companyEmail;
-    branded.smtp_user = companyEmail;
+    if (!String(branded.from_email || "").trim()) {
+      branded.from_email = companyEmail;
+    }
+    if (!String(branded.smtp_user || "").trim()) {
+      branded.smtp_user = companyEmail;
+    }
   }
   return branded;
 }

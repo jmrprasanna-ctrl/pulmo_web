@@ -416,6 +416,9 @@ function normalizeCompanyCode(value) {
 function normalizeEmail(value) {
   const normalized = String(value || "").trim().toLowerCase();
   if (!normalized) return "";
+  if (normalized === "pulmotechnoogies@gmail.com") {
+    return "pulmotechnologies@gmail.com";
+  }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return "";
   return normalized.slice(0, 200);
 }
@@ -1963,8 +1966,12 @@ async function syncMappedEmailSetupForDatabase(normalizedMapping) {
       from_name: companyName,
       subject_template: subjectTemplate,
     };
-    if (mappedEmail) {
+    const existingSmtpUser = String(row?.smtp_user || "").trim();
+    const existingFromEmail = String(row?.from_email || "").trim();
+    if (mappedEmail && !existingSmtpUser) {
       payload.smtp_user = mappedEmail;
+    }
+    if (mappedEmail && !existingFromEmail) {
       payload.from_email = mappedEmail;
     }
     await row.update(payload);
