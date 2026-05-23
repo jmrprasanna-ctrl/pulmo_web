@@ -189,11 +189,16 @@
             payload.drive_credentials_json = rawCredentials;
         }
         setBusy("testDriveBtn", true);
+        setDriveStatus("Testing Google Drive...", false);
         try {
             const res = await request("/system-backup/drive/test", "POST", payload);
             const root = res?.result?.folder_path || res?.result?.root_folder_name || "AXIS CMS PULMO";
             notifySuccess(`${res?.message || "Google Drive connection successful."} | ${root}`, 3400);
             setDriveStatus(`Connected: ${root}`, false);
+        } catch (err) {
+            const message = err?.message || "Google Drive test failed.";
+            setDriveStatus(message, true);
+            notifyError(message, 4200);
         } finally {
             setBusy("testDriveBtn", false);
         }
@@ -351,7 +356,7 @@
 
         dbSelectEl.addEventListener("change", handleDatabaseChange);
         byId("saveBackupConfigBtn").addEventListener("click", () => saveBackupConfig().catch((err) => notifyError(err.message || "Failed to save backup settings.")));
-        byId("testDriveBtn").addEventListener("click", () => testDrive().catch((err) => { setDriveStatus(err.message || "Drive test failed.", true); notifyError(err.message || "Drive test failed."); }));
+        byId("testDriveBtn").addEventListener("click", () => testDrive());
         byId("syncInvoicesBtn").addEventListener("click", () => syncInvoicesAndQuotations().catch((err) => notifyError(err.message || "Failed to sync invoice/quotation backups.")));
         byId("runDbBackupBtn").addEventListener("click", () => runDatabaseBackupNow().catch((err) => notifyError(err.message || "Failed to run DB backup.")));
         byId("refreshHistoryBtn").addEventListener("click", () => loadBackupHistory().catch((err) => notifyError(err.message || "Failed to refresh backup history.")));
