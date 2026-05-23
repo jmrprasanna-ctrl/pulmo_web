@@ -1139,10 +1139,27 @@ exports.listDatabaseBackupHistory = async (req, res) => {
 
     let autoResult = { skipped: true, reason: "Not requested." };
     if (autoRun) {
-      autoResult = await ensureDailyDatabaseBackupIfEnabled(targetDb);
+      try {
+        autoResult = await ensureDailyDatabaseBackupIfEnabled(targetDb);
+      } catch (autoErr) {
+        autoResult = {
+          skipped: true,
+          reason: autoErr?.message || "Auto daily backup failed.",
+          error: true,
+        };
+      }
     }
 
-    const entries = await syncDatabaseEntriesWithDrive(targetDb);
+    let entries = [];
+    try {
+      entries = await syncDatabaseEntriesWithDrive(targetDb);
+    } catch (syncErr) {
+      entries = await getBackupEntries(targetDb, "db").catch(() => []);
+      autoResult = {
+        ...autoResult,
+        sync_error: syncErr?.message || "Drive history sync failed.",
+      };
+    }
     res.json({
       database_name: targetDb,
       auto_daily: autoResult,

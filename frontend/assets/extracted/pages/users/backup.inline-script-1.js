@@ -242,6 +242,14 @@
     async function loadBackupHistory() {
         const dbName = selectedDatabase();
         const res = await request(`/system-backup/db-history?database_name=${encodeURIComponent(dbName)}&auto_run_daily=true`, "GET");
+        const autoDaily = res?.auto_daily || {};
+        if (autoDaily.error && autoDaily.reason) {
+            setDriveStatus(String(autoDaily.reason), true);
+            notifyError(String(autoDaily.reason), 4500);
+        } else if (autoDaily.sync_error) {
+            setDriveStatus(String(autoDaily.sync_error), true);
+            notifyError(String(autoDaily.sync_error), 4500);
+        }
         const rows = Array.isArray(res?.backups) ? res.backups : [];
         historyBodyEl.innerHTML = "";
         if (!rows.length) {
