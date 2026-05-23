@@ -1084,6 +1084,13 @@ exports.testGoogleDriveConnection = async (req, res) => {
         : String(settingsRow.drive_credentials_json || "").trim(),
     };
 
+    if (!String(merged.drive_credentials_json || "").trim()) {
+      return res.status(400).json({
+        message:
+          "No saved Google Drive credentials for this database. Paste Service Account JSON and click Save Backup Settings first.",
+      });
+    }
+
     const result = await testDriveConnection(merged);
     res.json({
       message: "Google Drive connection successful.",

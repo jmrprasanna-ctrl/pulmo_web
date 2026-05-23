@@ -12,6 +12,7 @@
     const historyBodyEl = byId("dbBackupHistoryBody");
 
     let currentDatabaseName = "inventory";
+    let hasSavedDriveCredentials = false;
 
     function notify(message, type = "success", duration = 2600) {
         const text = String(message || "").trim();
@@ -107,6 +108,7 @@
         autoBackupDatabaseEl.checked = !!settings.auto_backup_database;
         driveRootFolderEl.value = String(settings.drive_root_folder_name || "AXIS CMS PULMO");
         driveCredentialsEl.value = "";
+        hasSavedDriveCredentials = !!settings.credentials_saved;
 
         const savedText = settings.credentials_saved ? "Credentials saved" : "Credentials not saved";
         const emailText = settings.service_account_email ? ` (${settings.service_account_email})` : "";
@@ -124,6 +126,11 @@
             drive_root_folder_name: String(driveRootFolderEl.value || "").trim() || "AXIS CMS PULMO",
         };
         const rawCredentials = String(driveCredentialsEl.value || "").trim();
+        if (payload.drive_enabled && !rawCredentials && !hasSavedDriveCredentials) {
+            setDriveStatus("Google Drive credentials JSON is required.", true);
+            notifyError("Paste Google Drive Service Account JSON first, then Save Backup Settings.");
+            return;
+        }
         if (rawCredentials) {
             payload.drive_credentials_json = rawCredentials;
         }
@@ -173,6 +180,11 @@
             drive_root_folder_name: String(driveRootFolderEl.value || "").trim() || "AXIS CMS PULMO",
         };
         const rawCredentials = String(driveCredentialsEl.value || "").trim();
+        if (!rawCredentials && !hasSavedDriveCredentials) {
+            setDriveStatus("Google Drive credentials JSON is required.", true);
+            notifyError("No saved credentials found for selected database. Paste JSON and Save Backup Settings first.");
+            return;
+        }
         if (rawCredentials) {
             payload.drive_credentials_json = rawCredentials;
         }
