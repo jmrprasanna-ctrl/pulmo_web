@@ -201,6 +201,37 @@ function smtpSetupLabel(setup = {}, databaseName = "") {
   return `db=${String(databaseName || "").trim().toLowerCase() || "(none)"} host=${host} port=${port} secure=${secure} user=${user} pass_len=${passLength}`;
 }
 
+function normalizeCompanyName(value) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function buildPasswordResetSubject(companyNameRaw) {
+  const companyName = normalizeCompanyName(companyNameRaw) || "PULMO TECHNOLOGIES";
+  return `Password Reset - ${companyName}`;
+}
+
+async function loadMappedCompanyNamesByDatabase(client, userId) {
+  const out = {};
+  try {
+    const rs = await client.query(
+      `SELECT um.database_name, cp.company_name
+       FROM user_mappings um
+       JOIN company_profiles cp ON cp.id = um.company_profile_id
+       WHERE um.user_id = $1
+       ORDER BY um."updatedAt" DESC NULLS LAST, um.id DESC`,
+      [userId]
+    );
+    for (const row of rs.rows || []) {
+      const dbName = normalizeDbName(row?.database_name || "");
+      const companyName = normalizeCompanyName(row?.company_name || "");
+      if (!dbName || !companyName || out[dbName]) continue;
+      out[dbName] = companyName;
+    }
+  } catch (_err) {
+  }
+  return out;
+}
+
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -402,6 +433,8 @@ exports.forgotPassword = async (req, res) => {
     const resolvedSetup = await loadBestForgotPasswordEmailSetup(candidateDatabases);
     const setup = resolvedSetup.setup || {};
 
+    const mappedCompanyByDb = await loadMappedCompanyNamesByDatabase(client, user.id);
+
     const templateData = {
       user_name: String(user.username || "User"),
       username: String(user.username || "User"),
@@ -412,13 +445,10 @@ exports.forgotPassword = async (req, res) => {
       total_amount: "",
       invoice_date: new Date().toISOString().slice(0, 10),
     };
-    const defaultSubjectTemplate = "Password Recovery - PULMO TECHNOLOGIES";
     const defaultBodyTemplate = generatedTemporary
       ? "Dear {{user_name}},\n\nYour email was matched successfully. A temporary password has been generated for your account.\n\nEmail: {{email}}\nPassword: {{password}}\n\nPlease login and update your password.\n\nPULMO TECHNOLOGIES"
       : "Dear {{user_name}},\n\nYour email was matched successfully.\n\nEmail: {{email}}\nPassword: {{password}}\n\nPULMO TECHNOLOGIES";
-    const subjectTemplate = String(setup.subject_template || "").trim() || defaultSubjectTemplate;
     const bodyTemplate = String(setup.body_template || "").trim() || defaultBodyTemplate;
-    const subject = applyTemplate(subjectTemplate, templateData) || defaultSubjectTemplate;
     const textBody = applyTemplate(bodyTemplate, templateData) || applyTemplate(defaultBodyTemplate, templateData);
     const htmlBody = textBody.split("\n").map((line) => line.trim()).join("<br>");
 
@@ -438,6 +468,12 @@ exports.forgotPassword = async (req, res) => {
 
     for (let i = 0; i < retryQueue.length; i += 1) {
       const currentSetup = retryQueue[i]?.setup || {};
+      const currentDbName = normalizeDbName(retryQueue[i]?.database_name || resolvedSetup.source_database_name || INVENTORY_DB_NAME);
+      const companyForSubject =
+        normalizeCompanyName(currentSetup.from_name || "") ||
+        normalizeCompanyName(mappedCompanyByDb[currentDbName] || "") ||
+        "PULMO TECHNOLOGIES";
+      const subject = buildPasswordResetSubject(companyForSubject);
       try {
         await sendEmail({
           to: String(user.email || "").trim(),
