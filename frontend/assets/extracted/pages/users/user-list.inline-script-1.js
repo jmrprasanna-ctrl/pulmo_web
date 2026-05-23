@@ -18,14 +18,7 @@ function canShowAdminTool(path){
 
         function applyTopButtonVisibility(){
             const map = [
-                { id: "btnAddUser", path: "/users/add-user.html" },
-                { id: "btnPreference", path: "/users/preference.html" },
-                { id: "btnAccess", path: "/users/user-access.html" },
-                { id: "btnLogged", path: "/users/user-logged.html" },
-                { id: "btnEmailSetup", path: "/support/email-setup.html" },
-                { id: "btnCheckTools", path: "/tools/check-backup.html" },
-                { id: "btnBackup", path: "/tools/backup-download.html" },
-                { id: "btnUploadDb", path: "/tools/upload-db.html" }
+                { id: "btnAddUser", path: "/users/add-user.html" }
             ];
             map.forEach((item) => {
                 const el = document.getElementById(item.id);
@@ -42,17 +35,6 @@ function canShowAdminTool(path){
                 }
             };
             bindClick("btnAddUser", () => { window.location.href = "add-user.html"; });
-            bindClick("btnPreference", () => { window.location.href = "preference.html"; });
-            bindClick("btnAccess", () => { window.location.href = "user-access.html"; });
-            bindClick("btnLogged", () => { window.location.href = "user-logged.html"; });
-            bindClick("btnEmailSetup", () => { window.location.href = "../support/email-setup.html"; });
-            bindClick("btnCheckTools", checkBackupTools);
-            bindClick("btnBackup", downloadSystemBackup);
-            bindClick("btnUploadDb", openRestorePicker);
-            const restoreInput = document.getElementById("restore-db-file");
-            if(restoreInput){
-                restoreInput.addEventListener("change", restoreSystemBackup);
-            }
         }
 
         async function loadUsers(){
@@ -125,127 +107,6 @@ function canShowAdminTool(path){
             const updated = document.getElementById("healthUpdatedAt");
             if(updated){
                 updated.innerText = `Last updated: ${new Date().toLocaleString()}`;
-            }
-        }
-
-        async function downloadSystemBackup(){
-            const token = localStorage.getItem("token");
-            if(!token){
-                alert("Please login first.");
-                return;
-            }
-
-            try{
-                const apiBase = (
-                    window.BASE_URL ||
-                    `${window.location.origin.replace(/\/+$/, "")}/api`
-                ).replace(/\/+$/, "");
-                const res = await fetch(`${apiBase}/system-backup/download`, {
-                    method: "GET",
-                    headers: {
-                        "Authorization": "Bearer " + token
-                    }
-                });
-
-                if(!res.ok){
-                    const raw = await res.text();
-                    let message = "Failed to create backup";
-                    try{
-                        message = JSON.parse(raw).message || message;
-                    }catch(_err){
-                        if(raw) message = raw;
-                    }
-                    throw new Error(message);
-                }
-
-                const blob = await res.blob();
-                const disposition = res.headers.get("Content-Disposition") || "";
-                const fileNameMatch = disposition.match(/filename="([^"]+)"/i);
-                const fileName = (fileNameMatch && fileNameMatch[1]) ? fileNameMatch[1] : `inventory_backup_${Date.now()}.sql`;
-
-                                                                                                        
-                if(window.showSaveFilePicker){
-                    const handle = await window.showSaveFilePicker({
-                        suggestedName: fileName,
-                        types: [{
-                            description: "SQL Backup File",
-                            accept: {
-                                "application/sql": [".sql"],
-                                "text/sql": [".sql"],
-                                "text/plain": [".sql"]
-                            }
-                        }]
-                    });
-                    const writable = await handle.createWritable();
-                    await writable.write(blob);
-                    await writable.close();
-                }else{
-                                                                              
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = fileName;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    window.URL.revokeObjectURL(url);
-                }
-                showMessageBox("Backup downloaded");
-            }catch(err){
-                if(err && err.name === "AbortError"){
-                    return;                                
-                }
-                alert(err.message || "Failed to create backup");
-            }
-        }
-
-        async function checkBackupTools(){
-            try{
-                const status = await request("/system-backup/status", "GET");
-                const pgDump = status?.tools?.pg_dump;
-                const psql = status?.tools?.psql;
-                if(status.ok){
-                    showMessageBox("Backup tools are ready");
-                    return;
-                }
-                alert(
-                    `Tools not ready.\n\n` +
-                    `pg_dump: ${pgDump?.available ? "OK" : "Missing"}\n` +
-                    `Command: ${pgDump?.command || "N/A"}\n\n` +
-                    `psql: ${psql?.available ? "OK" : "Missing"}\n` +
-                    `Command: ${psql?.command || "N/A"}`
-                );
-            }catch(err){
-                alert(err.message || "Failed to check backup tools");
-            }
-        }
-
-        function openRestorePicker(){
-            const input = document.getElementById("restore-db-file");
-            input.value = "";
-            input.click();
-        }
-
-        async function restoreSystemBackup(event){
-            const file = event.target.files && event.target.files[0];
-            if(!file) return;
-
-            if(!file.name.toLowerCase().endsWith(".sql")){
-                alert("Please select a .sql backup file");
-                return;
-            }
-
-            if(!confirm("This will restore the uploaded SQL to the current database. Continue?")) return;
-
-            try{
-                const sqlText = await file.text();
-                await request("/system-backup/restore", "POST", {
-                    fileName: file.name,
-                    sqlText
-                });
-                showMessageBox("Database restored");
-            }catch(err){
-                alert(err.message || "Failed to restore database");
             }
         }
 

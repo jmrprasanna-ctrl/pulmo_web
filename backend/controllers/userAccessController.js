@@ -211,10 +211,8 @@ const ACCESS_MODULE_OPTIONS = [
       { path: "/users/user-preference.html", label: "User Preference", actions: ["view", "edit"] },
       { path: "/users/preference.html", label: "System Preference", actions: ["view", "edit"] },
       { path: "/users/user-logged.html", label: "User Logged Times", actions: ["view"] },
+      { path: "/users/backup.html", label: "Backup", actions: ["view", "edit"] },
       { path: "/support/email-setup.html", label: "Email Setup", actions: ["view", "edit"] },
-      { path: "/tools/check-backup.html", label: "Check Tools Button", actions: ["view"] },
-      { path: "/tools/backup-download.html", label: "Backup Button", actions: ["view"] },
-      { path: "/tools/upload-db.html", label: "Upload DB Button", actions: ["view"] },
     ],
   },
   {

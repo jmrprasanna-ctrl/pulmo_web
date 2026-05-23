@@ -1,0 +1,134 @@
+<!--
+  System: PULMO WEB SYSTEM
+  Owner : CRONIT SOLLUTIONS
+  Author: JMR Prasanna
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backup - PULMO TECHNOLOGIES</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="../../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../../assets/extracted/pages/users/backup.inline-style-1.css">
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <img src="../../assets/images/logo.png" alt="Company Logo">
+            <span>PULMO TECHNOLOGIES</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="../dashboard.html">Dashboard</a></li>
+            <li><a href="../products/product-list.html">Products</a></li>
+            <li><a href="../products/general-machine.html">Machines</a></li>
+            <li><a href="../customers/customer-list.html">Customers</a></li>
+            <li><a href="../invoices/invoice-list.html">Invoices</a></li>
+            <li><a href="../vendors/list-vendor.html">Vendors</a></li>
+            <li><a href="../expenses/expense-list.html">Expenses</a></li>
+            <li><a href="../reports/sales-report.html">Reports</a></li>
+            <li><a href="../analytics/sales-chart.html">Analytics</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <header class="page-head">
+            <h2>Backup</h2>
+            <a class="icon-btn" href="user-list.html" aria-label="Back to user list" title="Back to user list">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </a>
+        </header>
+
+        <div class="backup-quick-links">
+            <a class="icon-btn" href="user-access.html" title="Access">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4.5 12h15M12 4.5v15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+            </a>
+            <a class="icon-btn" href="user-logged.html" title="Logged">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 6v6l4 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                </svg>
+            </a>
+        </div>
+
+        <section class="card backup-section">
+            <div class="backup-grid">
+                <div>
+                    <label for="backupDatabaseSelect">Mapped Database</label>
+                    <select id="backupDatabaseSelect"></select>
+                </div>
+                <div>
+                    <label for="driveRootFolderName">Google Drive Root Folder</label>
+                    <input type="text" id="driveRootFolderName" placeholder="AXIS CMS PULMO">
+                </div>
+                <div class="status-cell">
+                    <label>Drive Status</label>
+                    <p id="driveStatusText" class="muted">Not connected</p>
+                </div>
+            </div>
+
+            <label for="driveCredentialsJson">Google Drive Service Account JSON (or base64)</label>
+            <textarea id="driveCredentialsJson" rows="6" placeholder='{"type":"service_account",...}'></textarea>
+
+            <div class="backup-checks">
+                <label><input type="checkbox" id="driveEnabled"> Enable Google Drive backup</label>
+                <label><input type="checkbox" id="autoBackupInvoice"> Invoice auto backup</label>
+                <label><input type="checkbox" id="autoBackupQuotation"> Quatation auto backup</label>
+                <label><input type="checkbox" id="autoBackupDatabase"> Auto backup DB (daily)</label>
+            </div>
+
+            <div class="backup-actions">
+                <button class="btn" id="saveBackupConfigBtn" type="button">Save Backup Settings</button>
+                <button class="btn btn-secondary" id="testDriveBtn" type="button">Test Google Drive</button>
+                <button class="btn btn-secondary" id="syncInvoicesBtn" type="button">Sync Invoice + Quatation</button>
+                <button class="btn btn-secondary" id="runDbBackupBtn" type="button">Run DB Backup Now</button>
+            </div>
+        </section>
+
+        <section class="card backup-section">
+            <h3>Database Tools</h3>
+            <div class="backup-actions">
+                <button class="btn btn-secondary" id="checkToolsBtn" type="button">Check Tools</button>
+                <button class="btn btn-secondary" id="downloadBackupBtn" type="button">Download Backup</button>
+                <button class="btn btn-secondary" id="restoreBackupBtn" type="button">Restore Upload</button>
+                <input id="restoreDbFileInput" type="file" accept=".sql" hidden>
+            </div>
+        </section>
+
+        <section class="card backup-section">
+            <div class="section-head">
+                <h3>Daily DB Backups (Google Drive)</h3>
+                <button class="icon-btn" id="refreshHistoryBtn" type="button" title="Refresh history">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M19 12a7 7 0 1 1-2.05-4.95" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        <path d="M19 5.5V9h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Database</th>
+                            <th>Backup Date</th>
+                            <th>File Name</th>
+                            <th>Size</th>
+                            <th>Drive Folder</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dbBackupHistoryBody"></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script src="../../assets/js/api.js"></script>
+    <script src="../../assets/extracted/pages/users/backup.inline-script-1.js"></script>
+</body>
+</html>
+

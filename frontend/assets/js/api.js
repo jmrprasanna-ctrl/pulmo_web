@@ -1,4 +1,4 @@
-﻿                         
+                         
                       
                             
 function resolveBaseUrl(){
@@ -439,7 +439,9 @@ function renderSidebarMenuByAccess(){
                 { path: "/users/user-list.html", label: "User List" },
                 { path: "/users/profile-list.html", label: "Profile" },
                 { path: "/users/preference.html", label: "System Preference" },
+                { path: "/users/user-logged.html", label: "Logged" },
                 { path: "/users/user-access.html", label: "Access" },
+                { path: "/users/backup.html", label: "Backup" },
                 {
                     path: "/users/mapped.html",
                     label: "Mapped",
@@ -450,7 +452,6 @@ function renderSidebarMenuByAccess(){
                         { path: "/users/inv-map.html", label: "Inv Map" }
                     ]
                 },
-                { path: "/users/user-logged.html", label: "Logged" },
                 { path: "/support/email-setup.html", label: "Email" }
             ]
         }

@@ -10,6 +10,7 @@ const db = require("../config/database");
 const EmailSetup = require("../models/EmailSetup");
 const UiSetting = require("../models/UiSetting");
 const { sendEmail } = require("../services/emailService");
+const { queueAutoInvoiceBackup, handleInvoiceDeletionBackup } = require("./systemBackupController");
 const Op = Sequelize.Op;
 const ALLOWED_WARRANTY_PERIODS = new Set(["3 month", "6 month", "1 year", "2 year"]);
 const USER_PREF_TABLE = "user_preference_settings";
@@ -602,6 +603,9 @@ exports.deleteInvoice = async (req,res)=>{
             await InvoiceImportant.destroy({ where: { id: important.id } });
         }
         await Invoice.destroy({ where: { id: invoice.id } });
+        await handleInvoiceDeletionBackup(targetDbName, invoice.id).catch((backupErr) => {
+            console.error("Google Drive invoice backup delete warning:", backupErr?.message || backupErr);
+        });
         res.json({ message: "Invoice deleted" });
     }catch(err){
         console.error(err);
@@ -963,6 +967,10 @@ exports.createInvoice = async (req,res)=>{
                 lineNo += 1;
             }
         }
+        const targetDbName = db.normalizeDatabaseName(req.databaseName || req.user?.database_name || req.headers["x-database-name"]) || INVENTORY_DB_NAME;
+        queueAutoInvoiceBackup(targetDbName, invoice.id).catch((backupErr) => {
+            console.error("Google Drive invoice backup warning:", backupErr?.message || backupErr);
+        });
         res.json({message:"Invoice created", invoice});
     }catch(err){
         console.error(err);

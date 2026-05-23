@@ -9,6 +9,7 @@ const InvoiceItem = require("../models/InvoiceItem");
 const Expense = require("../models/Expense");
 const RentalMachineCount = require("../models/RentalMachineCount");
 const RentalMachineConsumable = require("../models/RentalMachineConsumable");
+const { queueDailyDatabaseBackup } = require("./systemBackupController");
 const { Op, fn, col, where: sqWhere } = require("sequelize");
 
 const MONTH_NAMES_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -380,6 +381,13 @@ exports.getSummary = async (req,res)=>{
 
         periodStart = new Date(baseDate);
         periodEnd = new Date(baseDate);
+
+        const requestedDbName = String(
+            req.databaseName || req.user?.database_name || req.headers["x-database-name"] || process.env.DB_NAME || "inventory"
+        ).trim().toLowerCase() || "inventory";
+        queueDailyDatabaseBackup(requestedDbName).catch((backupErr) => {
+            console.error("[dashboard] Daily database backup warning:", backupErr?.message || backupErr);
+        });
 
         if(period === "week"){
             const day = periodStart.getDay();         

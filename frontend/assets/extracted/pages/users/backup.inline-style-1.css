@@ -1,0 +1,69 @@
+.backup-section {
+    margin-top: 14px;
+    padding: 14px;
+}
+
+.backup-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.backup-grid .status-cell {
+    display: flex;
+    flex-direction: column;
+    justify-content: end;
+}
+
+.backup-checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 10px;
+}
+
+.backup-checks label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+}
+
+.backup-actions {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.backup-actions .btn {
+    min-width: 160px;
+}
+
+.backup-quick-links {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.table-wrap {
+    overflow-x: auto;
+}
+
+#driveCredentialsJson {
+    width: 100%;
+    font-family: "Courier New", Courier, monospace;
+}
+
+@media (max-width: 1024px) {
+    .backup-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
