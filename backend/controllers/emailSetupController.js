@@ -91,7 +91,6 @@ function finalizeMappedOptions(map) {
 }
 
 async function resolveMappedDatabaseOptions(req) {
-  const role = getRole(req);
   const userId = getUserId(req);
   const optionMap = new Map();
 
@@ -106,7 +105,7 @@ async function resolveMappedDatabaseOptions(req) {
     const hasUserMappings = Boolean(existsRow.user_mappings);
     const hasCompanyProfiles = Boolean(existsRow.company_profiles);
 
-    if (hasCompanyDatabases && role !== "user") {
+    if (hasCompanyDatabases) {
       const companyDbRs = await db.query(
         `SELECT database_name, company_name
          FROM company_databases
@@ -141,22 +140,20 @@ async function resolveMappedDatabaseOptions(req) {
         }
       }
 
-      if (role !== "user") {
-        const anyMapRs = await db.query(
-          `SELECT DISTINCT ON (LOWER(um.database_name))
-                  um.database_name,
-                  cp.company_name,
-                  COALESCE(NULLIF(TRIM(um.mapped_email), ''), cp.email) AS email
-           FROM user_mappings um
-           LEFT JOIN company_profiles cp ON cp.id = um.company_profile_id
-           ORDER BY LOWER(um.database_name) ASC, um."updatedAt" DESC NULLS LAST, um.id DESC`
-        );
-        for (const row of rowsFromResult(anyMapRs)) {
-          const option = createMappedOption(row);
-          if (!option) continue;
-          const current = optionMap.get(option.database_name);
-          optionMap.set(option.database_name, mergeMappedOptions(current, option));
-        }
+      const anyMapRs = await db.query(
+        `SELECT DISTINCT ON (LOWER(um.database_name))
+                um.database_name,
+                cp.company_name,
+                COALESCE(NULLIF(TRIM(um.mapped_email), ''), cp.email) AS email
+         FROM user_mappings um
+         LEFT JOIN company_profiles cp ON cp.id = um.company_profile_id
+         ORDER BY LOWER(um.database_name) ASC, um."updatedAt" DESC NULLS LAST, um.id DESC`
+      );
+      for (const row of rowsFromResult(anyMapRs)) {
+        const option = createMappedOption(row);
+        if (!option) continue;
+        const current = optionMap.get(option.database_name);
+        optionMap.set(option.database_name, mergeMappedOptions(current, option));
       }
     }
   });
