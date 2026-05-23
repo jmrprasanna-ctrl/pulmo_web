@@ -1,5 +1,6 @@
 const DEFAULT_COMPANY_NAME = "PULMO TECHNOLOGIES";
 const DEFAULT_MAPPED_DB = "inventory";
+let isLoadingMappedSetup = false;
 
 function getRole() {
     return (localStorage.getItem("role") || "").toLowerCase();
@@ -184,13 +185,20 @@ function applyTemplateByType() {
     }
 }
 
-async function loadSetup() {
+async function loadSetup(mappedDatabaseName) {
     try {
-        const setup = await request("/email-setup", "GET");
+        const normalizedDb = normalizeDbName(mappedDatabaseName || "");
+        const path = normalizedDb
+            ? `/email-setup?mapped_database_name=${encodeURIComponent(normalizedDb)}`
+            : "/email-setup";
+        isLoadingMappedSetup = true;
+        const setup = await request(path, "GET");
         window.__emailSetupData = setup || {};
         setForm(window.__emailSetupData);
     } catch (err) {
         alert(err.message || "Failed to load email setup");
+    } finally {
+        isLoadingMappedSetup = false;
     }
 }
 
@@ -211,9 +219,11 @@ window.addEventListener("DOMContentLoaded", () => {
         templateTypeEl.addEventListener("change", applyTemplateByType);
     }
     if (mappedDbSelect) {
-        mappedDbSelect.addEventListener("change", () => {
-            const setup = window.__emailSetupData || {};
-            applyMappedSelectionToBranding(setup, { keepSubject: false });
+        mappedDbSelect.addEventListener("change", async () => {
+            if (isLoadingMappedSetup) return;
+            const selectedDb = normalizeDbName(mappedDbSelect.value || "");
+            if (!selectedDb) return;
+            await loadSetup(selectedDb);
         });
     }
 

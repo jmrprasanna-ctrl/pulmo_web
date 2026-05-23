@@ -22,7 +22,13 @@ function normalizeCompanyName(value) {
 }
 
 function getRole(req) {
-  return String(req?.user?.role || "").trim().toLowerCase();
+  const raw = String(req?.user?.role || "").trim().toLowerCase();
+  if (raw === "administrator") return "admin";
+  return raw;
+}
+
+function isAdminLikeRole(role) {
+  return role === "admin" || role === "manager" || role === "super_admin";
 }
 
 function getUserId(req) {
@@ -91,19 +97,23 @@ function finalizeMappedOptions(map) {
 }
 
 async function resolveMappedDatabaseOptions(req) {
+  const role = getRole(req);
   const userId = getUserId(req);
   const optionMap = new Map();
+  const userScopedDbSet = new Set();
 
   await db.withDatabase(INVENTORY_DB_NAME, async () => {
     const existsRs = await db.query(
       `SELECT to_regclass('public.company_databases') AS company_databases,
               to_regclass('public.user_mappings') AS user_mappings,
-              to_regclass('public.company_profiles') AS company_profiles`
+              to_regclass('public.company_profiles') AS company_profiles,
+              to_regclass('public.user_accesses') AS user_accesses`
     );
     const existsRow = rowsFromResult(existsRs)[0] || {};
     const hasCompanyDatabases = Boolean(existsRow.company_databases);
     const hasUserMappings = Boolean(existsRow.user_mappings);
     const hasCompanyProfiles = Boolean(existsRow.company_profiles);
+    const hasUserAccesses = Boolean(existsRow.user_accesses);
 
     if (hasCompanyDatabases) {
       const companyDbRs = await db.query(
@@ -123,23 +133,6 @@ async function resolveMappedDatabaseOptions(req) {
     }
 
     if (hasUserMappings && hasCompanyProfiles) {
-      if (userId > 0) {
-        const ownMapRs = await db.query(
-          `SELECT um.database_name, cp.company_name, COALESCE(NULLIF(TRIM(um.mapped_email), ''), cp.email) AS email
-           FROM user_mappings um
-           LEFT JOIN company_profiles cp ON cp.id = um.company_profile_id
-           WHERE um.user_id = $1
-           ORDER BY um."updatedAt" DESC NULLS LAST, um.id DESC`,
-          { bind: [userId] }
-        );
-        for (const row of rowsFromResult(ownMapRs)) {
-          const option = createMappedOption(row);
-          if (!option) continue;
-          const current = optionMap.get(option.database_name);
-          optionMap.set(option.database_name, mergeMappedOptions(current, option));
-        }
-      }
-
       const anyMapRs = await db.query(
         `SELECT DISTINCT ON (LOWER(um.database_name))
                 um.database_name,
@@ -155,16 +148,84 @@ async function resolveMappedDatabaseOptions(req) {
         const current = optionMap.get(option.database_name);
         optionMap.set(option.database_name, mergeMappedOptions(current, option));
       }
+
+      if (userId > 0) {
+        const ownMapRs = await db.query(
+          `SELECT um.database_name, cp.company_name, COALESCE(NULLIF(TRIM(um.mapped_email), ''), cp.email) AS email
+           FROM user_mappings um
+           LEFT JOIN company_profiles cp ON cp.id = um.company_profile_id
+           WHERE um.user_id = $1
+           ORDER BY um."updatedAt" DESC NULLS LAST, um.id DESC`,
+          { bind: [userId] }
+        );
+        for (const row of rowsFromResult(ownMapRs)) {
+          const option = createMappedOption(row);
+          if (!option) continue;
+          userScopedDbSet.add(option.database_name);
+          const current = optionMap.get(option.database_name);
+          optionMap.set(option.database_name, mergeMappedOptions(current, option));
+        }
+      }
+    }
+
+    if (hasUserAccesses) {
+      const allAccessDbRs = await db.query(
+        `SELECT DISTINCT LOWER(TRIM(database_name)) AS database_name
+         FROM user_accesses
+         WHERE database_name IS NOT NULL AND TRIM(database_name) <> ''
+         ORDER BY LOWER(TRIM(database_name)) ASC`
+      );
+      for (const row of rowsFromResult(allAccessDbRs)) {
+        const option = createMappedOption({ database_name: row.database_name });
+        if (!option) continue;
+        const current = optionMap.get(option.database_name);
+        optionMap.set(option.database_name, mergeMappedOptions(current, option));
+      }
+
+      if (userId > 0) {
+        const ownAccessDbRs = await db.query(
+          `SELECT DISTINCT LOWER(TRIM(database_name)) AS database_name
+           FROM user_accesses
+           WHERE user_id = $1
+             AND database_name IS NOT NULL
+             AND TRIM(database_name) <> ''
+           ORDER BY LOWER(TRIM(database_name)) ASC`,
+          { bind: [userId] }
+        );
+        for (const row of rowsFromResult(ownAccessDbRs)) {
+          const dbName = normalizeDatabaseName(row.database_name);
+          if (!dbName) continue;
+          userScopedDbSet.add(dbName);
+        }
+      }
     }
   });
 
   ensureDefaultMappedOption(optionMap, INVENTORY_DB_NAME, DEFAULT_COMPANY_NAME, DEFAULT_FROM_EMAIL);
   const requestDb = normalizeDatabaseName(req?.databaseName || req?.user?.database_name || "");
   if (requestDb) {
-    ensureDefaultMappedOption(optionMap, requestDb, requestDb === INVENTORY_DB_NAME ? DEFAULT_COMPANY_NAME : requestDb.toUpperCase(), "");
+    const fallbackName = requestDb === INVENTORY_DB_NAME ? DEFAULT_COMPANY_NAME : requestDb.toUpperCase();
+    ensureDefaultMappedOption(optionMap, requestDb, fallbackName, "");
+    userScopedDbSet.add(requestDb);
   }
 
-  return finalizeMappedOptions(optionMap);
+  let options = finalizeMappedOptions(optionMap);
+  if (!isAdminLikeRole(role)) {
+    const allowed = new Set([...userScopedDbSet].filter(Boolean));
+    if (!allowed.size) {
+      allowed.add(requestDb || INVENTORY_DB_NAME);
+    }
+    options = options.filter((item) => allowed.has(item.database_name));
+    if (!options.length) {
+      options = finalizeMappedOptions(new Map([[INVENTORY_DB_NAME, {
+        database_name: INVENTORY_DB_NAME,
+        company_name: DEFAULT_COMPANY_NAME,
+        email: DEFAULT_FROM_EMAIL,
+      }]]));
+    }
+  }
+
+  return options;
 }
 
 function resolveSelectedMappedOption(req, options = [], explicitDatabaseName) {
@@ -180,6 +241,20 @@ function resolveSelectedMappedOption(req, options = [], explicitDatabaseName) {
     company_name: DEFAULT_COMPANY_NAME,
     email: DEFAULT_FROM_EMAIL,
   };
+}
+
+async function resolveTargetDatabaseName(databaseNameRaw, fallbackRaw) {
+  const preferred = normalizeDatabaseName(databaseNameRaw || "");
+  const fallback = normalizeDatabaseName(fallbackRaw || "") || INVENTORY_DB_NAME;
+  const candidates = [preferred, fallback, INVENTORY_DB_NAME].filter(Boolean);
+  for (const candidate of candidates) {
+    try {
+      await db.registerDatabase(candidate);
+      return candidate;
+    } catch (_err) {
+    }
+  }
+  return INVENTORY_DB_NAME;
 }
 
 function buildCompanySubject(subjectTemplateRaw, companyName) {
@@ -283,6 +358,7 @@ function attachMappedMeta(json = {}, selectedOption = {}, options = []) {
   json.mapped_database_name = selectedOption.database_name || INVENTORY_DB_NAME;
   json.mapped_company_name = normalizeCompanyName(selectedOption.company_name) || null;
   json.mapped_company_email = normalizeEmail(selectedOption.email) || null;
+  json.target_database_name = selectedOption.database_name || INVENTORY_DB_NAME;
   json.mapped_options = Array.isArray(options)
     ? options.map((item) => ({
         database_name: normalizeDatabaseName(item.database_name) || null,
@@ -297,21 +373,27 @@ exports.getEmailSetup = async (req, res) => {
   try {
     const mappedOptions = await resolveMappedDatabaseOptions(req);
     const selectedOption = resolveSelectedMappedOption(req, mappedOptions, req.query?.mapped_database_name);
+    const targetDatabaseName = await resolveTargetDatabaseName(
+      selectedOption.database_name,
+      req?.databaseName || req?.user?.database_name
+    );
+    selectedOption.database_name = targetDatabaseName;
     const defaults = buildDefaults(selectedOption);
 
-    let row = await EmailSetup.findOne({ order: [["id", "ASC"]] });
-    if (!row) {
-      row = await EmailSetup.create({
-        smtp_user: defaults.smtp_user,
-        from_name: defaults.from_name,
-        from_email: defaults.from_email,
-        subject_template: defaults.subject_template,
-        body_template: defaults.body_template,
-      });
-    }
-
-    const brandedJson = applyMappedCompanyBranding(row, selectedOption);
-    const json = fillJsonFallbacks(brandedJson, defaults);
+    const json = await db.withDatabase(targetDatabaseName, async () => {
+      let row = await EmailSetup.findOne({ order: [["id", "ASC"]] });
+      if (!row) {
+        row = await EmailSetup.create({
+          smtp_user: defaults.smtp_user,
+          from_name: defaults.from_name,
+          from_email: defaults.from_email,
+          subject_template: defaults.subject_template,
+          body_template: defaults.body_template,
+        });
+      }
+      const brandedJson = applyMappedCompanyBranding(row, selectedOption);
+      return fillJsonFallbacks(brandedJson, defaults);
+    });
     attachMappedMeta(json, selectedOption, mappedOptions);
     res.json(json);
   } catch (err) {
@@ -324,46 +406,55 @@ exports.saveEmailSetup = async (req, res) => {
   try {
     const mappedOptions = await resolveMappedDatabaseOptions(req);
     const selectedOption = resolveSelectedMappedOption(req, mappedOptions, req.body?.mapped_database_name);
+    const targetDatabaseName = await resolveTargetDatabaseName(
+      selectedOption.database_name,
+      req?.databaseName || req?.user?.database_name
+    );
+    selectedOption.database_name = targetDatabaseName;
     const defaults = buildDefaults(selectedOption);
     const payload = applyMappedCompanyBranding(normalizeBody(req.body || {}, defaults), selectedOption);
-    let row = await EmailSetup.findOne({ order: [["id", "ASC"]] });
 
-    const normalizedHost = String(payload.smtp_host || "").toLowerCase();
-    const normalizedUser = String(payload.smtp_user || "").toLowerCase();
-    const isGmail =
-      normalizedHost.includes("gmail.com") ||
-      normalizedUser.endsWith("@gmail.com") ||
-      normalizedUser.endsWith("@googlemail.com");
-    const enteredPass = String(payload.smtp_pass || "");
-    const existingPass = String(row?.smtp_pass || "");
-    const activePass = enteredPass || existingPass;
-    if (isGmail && activePass) {
-      const normalizedPass = activePass.replace(/\s+/g, "");
-      if (normalizedPass.length !== 16) {
-        return res.status(400).json({
-          message: `Gmail App Password must be exactly 16 characters. Current length: ${normalizedPass.length}.`,
-        });
+    const json = await db.withDatabase(targetDatabaseName, async () => {
+      let row = await EmailSetup.findOne({ order: [["id", "ASC"]] });
+
+      const normalizedHost = String(payload.smtp_host || "").toLowerCase();
+      const normalizedUser = String(payload.smtp_user || "").toLowerCase();
+      const isGmail =
+        normalizedHost.includes("gmail.com") ||
+        normalizedUser.endsWith("@gmail.com") ||
+        normalizedUser.endsWith("@googlemail.com");
+      const enteredPass = String(payload.smtp_pass || "");
+      const existingPass = String(row?.smtp_pass || "");
+      const activePass = enteredPass || existingPass;
+      if (isGmail && activePass) {
+        const normalizedPass = activePass.replace(/\s+/g, "");
+        if (normalizedPass.length !== 16) {
+          const err = new Error(`Gmail App Password must be exactly 16 characters. Current length: ${normalizedPass.length}.`);
+          err.statusCode = 400;
+          throw err;
+        }
+        payload.smtp_pass = enteredPass ? normalizedPass : payload.smtp_pass;
       }
-      payload.smtp_pass = enteredPass ? normalizedPass : payload.smtp_pass;
-    }
 
-    if (!row) {
-      row = await EmailSetup.create(payload);
-    } else {
-      const updatePayload = { ...payload };
-      if (!String(req.body.smtp_pass || "").trim()) {
-        delete updatePayload.smtp_pass;
+      if (!row) {
+        row = await EmailSetup.create(payload);
+      } else {
+        const updatePayload = { ...payload };
+        if (!String(req.body.smtp_pass || "").trim()) {
+          delete updatePayload.smtp_pass;
+        }
+        await row.update(updatePayload);
+        row = await EmailSetup.findByPk(row.id);
       }
-      await row.update(updatePayload);
-      row = await EmailSetup.findByPk(row.id);
-    }
 
-    const brandedJson = applyMappedCompanyBranding(row, selectedOption);
-    const json = fillJsonFallbacks(brandedJson, defaults);
+      const brandedJson = applyMappedCompanyBranding(row, selectedOption);
+      return fillJsonFallbacks(brandedJson, defaults);
+    });
     attachMappedMeta(json, selectedOption, mappedOptions);
     res.json({ message: "Email setup saved.", setup: json });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: err.message || "Failed to save email setup." });
+    const code = Number(err?.statusCode || 500) || 500;
+    res.status(code).json({ message: err.message || "Failed to save email setup." });
   }
 };
