@@ -8,6 +8,7 @@
     const autoBackupQuotationEl = byId("autoBackupQuotation");
     const autoBackupDatabaseEl = byId("autoBackupDatabase");
     const driveStatusTextEl = byId("driveStatusText");
+    const driveCredentialsHintEl = byId("driveCredentialsHint");
     const restoreDbFileInputEl = byId("restoreDbFileInput");
     const historyBodyEl = byId("dbBackupHistoryBody");
 
@@ -109,6 +110,11 @@
         driveRootFolderEl.value = String(settings.drive_root_folder_name || "AXIS CMS PULMO");
         driveCredentialsEl.value = "";
         hasSavedDriveCredentials = !!settings.credentials_saved;
+        if (driveCredentialsHintEl) {
+            driveCredentialsHintEl.textContent = settings.credentials_saved
+                ? "Credentials are saved. For security, JSON is hidden after refresh. Paste new JSON only when replacing key."
+                : "No saved credentials yet. Paste full Service Account JSON and click Save Backup Settings.";
+        }
 
         const savedText = settings.credentials_saved ? "Credentials saved" : "Credentials not saved";
         const emailText = settings.service_account_email ? ` (${settings.service_account_email})` : "";
