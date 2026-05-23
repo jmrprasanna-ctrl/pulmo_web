@@ -200,11 +200,6 @@
             if (rawOauthClient) {
                 payload.drive_oauth_client_json = rawOauthClient;
             }
-            if (payload.drive_enabled && !hasConnectedOauth) {
-                setDriveStatus("Google account is not connected.", true);
-                notifyError("Click Connect Google Account before enabling Drive backup.");
-                return;
-            }
         } else {
             if (!rawServiceCredentials && !hasSavedDriveCredentials) {
                 setDriveStatus("Google Drive credentials JSON is required.", true);
