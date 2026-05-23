@@ -62,7 +62,7 @@ function ensureDefaultMappedOption(map, databaseName, companyName, email) {
   const current = map.get(normalizedDb) || { database_name: normalizedDb, company_name: "", email: "" };
   const merged = mergeMappedOptions(current, {
     database_name: normalizedDb,
-    company_name,
+    company_name: companyName,
     email,
   });
   map.set(normalizedDb, merged);
