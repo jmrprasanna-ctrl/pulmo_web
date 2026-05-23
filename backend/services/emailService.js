@@ -59,6 +59,16 @@ function isAuthError(err){
     return code === "EAUTH" || responseCode === 535 || /badcredentials|invalid login|username and password not accepted/i.test(msg);
 }
 
+function maskEmail(value){
+    const raw = String(value || "").trim().toLowerCase();
+    const at = raw.indexOf("@");
+    if(at <= 1) return raw || "(empty)";
+    const name = raw.slice(0, at);
+    const domain = raw.slice(at + 1);
+    const shown = name.length <= 2 ? `${name[0]}*` : `${name.slice(0, 2)}***`;
+    return `${shown}@${domain}`;
+}
+
 async function sendWithTransport(config, mailOptions){
     const transporter = buildTransport(config);
     return transporter.sendMail(mailOptions);
@@ -98,13 +108,20 @@ async function sendEmail({ to, subject, text, html, attachments, smtpConfig, fro
         }
         if(isAuthError(err)){
             const host = String(baseConfig.host || process.env.SMTP_HOST || "").trim().toLowerCase();
+            const userMasked = maskEmail(baseConfig.user || process.env.SMTP_USER || "");
+            const port = Number(baseConfig.port || process.env.SMTP_PORT || 587);
+            const secure = toBool(baseConfig.secure, toBool(process.env.SMTP_SECURE, false));
             if(isGmailLikeHost(host)){
                 throw new Error(
                     "Gmail SMTP authentication failed (535). Use Gmail App Password (16 chars, no spaces), not normal Gmail password. " +
-                    "Required: 2-Step Verification ON, host smtp.gmail.com, and either port 587 + Secure OFF or port 465 + Secure ON."
+                    `Required: 2-Step Verification ON, host smtp.gmail.com, and either port 587 + Secure OFF or port 465 + Secure ON. ` +
+                    `Attempted host=${host || "(empty)"} port=${port} secure=${secure ? "ON" : "OFF"} user=${userMasked}.`
                 );
             }
-            throw new Error("SMTP authentication failed (535). Check SMTP user/password and secure/port settings.");
+            throw new Error(
+                `SMTP authentication failed (535). Check SMTP user/password and secure/port settings. ` +
+                `Attempted host=${host || "(empty)"} port=${port} secure=${secure ? "ON" : "OFF"} user=${userMasked}.`
+            );
         }
         console.error("Email error:", err);
         throw err;

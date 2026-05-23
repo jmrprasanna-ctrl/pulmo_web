@@ -414,6 +414,26 @@ function smtpSignature(payload){
     ].join("|");
 }
 
+function maskEmailValue(value){
+    const raw = String(value || "").trim().toLowerCase();
+    const at = raw.indexOf("@");
+    if(at <= 1) return raw || "(empty)";
+    const local = raw.slice(0, at);
+    const domain = raw.slice(at + 1);
+    const head = local.length <= 2 ? `${local[0]}*` : `${local.slice(0, 2)}***`;
+    return `${head}@${domain}`;
+}
+
+function smtpCandidateLabel(candidate){
+    const cfg = candidate?.smtpConfig || {};
+    const host = String(cfg.host || "").trim().toLowerCase() || "(empty)";
+    const port = Number(cfg.port || 0) || 0;
+    const secure = cfg.secure ? "ON" : "OFF";
+    const user = maskEmailValue(cfg.user || "");
+    const passLength = String(cfg.pass || "").trim().length;
+    return `host=${host} port=${port} secure=${secure} user=${user} pass_len=${passLength}`;
+}
+
 function normalizeIsoDate(value) {
     const raw = String(value || "").trim();
     if(!raw) return "";
@@ -1459,7 +1479,11 @@ exports.sendInvoiceEmail = async (req, res) => {
             }
         }
         if(!sent){
-            throw lastAuthError || new Error("Failed to send invoice email.");
+            if(lastAuthError){
+                const tried = smtpCandidates.map((c) => smtpCandidateLabel(c)).join(" | ");
+                throw new Error(`${lastAuthError.message} Tried: ${tried}`);
+            }
+            throw new Error("Failed to send invoice email.");
         }
 
         const successLabel = isQuotation23Email

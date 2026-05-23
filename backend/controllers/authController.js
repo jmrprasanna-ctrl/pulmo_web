@@ -182,6 +182,25 @@ function canRetryWithNextSetup(errorLike) {
   );
 }
 
+function maskEmailValue(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  const at = raw.indexOf("@");
+  if (at <= 1) return raw || "(empty)";
+  const local = raw.slice(0, at);
+  const domain = raw.slice(at + 1);
+  const head = local.length <= 2 ? `${local[0]}*` : `${local.slice(0, 2)}***`;
+  return `${head}@${domain}`;
+}
+
+function smtpSetupLabel(setup = {}, databaseName = "") {
+  const host = String(setup.smtp_host || "").trim().toLowerCase() || "(empty)";
+  const port = Number(setup.smtp_port || 0) || 0;
+  const secure = setup.smtp_secure === true ? "ON" : "OFF";
+  const user = maskEmailValue(setup.smtp_user || "");
+  const passLength = String(setup.smtp_pass || "").trim().length;
+  return `db=${String(databaseName || "").trim().toLowerCase() || "(none)"} host=${host} port=${port} secure=${secure} user=${user} pass_len=${passLength}`;
+}
+
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -440,7 +459,11 @@ exports.forgotPassword = async (req, res) => {
     }
 
     if (!sendSucceeded) {
-      throw lastSendError || new Error("Failed to send password email.");
+      if (lastSendError) {
+        const tried = retryQueue.map((entry) => smtpSetupLabel(entry?.setup || {}, entry?.database_name || "")).join(" | ");
+        throw new Error(`${lastSendError.message} Tried: ${tried}`);
+      }
+      throw new Error("Failed to send password email.");
     }
 
     return res.json({
