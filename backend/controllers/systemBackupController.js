@@ -143,13 +143,18 @@ function isIpLikeHost(hostname) {
   return false;
 }
 
+function hasEmbeddedIpv4(hostname) {
+  const host = String(hostname || "").trim();
+  if (!host) return false;
+  return /(^|[^0-9])\d{1,3}(\.\d{1,3}){3}([^0-9]|$)/.test(host);
+}
+
 function shouldPreferOAuthJsonRedirect(req, callbackUrl) {
-  const envBase = String(process.env.PUBLIC_BASE_URL || "").trim();
-  if (envBase) return false;
   try {
     const parsed = new URL(String(callbackUrl || ""));
     const host = String(parsed.hostname || "").trim();
     if (isIpLikeHost(host)) return true;
+    if (hasEmbeddedIpv4(host)) return true;
     if (parsed.protocol !== "https:") return true;
     return false;
   } catch (_err) {
