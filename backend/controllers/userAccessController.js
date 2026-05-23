@@ -507,7 +507,7 @@ async function ensureUserMappingTable(client) {
   await client.query(`
     CREATE TABLE IF NOT EXISTS user_mappings (
       id SERIAL PRIMARY KEY,
-      user_id INTEGER UNIQUE NOT NULL,
+      user_id INTEGER NOT NULL,
       company_profile_id INTEGER NOT NULL REFERENCES ${COMPANY_REGISTRY_TABLE}(id) ON DELETE CASCADE,
       database_name VARCHAR(120) NOT NULL,
       mapped_email VARCHAR(200),
@@ -520,6 +520,42 @@ async function ensureUserMappingTable(client) {
   await client.query(`
     ALTER TABLE user_mappings
     ADD COLUMN IF NOT EXISTS mapped_email VARCHAR(200);
+  `);
+  await client.query(`
+    UPDATE user_mappings
+    SET database_name = LOWER(TRIM(database_name))
+    WHERE database_name IS NOT NULL AND TRIM(database_name) <> '';
+  `);
+  await client.query(`
+    WITH ranked AS (
+      SELECT id,
+             ROW_NUMBER() OVER (
+               PARTITION BY user_id, LOWER(COALESCE(database_name, ''))
+               ORDER BY "updatedAt" DESC NULLS LAST, id DESC
+             ) AS rn
+      FROM user_mappings
+    )
+    DELETE FROM user_mappings um
+    USING ranked r
+    WHERE um.id = r.id AND r.rn > 1;
+  `);
+  await client.query(`
+    ALTER TABLE user_mappings
+    DROP CONSTRAINT IF EXISTS user_mappings_user_id_key;
+  `);
+  await client.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'user_mappings_user_db_unique'
+          AND conrelid = 'user_mappings'::regclass
+      ) THEN
+        ALTER TABLE user_mappings
+        ADD CONSTRAINT user_mappings_user_db_unique UNIQUE (user_id, database_name);
+      END IF;
+    END $$;
   `);
 }
 
@@ -765,6 +801,7 @@ async function findMappedUserProfile(userId) {
        FROM user_mappings um
        JOIN ${COMPANY_REGISTRY_TABLE} cp ON cp.id = um.company_profile_id
        WHERE um.user_id = $1
+       ORDER BY um."updatedAt" DESC NULLS LAST, um.id DESC
        LIMIT 1`,
       [userId]
     );
@@ -1305,8 +1342,10 @@ exports.getAccessUsers = async (_req, res) => {
       });
 
       const mappingRs = await mainDbClient.query(
-        `SELECT user_id, database_name
-         FROM user_mappings`
+        `SELECT DISTINCT ON (user_id)
+            user_id, database_name
+         FROM user_mappings
+         ORDER BY user_id, "updatedAt" DESC NULLS LAST, id DESC`
       );
       (mappingRs.rows || []).forEach((row) => {
         const userId = Number(row?.user_id || 0);
@@ -2010,6 +2049,7 @@ exports.getMappedByUser = async (req, res) => {
        FROM user_mappings um
        JOIN ${COMPANY_REGISTRY_TABLE} cp ON cp.id = um.company_profile_id
        WHERE um.user_id = $1
+       ORDER BY um."updatedAt" DESC NULLS LAST, um.id DESC
        LIMIT 1`,
       [userId]
     );
@@ -2112,9 +2152,8 @@ exports.saveMapping = async (req, res) => {
       `INSERT INTO user_mappings
        (user_id, company_profile_id, database_name, mapped_email, is_verified, created_by, "createdAt", "updatedAt")
        VALUES ($1, $2, $3, $4, TRUE, $5, NOW(), NOW())
-       ON CONFLICT (user_id)
+       ON CONFLICT (user_id, database_name)
        DO UPDATE SET company_profile_id = EXCLUDED.company_profile_id,
-                     database_name = EXCLUDED.database_name,
                      mapped_email = EXCLUDED.mapped_email,
                      is_verified = TRUE,
                      "updatedAt" = NOW()`,

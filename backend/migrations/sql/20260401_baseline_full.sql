@@ -105,7 +105,7 @@ ON invoices(invoice_date, invoice_no);
                                                                    
 CREATE TABLE IF NOT EXISTS user_mappings (
   id SERIAL PRIMARY KEY,
-  user_id INTEGER UNIQUE NOT NULL,
+  user_id INTEGER NOT NULL,
   company_profile_id INTEGER NOT NULL REFERENCES company_profiles(id) ON DELETE CASCADE,
   database_name VARCHAR(120) NOT NULL,
   mapped_email VARCHAR(200),
@@ -117,6 +117,38 @@ CREATE TABLE IF NOT EXISTS user_mappings (
 
 ALTER TABLE user_mappings
 ADD COLUMN IF NOT EXISTS mapped_email VARCHAR(200);
+
+UPDATE user_mappings
+SET database_name = LOWER(TRIM(database_name))
+WHERE database_name IS NOT NULL AND TRIM(database_name) <> '';
+
+WITH ranked AS (
+  SELECT id,
+         ROW_NUMBER() OVER (
+           PARTITION BY user_id, LOWER(COALESCE(database_name, ''))
+           ORDER BY "updatedAt" DESC NULLS LAST, id DESC
+         ) AS rn
+  FROM user_mappings
+)
+DELETE FROM user_mappings um
+USING ranked r
+WHERE um.id = r.id AND r.rn > 1;
+
+ALTER TABLE user_mappings
+DROP CONSTRAINT IF EXISTS user_mappings_user_id_key;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'user_mappings_user_db_unique'
+      AND conrelid = 'user_mappings'::regclass
+  ) THEN
+    ALTER TABLE user_mappings
+    ADD CONSTRAINT user_mappings_user_db_unique UNIQUE (user_id, database_name);
+  END IF;
+END $$;
                                                                  
 
                                                                   

@@ -94,6 +94,7 @@ exports.login = async (req, res) => {
        FROM user_mappings um
        JOIN company_profiles cp ON cp.id = um.company_profile_id
        WHERE um.user_id = $1
+       ORDER BY um."updatedAt" DESC NULLS LAST, um.id DESC
        LIMIT 1`,
       [user.id]
     );

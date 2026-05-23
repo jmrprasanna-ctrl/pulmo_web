@@ -48,18 +48,6 @@ async function resolveUserAssignedDatabase(userId) {
   const client = getAuthDbClient();
   try {
     await client.connect();
-    const mappingRs = await client.query(
-      `SELECT database_name
-       FROM user_mappings
-       WHERE user_id = $1
-       LIMIT 1`,
-      [userId]
-    );
-    const mapped = db.normalizeDatabaseName(mappingRs.rows[0]?.database_name || "");
-    if (mapped) {
-      return mapped;
-    }
-
     const rs = await client.query(
       `SELECT database_name
        FROM user_accesses
@@ -72,6 +60,19 @@ async function resolveUserAssignedDatabase(userId) {
     const selected = db.normalizeDatabaseName(rs.rows[0]?.database_name || "");
     if (selected) {
       return selected;
+    }
+
+    const mappingRs = await client.query(
+      `SELECT database_name
+       FROM user_mappings
+       WHERE user_id = $1
+       ORDER BY "updatedAt" DESC NULLS LAST, id DESC
+       LIMIT 1`,
+      [userId]
+    );
+    const mapped = db.normalizeDatabaseName(mappingRs.rows[0]?.database_name || "");
+    if (mapped) {
+      return mapped;
     }
     return DEFAULT_DB;
   } catch (_err) {
@@ -89,6 +90,7 @@ async function resolveMappedDatabase(userId) {
       `SELECT database_name
        FROM user_mappings
        WHERE user_id = $1
+       ORDER BY "updatedAt" DESC NULLS LAST, id DESC
        LIMIT 1`,
       [userId]
     );
