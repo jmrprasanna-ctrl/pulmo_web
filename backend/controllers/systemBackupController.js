@@ -1,6 +1,7 @@
 const os = require("os");
 const path = require("path");
 const fs = require("fs/promises");
+const crypto = require("crypto");
 const { spawn } = require("child_process");
 const db = require("../config/database");
 const Invoice = require("../models/Invoice");
@@ -9,7 +10,11 @@ const Product = require("../models/Product");
 const Customer = require("../models/Customer");
 const {
   sanitizeDriveName,
+  normalizeDriveAuthType,
+  parseOAuthClient,
   createDriveClientFromSettings,
+  buildGoogleOAuthAuthorizeUrl,
+  exchangeGoogleOAuthCode,
   ensureFolderPath,
   uploadBufferFile,
   deleteFileSafe,
@@ -20,6 +25,8 @@ const {
 const INVENTORY_DB_NAME = "inventory";
 const BACKUP_SETTINGS_TABLE = "system_backup_settings";
 const BACKUP_ENTRIES_TABLE = "system_backup_entries";
+const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+const driveOauthStateMap = new Map();
 
 function rowsOf(result) {
   return Array.isArray(result?.[0]) ? result[0] : [];
@@ -91,15 +98,128 @@ function parseServiceAccountEmail(rawCredentialsJson) {
   }
 }
 
+function parseOAuthClientId(rawOAuthClientJson) {
+  const text = String(rawOAuthClientJson || "").trim();
+  if (!text) return "";
+  try {
+    const parsed = parseOAuthClient(text);
+    return String(parsed?.clientId || "").trim();
+  } catch (_err) {
+    return "";
+  }
+}
+
+function parseTimestamp(value) {
+  if (!value) return null;
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return null;
+  return dt;
+}
+
+function getPublicApiOrigin(req) {
+  const envBase = String(process.env.PUBLIC_BASE_URL || "").trim();
+  if (envBase) {
+    return envBase.replace(/\/+$/, "");
+  }
+  const xfProto = String(req?.headers?.["x-forwarded-proto"] || "").split(",")[0].trim();
+  const xfHost = String(req?.headers?.["x-forwarded-host"] || "").split(",")[0].trim();
+  const host = xfHost || String(req?.headers?.host || "").trim();
+  const proto = xfProto || (req?.secure ? "https" : "http");
+  if (host) {
+    return `${proto}://${host}`.replace(/\/+$/, "");
+  }
+  return "http://localhost:5000";
+}
+
+function getDriveOAuthCallbackUrl(req) {
+  return `${getPublicApiOrigin(req)}/api/system-backup/drive/oauth/callback`;
+}
+
+function createOauthStateToken() {
+  return crypto.randomBytes(24).toString("hex");
+}
+
+function pruneDriveOauthStates() {
+  const now = Date.now();
+  for (const [key, value] of driveOauthStateMap.entries()) {
+    const createdAt = Number(value?.createdAt || 0);
+    if (!createdAt || (now - createdAt) > OAUTH_STATE_TTL_MS) {
+      driveOauthStateMap.delete(key);
+    }
+  }
+}
+
+function resolveUiOrigin(req) {
+  const headerOrigin = String(req?.headers?.origin || "").trim();
+  if (/^https?:\/\//i.test(headerOrigin)) return headerOrigin.replace(/\/+$/, "");
+  const referer = String(req?.headers?.referer || "").trim();
+  if (referer) {
+    try {
+      const url = new URL(referer);
+      return `${url.protocol}//${url.host}`;
+    } catch (_err) {
+    }
+  }
+  return getPublicApiOrigin(req);
+}
+
+function sendDriveOauthPopupResult(res, { ok, message, payload, uiOrigin }) {
+  const safeOrigin = String(uiOrigin || "*");
+  const result = {
+    type: "backup_drive_oauth_result",
+    ok: Boolean(ok),
+    message: String(message || ""),
+    payload: payload || null,
+  };
+  const resultJson = JSON.stringify(result);
+  const originJson = JSON.stringify(safeOrigin);
+  const summary = result.ok ? "Google Drive connected." : "Google Drive connection failed.";
+
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.send(`<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Google Drive Connection</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 24px; color: #0f172a; }
+      .ok { color: #047857; }
+      .err { color: #b42318; }
+    </style>
+  </head>
+  <body>
+    <h3 class="${result.ok ? "ok" : "err"}">${summary}</h3>
+    <p>${String(result.message || "").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+    <p>You can close this window.</p>
+    <script>
+      (function () {
+        try {
+          if (window.opener && !window.opener.closed) {
+            window.opener.postMessage(${resultJson}, ${originJson});
+          }
+        } catch (_err) {}
+        setTimeout(function () { window.close(); }, 200);
+      })();
+    </script>
+  </body>
+</html>`);
+}
+
 async function ensureBackupTables() {
   await db.withDatabase(INVENTORY_DB_NAME, async () => {
     await db.query(`
       CREATE TABLE IF NOT EXISTS ${BACKUP_SETTINGS_TABLE} (
         id SERIAL PRIMARY KEY,
         database_name VARCHAR(120) UNIQUE NOT NULL,
+        drive_auth_type VARCHAR(32) NOT NULL DEFAULT 'service_account',
         drive_enabled BOOLEAN NOT NULL DEFAULT FALSE,
         drive_root_folder_name VARCHAR(255) NOT NULL DEFAULT 'AXIS CMS PULMO',
         drive_credentials_json TEXT,
+        drive_oauth_client_json TEXT,
+        drive_oauth_refresh_token TEXT,
+        drive_oauth_access_token TEXT,
+        drive_oauth_expiry_at TIMESTAMP,
+        drive_oauth_email VARCHAR(255),
         auto_backup_invoice BOOLEAN NOT NULL DEFAULT FALSE,
         auto_backup_quotation BOOLEAN NOT NULL DEFAULT FALSE,
         auto_backup_database BOOLEAN NOT NULL DEFAULT FALSE,
@@ -109,6 +229,31 @@ async function ensureBackupTables() {
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW()
       );
+    `);
+
+    await db.query(`
+      ALTER TABLE ${BACKUP_SETTINGS_TABLE}
+      ADD COLUMN IF NOT EXISTS drive_auth_type VARCHAR(32) NOT NULL DEFAULT 'service_account';
+    `);
+    await db.query(`
+      ALTER TABLE ${BACKUP_SETTINGS_TABLE}
+      ADD COLUMN IF NOT EXISTS drive_oauth_client_json TEXT;
+    `);
+    await db.query(`
+      ALTER TABLE ${BACKUP_SETTINGS_TABLE}
+      ADD COLUMN IF NOT EXISTS drive_oauth_refresh_token TEXT;
+    `);
+    await db.query(`
+      ALTER TABLE ${BACKUP_SETTINGS_TABLE}
+      ADD COLUMN IF NOT EXISTS drive_oauth_access_token TEXT;
+    `);
+    await db.query(`
+      ALTER TABLE ${BACKUP_SETTINGS_TABLE}
+      ADD COLUMN IF NOT EXISTS drive_oauth_expiry_at TIMESTAMP;
+    `);
+    await db.query(`
+      ALTER TABLE ${BACKUP_SETTINGS_TABLE}
+      ADD COLUMN IF NOT EXISTS drive_oauth_email VARCHAR(255);
     `);
 
     await db.query(`
@@ -137,17 +282,32 @@ async function ensureBackupTables() {
 }
 
 function toPublicSettings(row = {}) {
+  const authType = normalizeDriveAuthType(row.drive_auth_type, "service_account");
   const credentialsText = String(row.drive_credentials_json || "").trim();
+  const oauthClientText = String(row.drive_oauth_client_json || "").trim();
+  const oauthRefreshToken = String(row.drive_oauth_refresh_token || "").trim();
+  const oauthEmail = String(row.drive_oauth_email || "").trim().toLowerCase();
+  const serviceCredentialsSaved = credentialsText.length > 0;
+  const oauthClientSaved = oauthClientText.length > 0;
+  const oauthConnected = oauthClientSaved && oauthRefreshToken.length > 0;
+  const credentialsSaved = authType === "oauth" ? oauthConnected : serviceCredentialsSaved;
   return {
     database_name: normalizeDatabaseName(row.database_name) || INVENTORY_DB_NAME,
+    drive_auth_type: authType,
     drive_enabled: Boolean(row.drive_enabled),
     drive_root_folder_name: sanitizeDriveName(row.drive_root_folder_name || "AXIS CMS PULMO", "AXIS CMS PULMO"),
     auto_backup_invoice: Boolean(row.auto_backup_invoice),
     auto_backup_quotation: Boolean(row.auto_backup_quotation),
     auto_backup_database: Boolean(row.auto_backup_database),
     last_db_backup_date: normalizeIsoDate(row.last_db_backup_date) || null,
-    credentials_saved: credentialsText.length > 0,
+    credentials_saved: credentialsSaved,
+    service_credentials_saved: serviceCredentialsSaved,
     service_account_email: parseServiceAccountEmail(credentialsText) || null,
+    oauth_client_saved: oauthClientSaved,
+    oauth_connected: oauthConnected,
+    oauth_email: oauthEmail || null,
+    oauth_client_id: parseOAuthClientId(oauthClientText) || null,
+    oauth_expiry_at: parseTimestamp(row.drive_oauth_expiry_at)?.toISOString() || null,
   };
 }
 
@@ -176,9 +336,27 @@ async function saveBackupSettings(databaseName, body = {}, requesterId = null) {
   const existing = await getOrCreateBackupSettings(databaseName);
   const targetDb = normalizeDatabaseName(databaseName) || INVENTORY_DB_NAME;
 
+  const driveAuthType = normalizeDriveAuthType(body.drive_auth_type, normalizeDriveAuthType(existing.drive_auth_type, "service_account"));
   const hasCredentialsField = Object.prototype.hasOwnProperty.call(body || {}, "drive_credentials_json");
   const incomingCredentials = hasCredentialsField ? String(body.drive_credentials_json || "").trim() : null;
   const driveCredentialsJson = hasCredentialsField ? incomingCredentials : String(existing.drive_credentials_json || "");
+  const hasOauthClientField = Object.prototype.hasOwnProperty.call(body || {}, "drive_oauth_client_json");
+  const incomingOauthClient = hasOauthClientField ? String(body.drive_oauth_client_json || "").trim() : null;
+  const driveOauthClientJson = hasOauthClientField ? incomingOauthClient : String(existing.drive_oauth_client_json || "");
+  const hasOauthRefreshField = Object.prototype.hasOwnProperty.call(body || {}, "drive_oauth_refresh_token");
+  const incomingOauthRefresh = hasOauthRefreshField ? String(body.drive_oauth_refresh_token || "").trim() : null;
+  const driveOauthRefreshToken = hasOauthRefreshField ? incomingOauthRefresh : String(existing.drive_oauth_refresh_token || "");
+  const hasOauthAccessField = Object.prototype.hasOwnProperty.call(body || {}, "drive_oauth_access_token");
+  const incomingOauthAccess = hasOauthAccessField ? String(body.drive_oauth_access_token || "").trim() : null;
+  const driveOauthAccessToken = hasOauthAccessField ? incomingOauthAccess : String(existing.drive_oauth_access_token || "");
+  const hasOauthExpiryField = Object.prototype.hasOwnProperty.call(body || {}, "drive_oauth_expiry_at");
+  const incomingOauthExpiry = hasOauthExpiryField ? parseTimestamp(body.drive_oauth_expiry_at) : null;
+  const driveOauthExpiryAt = hasOauthExpiryField
+    ? (incomingOauthExpiry ? incomingOauthExpiry.toISOString() : null)
+    : (parseTimestamp(existing.drive_oauth_expiry_at)?.toISOString() || null);
+  const hasOauthEmailField = Object.prototype.hasOwnProperty.call(body || {}, "drive_oauth_email");
+  const incomingOauthEmail = hasOauthEmailField ? String(body.drive_oauth_email || "").trim().toLowerCase() : null;
+  const driveOauthEmail = hasOauthEmailField ? incomingOauthEmail : String(existing.drive_oauth_email || "").trim().toLowerCase();
 
   const driveRootFolderName = sanitizeDriveName(
     String(body.drive_root_folder_name || existing.drive_root_folder_name || "AXIS CMS PULMO").trim(),
@@ -186,9 +364,15 @@ async function saveBackupSettings(databaseName, body = {}, requesterId = null) {
   );
 
   const payload = {
+    drive_auth_type: driveAuthType,
     drive_enabled: parseBool(body.drive_enabled, Boolean(existing.drive_enabled)),
     drive_root_folder_name: driveRootFolderName,
     drive_credentials_json: driveCredentialsJson,
+    drive_oauth_client_json: driveOauthClientJson,
+    drive_oauth_refresh_token: driveOauthRefreshToken,
+    drive_oauth_access_token: driveOauthAccessToken,
+    drive_oauth_expiry_at: driveOauthExpiryAt,
+    drive_oauth_email: driveOauthEmail || null,
     auto_backup_invoice: parseBool(body.auto_backup_invoice, Boolean(existing.auto_backup_invoice)),
     auto_backup_quotation: parseBool(body.auto_backup_quotation, Boolean(existing.auto_backup_quotation)),
     auto_backup_database: parseBool(body.auto_backup_database, Boolean(existing.auto_backup_database)),
@@ -198,22 +382,34 @@ async function saveBackupSettings(databaseName, body = {}, requesterId = null) {
   return db.withDatabase(INVENTORY_DB_NAME, async () => {
     const rs = await db.query(
       `UPDATE ${BACKUP_SETTINGS_TABLE}
-       SET drive_enabled = $2,
-           drive_root_folder_name = $3,
-           drive_credentials_json = $4,
-           auto_backup_invoice = $5,
-           auto_backup_quotation = $6,
-           auto_backup_database = $7,
-           updated_by = $8,
+       SET drive_auth_type = $2,
+           drive_enabled = $3,
+           drive_root_folder_name = $4,
+           drive_credentials_json = $5,
+           drive_oauth_client_json = $6,
+           drive_oauth_refresh_token = $7,
+           drive_oauth_access_token = $8,
+           drive_oauth_expiry_at = $9,
+           drive_oauth_email = $10,
+           auto_backup_invoice = $11,
+           auto_backup_quotation = $12,
+           auto_backup_database = $13,
+           updated_by = $14,
            "updatedAt" = NOW()
        WHERE LOWER(database_name) = LOWER($1)
        RETURNING *`,
       {
         bind: [
           targetDb,
+          payload.drive_auth_type,
           payload.drive_enabled,
           payload.drive_root_folder_name,
           payload.drive_credentials_json,
+          payload.drive_oauth_client_json,
+          payload.drive_oauth_refresh_token,
+          payload.drive_oauth_access_token,
+          payload.drive_oauth_expiry_at,
+          payload.drive_oauth_email,
           payload.auto_backup_invoice,
           payload.auto_backup_quotation,
           payload.auto_backup_database,
@@ -226,15 +422,21 @@ async function saveBackupSettings(databaseName, body = {}, requesterId = null) {
 
     const created = await db.query(
       `INSERT INTO ${BACKUP_SETTINGS_TABLE}
-       (database_name, drive_enabled, drive_root_folder_name, drive_credentials_json, auto_backup_invoice, auto_backup_quotation, auto_backup_database, created_by, updated_by, "createdAt", "updatedAt")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, NOW(), NOW())
+       (database_name, drive_auth_type, drive_enabled, drive_root_folder_name, drive_credentials_json, drive_oauth_client_json, drive_oauth_refresh_token, drive_oauth_access_token, drive_oauth_expiry_at, drive_oauth_email, auto_backup_invoice, auto_backup_quotation, auto_backup_database, created_by, updated_by, "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $14, NOW(), NOW())
        RETURNING *`,
       {
         bind: [
           targetDb,
+          payload.drive_auth_type,
           payload.drive_enabled,
           payload.drive_root_folder_name,
           payload.drive_credentials_json,
+          payload.drive_oauth_client_json,
+          payload.drive_oauth_refresh_token,
+          payload.drive_oauth_access_token,
+          payload.drive_oauth_expiry_at,
+          payload.drive_oauth_email,
           payload.auto_backup_invoice,
           payload.auto_backup_quotation,
           payload.auto_backup_database,
@@ -247,9 +449,19 @@ async function saveBackupSettings(databaseName, body = {}, requesterId = null) {
 }
 
 function requireDriveReady(settings) {
+  const authType = normalizeDriveAuthType(settings?.drive_auth_type, "service_account");
   const driveEnabled = Boolean(settings?.drive_enabled);
   if (!driveEnabled) {
     throw new Error("Google Drive backup is disabled. Enable it on Backup page first.");
+  }
+  if (authType === "oauth") {
+    if (!String(settings?.drive_oauth_client_json || "").trim()) {
+      throw new Error("Google OAuth client JSON is missing. Save OAuth client JSON first.");
+    }
+    if (!String(settings?.drive_oauth_refresh_token || "").trim()) {
+      throw new Error("Google account is not connected. Click Connect Google Account first.");
+    }
+    return;
   }
   if (!String(settings?.drive_credentials_json || "").trim()) {
     throw new Error("Google Drive credentials are missing. Save Service Account JSON first.");
@@ -577,7 +789,8 @@ async function removeInvoiceBackupsInternal(databaseName, invoiceId) {
   let deletedDriveFiles = 0;
   try {
     const settingsRow = await getOrCreateBackupSettings(targetDb);
-    if (Boolean(settingsRow?.drive_enabled) && String(settingsRow?.drive_credentials_json || "").trim()) {
+    const publicSettings = toPublicSettings(settingsRow);
+    if (Boolean(settingsRow?.drive_enabled) && publicSettings.credentials_saved) {
       const drive = await createDriveClientFromSettings(settingsRow);
       for (const row of rows) {
         const fileId = String(row?.drive_file_id || "").trim();
@@ -1071,20 +1284,233 @@ exports.saveBackupConfig = async (req, res) => {
   }
 };
 
+exports.startGoogleDriveOAuth = async (req, res) => {
+  try {
+    const targetDb = await resolveTargetDatabaseName(req, req.body?.database_name || req.query?.database_name);
+    const requesterId = Number(req.user?.id || req.user?.userId || 0) || null;
+
+    const rawOauthClient = Object.prototype.hasOwnProperty.call(req.body || {}, "drive_oauth_client_json")
+      ? String(req.body?.drive_oauth_client_json || "").trim()
+      : "";
+
+    let settingsRow = await getOrCreateBackupSettings(targetDb);
+    if (rawOauthClient) {
+      settingsRow = await saveBackupSettings(
+        targetDb,
+        {
+          drive_auth_type: "oauth",
+          drive_oauth_client_json: rawOauthClient,
+        },
+        requesterId
+      );
+    }
+
+    const merged = {
+      ...settingsRow,
+      drive_auth_type: "oauth",
+      drive_oauth_client_json: rawOauthClient || String(settingsRow.drive_oauth_client_json || "").trim(),
+    };
+
+    if (!String(merged.drive_oauth_client_json || "").trim()) {
+      return res.status(400).json({
+        message: "Google OAuth client JSON is required. Paste OAuth client JSON and save before connecting.",
+      });
+    }
+
+    pruneDriveOauthStates();
+    const state = createOauthStateToken();
+    const callbackUrl = getDriveOAuthCallbackUrl(req);
+    const uiOrigin = resolveUiOrigin(req);
+
+    const auth = buildGoogleOAuthAuthorizeUrl(merged, {
+      redirectUri: callbackUrl,
+      state,
+    });
+
+    driveOauthStateMap.set(state, {
+      createdAt: Date.now(),
+      databaseName: targetDb,
+      userId: requesterId || null,
+      uiOrigin,
+      redirectUri: auth.redirectUri || callbackUrl,
+    });
+
+    return res.json({
+      message: "Open Google login to connect Drive.",
+      database_name: targetDb,
+      auth_url: auth.authUrl,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message || "Failed to start Google OAuth flow." });
+  }
+};
+
+exports.handleGoogleDriveOAuthCallback = async (req, res) => {
+  const state = String(req.query?.state || "").trim();
+  const code = String(req.query?.code || "").trim();
+  const oauthError = String(req.query?.error || "").trim();
+  const context = driveOauthStateMap.get(state);
+  if (state) {
+    driveOauthStateMap.delete(state);
+  }
+
+  if (!context) {
+    return sendDriveOauthPopupResult(res, {
+      ok: false,
+      message: "OAuth session expired or invalid state. Start connection again.",
+      payload: null,
+      uiOrigin: resolveUiOrigin(req),
+    });
+  }
+
+  if ((Date.now() - Number(context.createdAt || 0)) > OAUTH_STATE_TTL_MS) {
+    return sendDriveOauthPopupResult(res, {
+      ok: false,
+      message: "OAuth session expired. Start connection again.",
+      payload: { database_name: context.databaseName || null },
+      uiOrigin: context.uiOrigin,
+    });
+  }
+
+  if (oauthError) {
+    return sendDriveOauthPopupResult(res, {
+      ok: false,
+      message: `Google OAuth failed: ${oauthError}`,
+      payload: { database_name: context.databaseName || null },
+      uiOrigin: context.uiOrigin,
+    });
+  }
+
+  if (!code) {
+    return sendDriveOauthPopupResult(res, {
+      ok: false,
+      message: "Missing Google OAuth authorization code.",
+      payload: { database_name: context.databaseName || null },
+      uiOrigin: context.uiOrigin,
+    });
+  }
+
+  try {
+    const targetDb = normalizeDatabaseName(context.databaseName) || INVENTORY_DB_NAME;
+    const settingsRow = await getOrCreateBackupSettings(targetDb);
+    const merged = {
+      ...settingsRow,
+      drive_auth_type: "oauth",
+      drive_oauth_client_json: String(settingsRow.drive_oauth_client_json || "").trim(),
+    };
+
+    if (!merged.drive_oauth_client_json) {
+      throw new Error("Google OAuth client JSON is missing. Save OAuth client JSON first.");
+    }
+
+    const exchanged = await exchangeGoogleOAuthCode(merged, {
+      redirectUri: context.redirectUri || getDriveOAuthCallbackUrl(req),
+      code,
+    });
+    const tokens = exchanged.tokens || {};
+    const existingRefresh = String(settingsRow.drive_oauth_refresh_token || "").trim();
+    const refreshToken = String(tokens.refresh_token || "").trim() || existingRefresh;
+    if (!refreshToken) {
+      throw new Error("Google did not return refresh token. Reconnect and allow consent again.");
+    }
+    const accessToken = String(tokens.access_token || "").trim();
+    const expiryIso = Number(tokens.expiry_date || 0) > 0
+      ? new Date(Number(tokens.expiry_date)).toISOString()
+      : null;
+    const connectedEmail = String(exchanged.email || "").trim().toLowerCase()
+      || String(settingsRow.drive_oauth_email || "").trim().toLowerCase();
+
+    await saveBackupSettings(
+      targetDb,
+      {
+        drive_auth_type: "oauth",
+        drive_oauth_refresh_token: refreshToken,
+        drive_oauth_access_token: accessToken,
+        drive_oauth_expiry_at: expiryIso,
+        drive_oauth_email: connectedEmail,
+      },
+      context.userId || null
+    );
+
+    return sendDriveOauthPopupResult(res, {
+      ok: true,
+      message: connectedEmail
+        ? `Google Drive connected as ${connectedEmail}`
+        : "Google Drive connected successfully.",
+      payload: {
+        database_name: targetDb,
+        email: connectedEmail || null,
+      },
+      uiOrigin: context.uiOrigin,
+    });
+  } catch (err) {
+    return sendDriveOauthPopupResult(res, {
+      ok: false,
+      message: err.message || "Failed to complete Google OAuth callback.",
+      payload: { database_name: context.databaseName || null },
+      uiOrigin: context.uiOrigin,
+    });
+  }
+};
+
+exports.disconnectGoogleDriveOAuth = async (req, res) => {
+  try {
+    const targetDb = await resolveTargetDatabaseName(req, req.body?.database_name || req.query?.database_name);
+    const requesterId = Number(req.user?.id || req.user?.userId || 0) || null;
+    const saved = await saveBackupSettings(
+      targetDb,
+      {
+        drive_auth_type: "oauth",
+        drive_oauth_refresh_token: "",
+        drive_oauth_access_token: "",
+        drive_oauth_expiry_at: null,
+        drive_oauth_email: "",
+      },
+      requesterId
+    );
+    return res.json({
+      message: "Google account disconnected from backup settings.",
+      database_name: targetDb,
+      settings: toPublicSettings(saved),
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message || "Failed to disconnect Google account." });
+  }
+};
+
 exports.testGoogleDriveConnection = async (req, res) => {
   try {
     const targetDb = await resolveTargetDatabaseName(req, req.body?.database_name || req.query?.database_name);
     const settingsRow = await getOrCreateBackupSettings(targetDb);
+    const authType = normalizeDriveAuthType(req.body?.drive_auth_type, normalizeDriveAuthType(settingsRow.drive_auth_type, "service_account"));
 
     const merged = {
       ...settingsRow,
+      drive_auth_type: authType,
       drive_root_folder_name: String(req.body?.drive_root_folder_name || settingsRow.drive_root_folder_name || "AXIS CMS PULMO"),
       drive_credentials_json: Object.prototype.hasOwnProperty.call(req.body || {}, "drive_credentials_json")
         ? String(req.body?.drive_credentials_json || "").trim()
         : String(settingsRow.drive_credentials_json || "").trim(),
+      drive_oauth_client_json: Object.prototype.hasOwnProperty.call(req.body || {}, "drive_oauth_client_json")
+        ? String(req.body?.drive_oauth_client_json || "").trim()
+        : String(settingsRow.drive_oauth_client_json || "").trim(),
+      drive_oauth_refresh_token: String(settingsRow.drive_oauth_refresh_token || "").trim(),
+      drive_oauth_access_token: String(settingsRow.drive_oauth_access_token || "").trim(),
+      drive_oauth_expiry_at: settingsRow.drive_oauth_expiry_at || null,
     };
 
-    if (!String(merged.drive_credentials_json || "").trim()) {
+    if (authType === "oauth") {
+      if (!String(merged.drive_oauth_client_json || "").trim()) {
+        return res.status(400).json({
+          message: "Google OAuth client JSON is missing. Save OAuth client JSON first.",
+        });
+      }
+      if (!String(merged.drive_oauth_refresh_token || "").trim()) {
+        return res.status(400).json({
+          message: "Google account is not connected. Click Connect Google Account first.",
+        });
+      }
+    } else if (!String(merged.drive_credentials_json || "").trim()) {
       return res.status(400).json({
         message:
           "No saved Google Drive credentials for this database. Paste Service Account JSON and click Save Backup Settings first.",

@@ -49,6 +49,13 @@
                     <select id="backupDatabaseSelect"></select>
                 </div>
                 <div>
+                    <label for="driveAuthType">Drive Login Mode</label>
+                    <select id="driveAuthType">
+                        <option value="oauth">Personal Gmail (OAuth)</option>
+                        <option value="service_account">Service Account (Workspace)</option>
+                    </select>
+                </div>
+                <div>
                     <label for="driveRootFolderName">Google Drive Root Folder</label>
                     <input type="text" id="driveRootFolderName" placeholder="AXIS CMS PULMO">
                 </div>
@@ -58,12 +65,24 @@
                 </div>
             </div>
 
-            <label for="driveCredentialsJson">Google Drive Service Account JSON (or base64)</label>
-            <textarea id="driveCredentialsJson" rows="6" placeholder='{"type":"service_account",...}'></textarea>
-            <p id="driveCredentialsHint" class="muted">For security, saved JSON is not shown after refresh. Paste only when adding/updating key.</p>
-            <p class="backup-note">
-                Service Account works only with Google Shared Drive. If folder is in My Drive, uploads fail with storage quota error.
-            </p>
+            <div id="oauthConfigBlock" class="drive-auth-block">
+                <label for="driveOauthClientJson">Google OAuth Client JSON (for personal Gmail)</label>
+                <textarea id="driveOauthClientJson" rows="6" placeholder='{"web":{"client_id":"...","client_secret":"...","redirect_uris":["..."]}}'></textarea>
+                <p id="driveOauthHint" class="muted">Paste OAuth client JSON from Google Cloud. Saved JSON is hidden after refresh.</p>
+                <div class="backup-actions backup-actions-compact">
+                    <button class="btn btn-secondary" id="connectDriveBtn" type="button">Connect Google Account</button>
+                    <button class="btn btn-secondary" id="disconnectDriveBtn" type="button">Disconnect Google</button>
+                </div>
+            </div>
+
+            <div id="serviceAccountConfigBlock" class="drive-auth-block">
+                <label for="driveCredentialsJson">Google Drive Service Account JSON (or base64)</label>
+                <textarea id="driveCredentialsJson" rows="6" placeholder='{"type":"service_account",...}'></textarea>
+                <p id="driveCredentialsHint" class="muted">For security, saved JSON is not shown after refresh. Paste only when adding/updating key.</p>
+                <p class="backup-note">
+                    Service Account works only with Google Shared Drive. If folder is in My Drive, uploads fail with storage quota error.
+                </p>
+            </div>
 
             <div class="backup-checks">
                 <label><input type="checkbox" id="driveEnabled"> Enable Google Drive backup</label>

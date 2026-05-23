@@ -7,6 +7,9 @@ const {
   restoreBackup,
   getBackupConfig,
   saveBackupConfig,
+  startGoogleDriveOAuth,
+  handleGoogleDriveOAuthCallback,
+  disconnectGoogleDriveOAuth,
   testGoogleDriveConnection,
   syncInvoiceQuotationBackups,
   runDatabaseBackupNow,
@@ -15,12 +18,15 @@ const {
 
 const router = express.Router();
 
+router.get("/drive/oauth/callback", handleGoogleDriveOAuthCallback);
 router.use(authMiddleware, roleMiddleware(["admin"]));
 router.get("/status", getBackupStatus);
 router.get("/download", downloadBackup);
 router.post("/restore", restoreBackup);
 router.get("/config", getBackupConfig);
 router.put("/config", saveBackupConfig);
+router.post("/drive/oauth/start", startGoogleDriveOAuth);
+router.post("/drive/oauth/disconnect", disconnectGoogleDriveOAuth);
 router.post("/drive/test", testGoogleDriveConnection);
 router.post("/sync/invoices", syncInvoiceQuotationBackups);
 router.post("/sync/db-now", runDatabaseBackupNow);
