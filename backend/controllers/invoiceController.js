@@ -391,6 +391,13 @@ function buildSmtpPayload(setup){
     };
 }
 
+function toPlainSetup(setupLike){
+    if(setupLike && typeof setupLike.toJSON === "function"){
+        return setupLike.toJSON();
+    }
+    return { ...(setupLike || {}) };
+}
+
 function hasSmtpConfig(payload){
     const cfg = payload?.smtpConfig || {};
     return !!String(cfg.host || "").trim() && !!String(cfg.user || "").trim() && !!String(cfg.pass || "").trim();
@@ -1229,43 +1236,61 @@ exports.sendInvoiceEmail = async (req, res) => {
             if(!Number.isFinite(userId) || userId <= 0){
                 return {};
             }
-            const rs = await db.query(
+            const currentDbRs = await db.query(
                 `SELECT cp.company_name, COALESCE(NULLIF(TRIM(um.mapped_email), ''), cp.email) AS email
                  FROM user_mappings um
                  JOIN company_profiles cp ON cp.id = um.company_profile_id
                  WHERE um.user_id = $1
+                   AND LOWER(um.database_name) = LOWER($2)
+                 ORDER BY um."updatedAt" DESC NULLS LAST, um.id DESC
+                 LIMIT 1`,
+                { bind: [userId, currentDbName] }
+            );
+            const currentRows = Array.isArray(currentDbRs?.[0]) ? currentDbRs[0] : [];
+            if(currentRows.length){
+                return {
+                    company_name: String(currentRows[0]?.company_name || "").trim(),
+                    email: String(currentRows[0]?.email || "").trim().toLowerCase(),
+                };
+            }
+
+            const fallbackRs = await db.query(
+                `SELECT cp.company_name, COALESCE(NULLIF(TRIM(um.mapped_email), ''), cp.email) AS email
+                 FROM user_mappings um
+                 JOIN company_profiles cp ON cp.id = um.company_profile_id
+                 WHERE um.user_id = $1
+                 ORDER BY um."updatedAt" DESC NULLS LAST, um.id DESC
                  LIMIT 1`,
                 { bind: [userId] }
             );
-            const rows = Array.isArray(rs?.[0]) ? rs[0] : [];
-            if(!rows.length){
+            const fallbackRows = Array.isArray(fallbackRs?.[0]) ? fallbackRs[0] : [];
+            if(!fallbackRows.length){
                 return {};
             }
             return {
-                company_name: String(rows[0]?.company_name || "").trim(),
-                email: String(rows[0]?.email || "").trim().toLowerCase(),
+                company_name: String(fallbackRows[0]?.company_name || "").trim(),
+                email: String(fallbackRows[0]?.email || "").trim().toLowerCase(),
             };
         }).catch(() => ({}));
         const mappedCompanyName = String(mappedProfile?.company_name || "").trim();
         const mappedCompanyEmail = String(mappedProfile?.email || "").trim().toLowerCase();
         const withMappedDefaults = (setupLike) => {
-            const src = setupLike && typeof setupLike.toJSON === "function" ? setupLike.toJSON() : (setupLike || {});
-            const forceMappedBranding = !!mappedCompanyName;
+            const src = toPlainSetup(setupLike);
+            const setupSmtpUser = String(src.smtp_user || "").trim();
+            const setupFromName = String(src.from_name || "").trim();
+            const setupFromEmail = String(src.from_email || "").trim();
+            const setupSubject = String(src.subject_template || "").trim();
+            const setupBody = String(src.body_template || "").trim();
+            const smtpUser = setupSmtpUser || mappedCompanyEmail || null;
+            const fromName = setupFromName || mappedCompanyName || "PULMO TECHNOLOGIES";
+            const fromEmail = setupFromEmail || mappedCompanyEmail || null;
             return {
                 ...src,
-                smtp_user: forceMappedBranding
-                    ? (mappedCompanyEmail || String(src.smtp_user || "").trim() || null)
-                    : (String(src.smtp_user || "").trim() || mappedCompanyEmail || null),
-                from_name: forceMappedBranding
-                    ? mappedCompanyName
-                    : (String(src.from_name || "").trim() || mappedCompanyName || "PULMO TECHNOLOGIES"),
-                from_email: forceMappedBranding
-                    ? (mappedCompanyEmail || String(src.from_email || "").trim() || null)
-                    : (String(src.from_email || "").trim() || mappedCompanyEmail || null),
-                subject_template: forceMappedBranding
-                    ? `Invoice {{invoice_no}} - ${mappedCompanyName}`
-                    : (String(src.subject_template || "").trim() || `Invoice {{invoice_no}} - ${mappedCompanyName || "PULMO TECHNOLOGIES"}`),
-                body_template: String(src.body_template || "").trim() || `Dear {{customer_name}},\n\nPlease find attached your invoice {{invoice_no}}.\n\nThank you.\n${mappedCompanyName || "PULMO TECHNOLOGIES"}`
+                smtp_user: smtpUser,
+                from_name: fromName,
+                from_email: fromEmail,
+                subject_template: setupSubject || `Invoice {{invoice_no}} - ${mappedCompanyName || "PULMO TECHNOLOGIES"}`,
+                body_template: setupBody || `Dear {{customer_name}},\n\nPlease find attached your invoice {{invoice_no}}.\n\nThank you.\n${mappedCompanyName || "PULMO TECHNOLOGIES"}`
             };
         };
         const currentSetup = await EmailSetup.findOne({ order: [["id", "ASC"]] });
@@ -1275,9 +1300,31 @@ exports.sendInvoiceEmail = async (req, res) => {
         const currentSetupResolved = withMappedDefaults(currentSetup);
         const inventorySetupResolved = withMappedDefaults(inventorySetup);
 
+        const mappedOverrideVariant = (setupLike) => {
+            if(!setupLike || !mappedCompanyEmail){
+                return null;
+            }
+            const src = toPlainSetup(setupLike);
+            return {
+                ...src,
+                smtp_user: mappedCompanyEmail,
+                from_email: mappedCompanyEmail,
+                from_name: String(src.from_name || "").trim() || mappedCompanyName || "PULMO TECHNOLOGIES",
+                subject_template: String(src.subject_template || "").trim() || `Invoice {{invoice_no}} - ${mappedCompanyName || "PULMO TECHNOLOGIES"}`,
+                body_template: String(src.body_template || "").trim() || `Dear {{customer_name}},\n\nPlease find attached your invoice {{invoice_no}}.\n\nThank you.\n${mappedCompanyName || "PULMO TECHNOLOGIES"}`
+            };
+        };
+
         const smtpCandidates = [];
         const seen = new Set();
-        [currentSetupResolved, inventorySetupResolved, null].forEach((setupRow) => {
+        [
+            currentSetupResolved,
+            mappedOverrideVariant(currentSetupResolved),
+            inventorySetupResolved,
+            mappedOverrideVariant(inventorySetupResolved),
+            null
+        ].forEach((setupRow) => {
+            if(!setupRow) return;
             const payload = buildSmtpPayload(setupRow);
             if(!hasSmtpConfig(payload)) return;
             const key = smtpSignature(payload);
