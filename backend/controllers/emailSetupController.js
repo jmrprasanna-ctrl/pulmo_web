@@ -503,6 +503,13 @@ exports.saveEmailSetup = async (req, res) => {
       const enteredPass = String(payload.smtp_pass || "");
       const existingPass = String(row?.smtp_pass || "");
       const activePass = enteredPass || existingPass;
+      const existingUser = String(row?.smtp_user || "").trim().toLowerCase();
+      const incomingUser = String(payload.smtp_user || "").trim().toLowerCase();
+      if (row && !String(req.body.smtp_pass || "").trim() && existingUser && incomingUser && existingUser !== incomingUser) {
+        const err = new Error("SMTP user/email changed. Please enter App Password again before saving.");
+        err.statusCode = 400;
+        throw err;
+      }
       if (isGmail && activePass) {
         const normalizedPass = activePass.replace(/\s+/g, "");
         if (normalizedPass.length !== 16) {

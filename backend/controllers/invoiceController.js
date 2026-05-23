@@ -370,13 +370,13 @@ function isSmtpAuthFailure(err){
 }
 
 function buildSmtpPayload(setup){
-    const smtpHost = String(setup?.smtp_host || process.env.SMTP_HOST || "").trim();
-    const smtpPort = Number(setup?.smtp_port || process.env.SMTP_PORT || 587);
-    const smtpSecure = !!(setup?.smtp_secure || String(process.env.SMTP_SECURE || "").toLowerCase() === "true");
-    const smtpUser = String(setup?.smtp_user || process.env.SMTP_USER || "").trim();
-    const smtpPass = String(setup?.smtp_pass || process.env.SMTP_PASS || "").trim();
+    const smtpHost = String(setup?.smtp_host || "").trim();
+    const smtpPort = Number(setup?.smtp_port || 587);
+    const smtpSecure = !!setup?.smtp_secure;
+    const smtpUser = String(setup?.smtp_user || "").trim();
+    const smtpPass = String(setup?.smtp_pass || "").trim();
     const fromName = String(setup?.from_name || "PULMO TECHNOLOGIES").trim();
-    const fromEmail = String(setup?.from_email || process.env.SMTP_FROM || smtpUser).trim();
+    const fromEmail = String(setup?.from_email || smtpUser).trim();
     const from = fromEmail.includes("<") ? fromEmail : `"${fromName}" <${fromEmail}>`;
 
     return {

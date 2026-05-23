@@ -165,6 +165,13 @@ function buildSmtpConfigFromSetup(setup = {}) {
   };
 }
 
+function hasCompleteSmtpSetup(setup = {}) {
+  const host = String(setup.smtp_host || "").trim();
+  const user = String(setup.smtp_user || "").trim();
+  const pass = String(setup.smtp_pass || "").trim();
+  return !!host && !!user && !!pass;
+}
+
 function canRetryWithNextSetup(errorLike) {
   const message = String(errorLike?.message || "").toLowerCase();
   if (!message) return false;
@@ -396,7 +403,13 @@ exports.forgotPassword = async (req, res) => {
     const textBody = applyTemplate(bodyTemplate, templateData) || applyTemplate(defaultBodyTemplate, templateData);
     const htmlBody = textBody.split("\n").map((line) => line.trim()).join("<br>");
 
-    const allCandidateSetups = Array.isArray(resolvedSetup.candidate_setups) ? resolvedSetup.candidate_setups : [];
+    const allCandidateSetupsRaw = Array.isArray(resolvedSetup.candidate_setups) ? resolvedSetup.candidate_setups : [];
+    const allCandidateSetups = allCandidateSetupsRaw.filter((entry) => hasCompleteSmtpSetup(entry?.setup || {}));
+    if (!allCandidateSetups.length && !hasCompleteSmtpSetup(setup)) {
+      return res.status(400).json({
+        message: "Email setup is incomplete for this mapped company. Please configure SMTP Host, User and App Password in Support > Email Setup.",
+      });
+    }
     const retryQueue = allCandidateSetups.length
       ? allCandidateSetups
       : [{ database_name: resolvedSetup.source_database_name || INVENTORY_DB_NAME, setup }];

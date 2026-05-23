@@ -25,14 +25,17 @@ function normalizeSmtpPassword(host, user, pass){
 }
 
 function buildTransport(smtpConfig = {}){
-    const host = String(smtpConfig.host || process.env.SMTP_HOST || "").trim();
-    const port = Number(smtpConfig.port || process.env.SMTP_PORT || 587);
-    const secure = toBool(smtpConfig.secure, toBool(process.env.SMTP_SECURE, false));
-    const user = String(smtpConfig.user || process.env.SMTP_USER || "").trim();
+    const hasExplicitConfig = smtpConfig && typeof smtpConfig === "object" && Object.keys(smtpConfig).length > 0;
+    const host = String(hasExplicitConfig ? (smtpConfig.host || "") : (process.env.SMTP_HOST || "")).trim();
+    const port = Number(hasExplicitConfig ? (smtpConfig.port || 587) : (process.env.SMTP_PORT || 587));
+    const secure = hasExplicitConfig
+        ? toBool(smtpConfig.secure, false)
+        : toBool(process.env.SMTP_SECURE, false);
+    const user = String(hasExplicitConfig ? (smtpConfig.user || "") : (process.env.SMTP_USER || "")).trim();
     const pass = normalizeSmtpPassword(
         host,
         user,
-        String(smtpConfig.pass || process.env.SMTP_PASS || "").trim()
+        String(hasExplicitConfig ? (smtpConfig.pass || "") : (process.env.SMTP_PASS || "")).trim()
     );
 
     return nodemailer.createTransport({
