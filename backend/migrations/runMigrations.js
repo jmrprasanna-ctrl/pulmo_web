@@ -29,59 +29,11 @@ async function listTargetDatabases() {
   try {
     const rs = await admin.query("SELECT datname FROM pg_database WHERE datistemplate = false");
     const existing = new Set((rs.rows || []).map((r) => normalizeDatabaseName(r.datname)).filter(Boolean));
-    const requested = new Set(
-      ["inventory", "demo", normalizeDatabaseName(process.env.DB_NAME || "inventory")].filter(Boolean)
-    );
-
-    const inventoryClient = new Client(getDbConfig("inventory"));
-    try {
-      await inventoryClient.connect();
-
-      const profileTableRs = await inventoryClient.query("SELECT to_regclass('public.company_profiles') AS name");
-      if (profileTableRs.rows?.[0]?.name) {
-        const profileDbRs = await inventoryClient.query(
-          `SELECT DISTINCT LOWER(TRIM(database_name)) AS database_name
-           FROM company_profiles
-           WHERE database_name IS NOT NULL AND TRIM(database_name) <> ''`
-        );
-        for (const row of profileDbRs.rows || []) {
-          const name = normalizeDatabaseName(row.database_name);
-          if (name) requested.add(name);
-        }
-      }
-
-      const userMappingsTableRs = await inventoryClient.query("SELECT to_regclass('public.user_mappings') AS name");
-      if (userMappingsTableRs.rows?.[0]?.name) {
-        const mapDbRs = await inventoryClient.query(
-          `SELECT DISTINCT LOWER(TRIM(database_name)) AS database_name
-           FROM user_mappings
-           WHERE database_name IS NOT NULL AND TRIM(database_name) <> ''`
-        );
-        for (const row of mapDbRs.rows || []) {
-          const name = normalizeDatabaseName(row.database_name);
-          if (name) requested.add(name);
-        }
-      }
-
-      const createdDbTableRs = await inventoryClient.query("SELECT to_regclass('public.company_databases') AS name");
-      if (createdDbTableRs.rows?.[0]?.name) {
-        const createdDbRs = await inventoryClient.query(
-          `SELECT DISTINCT LOWER(TRIM(database_name)) AS database_name
-           FROM company_databases
-           WHERE database_name IS NOT NULL AND TRIM(database_name) <> ''`
-        );
-        for (const row of createdDbRs.rows || []) {
-          const name = normalizeDatabaseName(row.database_name);
-          if (name) requested.add(name);
-        }
-      }
-    } catch (_err) {
-                                                                      
-    } finally {
-      await inventoryClient.end().catch(() => {});
+    const requested = normalizeDatabaseName(process.env.DB_MIGRATION_DATABASE || process.env.DB_NAME || "inventory") || "inventory";
+    if (!existing.has(requested)) {
+      return [];
     }
-
-    return [...requested].filter((db) => existing.has(db)).sort((a, b) => a.localeCompare(b));
+    return [requested];
   } finally {
     await admin.end().catch(() => {});
   }

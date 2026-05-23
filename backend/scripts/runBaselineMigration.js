@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
 
-const DEFAULT_FILE = path.resolve(__dirname, "..", "migrations", "sql", "20260401_baseline_full.sql");
+const MIGRATIONS_SQL_DIR = path.resolve(__dirname, "..", "migrations", "sql");
 
 function parseArg(name) {
   const prefix = `--${name}=`;
@@ -20,12 +20,22 @@ function normalizeDbName(value) {
 function getDatabases() {
   const fromArg = parseArg("databases");
   const fromEnv = String(process.env.DB_MIGRATION_DATABASES || "").trim();
-  const source = fromArg || fromEnv || "inventory,demo";
+  const source = fromArg || fromEnv || "inventory";
   const dbs = source
     .split(",")
     .map((x) => normalizeDbName(x))
     .filter(Boolean);
   return [...new Set(dbs)];
+}
+
+function resolveDefaultSqlFile() {
+  if (!fs.existsSync(MIGRATIONS_SQL_DIR)) return "";
+  const files = fs
+    .readdirSync(MIGRATIONS_SQL_DIR)
+    .filter((name) => name.toLowerCase().endsWith(".sql"))
+    .sort((a, b) => a.localeCompare(b));
+  if (!files.length) return "";
+  return path.resolve(MIGRATIONS_SQL_DIR, files[files.length - 1]);
 }
 
 function runPsql({ filePath, database }) {
@@ -70,31 +80,34 @@ function runPsql({ filePath, database }) {
 
 async function main() {
   const inputFile = parseArg("file");
-  const filePath = path.resolve(inputFile || DEFAULT_FILE);
+  const defaultFile = resolveDefaultSqlFile();
+  const filePath = inputFile ? path.resolve(inputFile) : defaultFile;
+  if (!filePath) {
+    throw new Error(`No SQL file found in: ${MIGRATIONS_SQL_DIR}`);
+  }
   if (!fs.existsSync(filePath)) {
-    throw new Error(`Baseline SQL file not found: ${filePath}`);
+    throw new Error(`SQL file not found: ${filePath}`);
   }
 
   const databases = getDatabases();
   if (!databases.length) {
-    throw new Error("No valid databases provided. Use --databases=inventory,demo");
+    throw new Error("No valid databases provided. Use --databases=inventory");
   }
 
-  console.log("==> Running baseline migration");
+  console.log("==> Running SQL migration file");
   console.log(`    file: ${filePath}`);
   console.log(`    databases: ${databases.join(", ")}`);
 
   for (const database of databases) {
-    console.log(`==> Applying baseline on '${database}'...`);
+    console.log(`==> Applying SQL on '${database}'...`);
     await runPsql({ filePath, database });
     console.log(`    done: ${database}`);
   }
 
-  console.log("==> Baseline migration completed successfully");
+  console.log("==> SQL migration completed successfully");
 }
 
 main().catch((err) => {
-  console.error("Baseline migration failed:", err.message || err);
+  console.error("SQL migration failed:", err.message || err);
   process.exit(1);
 });
-
