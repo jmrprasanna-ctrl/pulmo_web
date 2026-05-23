@@ -298,8 +298,17 @@ async function resolveMappedDatabaseOptions(req) {
 
 function resolveSelectedMappedOption(req, options = [], explicitDatabaseName) {
   const normalizedExplicit = normalizeDatabaseName(explicitDatabaseName || "");
+  if (normalizedExplicit) {
+    const matchedExplicit = options.find((item) => item.database_name === normalizedExplicit);
+    if (matchedExplicit) return matchedExplicit;
+    return {
+      database_name: normalizedExplicit,
+      company_name: normalizedExplicit === INVENTORY_DB_NAME ? DEFAULT_COMPANY_NAME : normalizedExplicit.toUpperCase(),
+      email: normalizedExplicit === INVENTORY_DB_NAME ? DEFAULT_FROM_EMAIL : "",
+    };
+  }
   const normalizedRequestDb = normalizeDatabaseName(req?.databaseName || req?.user?.database_name || "");
-  const fallbackOrder = [normalizedExplicit, normalizedRequestDb, INVENTORY_DB_NAME].filter(Boolean);
+  const fallbackOrder = [normalizedRequestDb, INVENTORY_DB_NAME].filter(Boolean);
   for (const dbName of fallbackOrder) {
     const matched = options.find((item) => item.database_name === dbName);
     if (matched) return matched;

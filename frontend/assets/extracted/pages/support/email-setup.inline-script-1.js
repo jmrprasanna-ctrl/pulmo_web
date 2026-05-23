@@ -1,14 +1,20 @@
 const DEFAULT_COMPANY_NAME = "PULMO TECHNOLOGIES";
 const DEFAULT_MAPPED_DB = "inventory";
 let isLoadingMappedSetup = false;
+let adminMappedOptionsCache = null;
 
 function getRole() {
     return (localStorage.getItem("role") || "").toLowerCase();
 }
 
+function isAdminLikeRole(role) {
+    const normalized = String(role || "").toLowerCase();
+    return normalized === "admin" || normalized === "administrator" || normalized === "manager" || normalized === "super_admin";
+}
+
 function canManageEmailSetup() {
     const role = getRole();
-    if (role === "admin" || role === "administrator" || role === "manager" || role === "super_admin") return true;
+    if (isAdminLikeRole(role)) return true;
     if (role === "user") {
         if (typeof window.hasUserGrantedPath === "function") {
             return window.hasUserGrantedPath("/support/email-setup.html");
@@ -31,28 +37,97 @@ function normalizeCompanyName(value) {
     return normalized || DEFAULT_COMPANY_NAME;
 }
 
+function upsertMappedOption(optionMap, input = {}) {
+    const dbName = normalizeDbName(input.database_name || input.name);
+    if (!dbName) return;
+    const current = optionMap.get(dbName) || {
+        database_name: dbName,
+        company_name: dbName === DEFAULT_MAPPED_DB ? DEFAULT_COMPANY_NAME : String(dbName || "").toUpperCase(),
+        email: "",
+    };
+    const companyName = String(input.company_name || "").trim();
+    const email = normalizeEmail(input.email || "");
+    if (companyName) current.company_name = normalizeCompanyName(companyName);
+    if (email) current.email = email;
+    optionMap.set(dbName, current);
+}
+
+function mergeMappedOptionArrays(primary = [], secondary = []) {
+    const map = new Map();
+    (Array.isArray(primary) ? primary : []).forEach((item) => upsertMappedOption(map, item));
+    (Array.isArray(secondary) ? secondary : []).forEach((item) => upsertMappedOption(map, item));
+    if (!map.has(DEFAULT_MAPPED_DB)) {
+        upsertMappedOption(map, {
+            database_name: DEFAULT_MAPPED_DB,
+            company_name: DEFAULT_COMPANY_NAME,
+            email: "pulmotechnoogies@gmail.com",
+        });
+    }
+    return Array.from(map.values()).sort((a, b) => {
+        const byCompany = String(a.company_name || "").localeCompare(String(b.company_name || ""), undefined, { sensitivity: "base" });
+        if (byCompany !== 0) return byCompany;
+        return String(a.database_name || "").localeCompare(String(b.database_name || ""), undefined, { sensitivity: "base" });
+    });
+}
+
+async function loadAdminMappedOptions() {
+    if (adminMappedOptionsCache) return adminMappedOptionsCache;
+    const map = new Map();
+
+    const allDbRes = await request("/users/databases", "GET").catch(() => null);
+    const allDatabases = Array.isArray(allDbRes?.databases) ? allDbRes.databases : [];
+    allDatabases.forEach((row) => {
+        upsertMappedOption(map, {
+            database_name: row?.name,
+            company_name: row?.company_name,
+        });
+    });
+
+    const createdDbRes = await request("/users/databases/created", "GET").catch(() => null);
+    const createdDatabases = Array.isArray(createdDbRes?.databases) ? createdDbRes.databases : [];
+    createdDatabases.forEach((row) => {
+        upsertMappedOption(map, {
+            database_name: row?.name,
+            company_name: row?.company_name,
+        });
+    });
+
+    const mappedMetaRes = await request("/users/mapped/meta", "GET").catch(() => null);
+    const mappedDatabases = Array.isArray(mappedMetaRes?.databases) ? mappedMetaRes.databases : [];
+    mappedDatabases.forEach((row) => {
+        upsertMappedOption(map, {
+            database_name: row?.name,
+            company_name: row?.company_name,
+        });
+    });
+    const companyByName = new Map();
+    const companies = Array.isArray(mappedMetaRes?.companies) ? mappedMetaRes.companies : [];
+    companies.forEach((row) => {
+        const key = String(row?.company_name || "").trim().toLowerCase();
+        const email = normalizeEmail(row?.email || "");
+        if (key && email) {
+            companyByName.set(key, email);
+        }
+    });
+    map.forEach((item) => {
+        const key = String(item.company_name || "").trim().toLowerCase();
+        if (key && !item.email && companyByName.has(key)) {
+            item.email = companyByName.get(key) || "";
+        }
+    });
+
+    const merged = mergeMappedOptionArrays([], Array.from(map.values()));
+    adminMappedOptionsCache = merged;
+    return merged;
+}
+
 function getMappedDatabaseSelect() {
     return document.getElementById("mappedDatabaseSelect");
 }
 
 function getMappedOptions(setup) {
     const list = Array.isArray(setup?.mapped_options) ? setup.mapped_options : [];
-    const normalized = list
-        .map((item) => ({
-            database_name: normalizeDbName(item?.database_name),
-            company_name: normalizeCompanyName(item?.company_name),
-            email: normalizeEmail(item?.email),
-        }))
-        .filter((item) => !!item.database_name);
-    const hasInventory = normalized.some((item) => item.database_name === DEFAULT_MAPPED_DB);
-    if (!hasInventory) {
-        normalized.unshift({
-            database_name: DEFAULT_MAPPED_DB,
-            company_name: DEFAULT_COMPANY_NAME,
-            email: "pulmotechnoogies@gmail.com",
-        });
-    }
-    return normalized;
+    return mergeMappedOptionArrays(list, []);
 }
 
 function getSelectedMappedOption(setup) {
@@ -193,6 +268,17 @@ async function loadSetup(mappedDatabaseName) {
             : "/email-setup";
         isLoadingMappedSetup = true;
         const setup = await request(path, "GET");
+        const role = getRole();
+        if (isAdminLikeRole(role)) {
+            const adminOptions = await loadAdminMappedOptions();
+            const mergedOptions = mergeMappedOptionArrays(setup?.mapped_options, adminOptions);
+            setup.mapped_options = mergedOptions;
+            if (normalizedDb) {
+                setup.mapped_database_name = normalizedDb;
+            } else if (!normalizeDbName(setup?.mapped_database_name) && mergedOptions.length) {
+                setup.mapped_database_name = mergedOptions[0].database_name;
+            }
+        }
         window.__emailSetupData = setup || {};
         setForm(window.__emailSetupData);
     } catch (err) {
