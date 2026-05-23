@@ -13,6 +13,28 @@
 
     let currentDatabaseName = "inventory";
 
+    function notify(message, type = "success", duration = 2600) {
+        const text = String(message || "").trim();
+        if (!text) return;
+        if (typeof window.showMessageBox === "function") {
+            window.showMessageBox(text, type, duration);
+            return;
+        }
+        if (type === "error") {
+            console.error(text);
+        } else {
+            console.log(text);
+        }
+    }
+
+    function notifySuccess(message, duration = 2600) {
+        notify(message, "success", duration);
+    }
+
+    function notifyError(message, duration = 3200) {
+        notify(message, "error", duration);
+    }
+
     function selectedDatabase() {
         const val = String(dbSelectEl?.value || "").trim().toLowerCase();
         return val || currentDatabaseName || "inventory";
@@ -135,7 +157,7 @@
                 }
             }
 
-            alert(parts.join("\n"));
+            notifySuccess(parts.join(" | "), 3600);
             driveCredentialsEl.value = "";
             await loadBackupConfig();
             await loadBackupHistory();
@@ -158,7 +180,7 @@
         try {
             const res = await request("/system-backup/drive/test", "POST", payload);
             const root = res?.result?.folder_path || res?.result?.root_folder_name || "AXIS CMS PULMO";
-            alert(`${res?.message || "Google Drive connection successful."}\n${root}`);
+            notifySuccess(`${res?.message || "Google Drive connection successful."} | ${root}`, 3400);
             setDriveStatus(`Connected: ${root}`, false);
         } finally {
             setBusy("testDriveBtn", false);
@@ -171,10 +193,11 @@
         try {
             const res = await request("/system-backup/sync/invoices", "POST", { database_name: dbName });
             const result = res?.result || {};
-            alert(
+            notifySuccess(
                 `${res?.message || "Sync completed."}\n` +
                 `Invoices: ${Number(result.synced_invoices || 0)}\n` +
-                `Quatations: ${Number(result.synced_quotations || 0)}`
+                `Quatations: ${Number(result.synced_quotations || 0)}`,
+                3600
             );
         } finally {
             setBusy("syncInvoicesBtn", false);
@@ -186,7 +209,7 @@
         setBusy("runDbBackupBtn", true);
         try {
             const res = await request("/system-backup/sync/db-now", "POST", { database_name: dbName });
-            alert(res?.message || "Database backup uploaded.");
+            notifySuccess(res?.message || "Database backup uploaded.");
             await loadBackupHistory();
         } finally {
             setBusy("runDbBackupBtn", false);
@@ -220,22 +243,23 @@
         const pgDump = status?.tools?.pg_dump;
         const psql = status?.tools?.psql;
         if (status?.ok) {
-            alert("Backup tools are ready.");
+            notifySuccess("Backup tools are ready.");
             return;
         }
-        alert(
+        notifyError(
             `Tools not ready.\n\n` +
             `pg_dump: ${pgDump?.available ? "OK" : "Missing"}\n` +
             `Command: ${pgDump?.command || "N/A"}\n\n` +
-            `psql: ${psql?.available ? "OK" : "Missing"}\n` +
-            `Command: ${psql?.command || "N/A"}`
+            `psql: ${psql?.available ? "OK" : "Missing"} | ` +
+            `Command: ${psql?.command || "N/A"}`,
+            5000
         );
     }
 
     async function downloadBackup() {
         const token = localStorage.getItem("token");
         if (!token) {
-            alert("Please login first.");
+            notifyError("Please login first.");
             return;
         }
         const dbName = selectedDatabase();
@@ -266,6 +290,7 @@
         link.click();
         link.remove();
         window.URL.revokeObjectURL(link.href);
+        notifySuccess("Backup download started.");
     }
 
     function openRestorePicker() {
@@ -277,7 +302,7 @@
         const file = event.target.files && event.target.files[0];
         if (!file) return;
         if (!String(file.name || "").toLowerCase().endsWith(".sql")) {
-            alert("Please select a .sql backup file.");
+            notifyError("Please select a .sql backup file.");
             return;
         }
         if (!confirm("This will restore the selected SQL into the selected database. Continue?")) return;
@@ -289,7 +314,7 @@
             fileName: file.name,
             sqlText,
         });
-        alert("Database restore completed.");
+        notifySuccess("Database restore completed.");
     }
 
     async function handleDatabaseChange() {
@@ -300,7 +325,7 @@
     async function init() {
         const role = String(localStorage.getItem("role") || "").trim().toLowerCase();
         if (role !== "admin") {
-            alert("Only admin can access Backup page.");
+            notifyError("Only admin can access Backup page.");
             window.location.href = "../dashboard.html";
             return;
         }
@@ -313,18 +338,18 @@
         await handleDatabaseChange();
 
         dbSelectEl.addEventListener("change", handleDatabaseChange);
-        byId("saveBackupConfigBtn").addEventListener("click", () => saveBackupConfig().catch((err) => alert(err.message || "Failed to save backup settings.")));
-        byId("testDriveBtn").addEventListener("click", () => testDrive().catch((err) => { setDriveStatus(err.message || "Drive test failed.", true); alert(err.message || "Drive test failed."); }));
-        byId("syncInvoicesBtn").addEventListener("click", () => syncInvoicesAndQuotations().catch((err) => alert(err.message || "Failed to sync invoice/quotation backups.")));
-        byId("runDbBackupBtn").addEventListener("click", () => runDatabaseBackupNow().catch((err) => alert(err.message || "Failed to run DB backup.")));
-        byId("refreshHistoryBtn").addEventListener("click", () => loadBackupHistory().catch((err) => alert(err.message || "Failed to refresh backup history.")));
-        byId("checkToolsBtn").addEventListener("click", () => checkTools().catch((err) => alert(err.message || "Failed to check tools.")));
-        byId("downloadBackupBtn").addEventListener("click", () => downloadBackup().catch((err) => alert(err.message || "Failed to download backup.")));
+        byId("saveBackupConfigBtn").addEventListener("click", () => saveBackupConfig().catch((err) => notifyError(err.message || "Failed to save backup settings.")));
+        byId("testDriveBtn").addEventListener("click", () => testDrive().catch((err) => { setDriveStatus(err.message || "Drive test failed.", true); notifyError(err.message || "Drive test failed."); }));
+        byId("syncInvoicesBtn").addEventListener("click", () => syncInvoicesAndQuotations().catch((err) => notifyError(err.message || "Failed to sync invoice/quotation backups.")));
+        byId("runDbBackupBtn").addEventListener("click", () => runDatabaseBackupNow().catch((err) => notifyError(err.message || "Failed to run DB backup.")));
+        byId("refreshHistoryBtn").addEventListener("click", () => loadBackupHistory().catch((err) => notifyError(err.message || "Failed to refresh backup history.")));
+        byId("checkToolsBtn").addEventListener("click", () => checkTools().catch((err) => notifyError(err.message || "Failed to check tools.")));
+        byId("downloadBackupBtn").addEventListener("click", () => downloadBackup().catch((err) => notifyError(err.message || "Failed to download backup.")));
         byId("restoreBackupBtn").addEventListener("click", openRestorePicker);
-        restoreDbFileInputEl.addEventListener("change", (event) => restoreBackupFromFile(event).catch((err) => alert(err.message || "Failed to restore backup.")));
+        restoreDbFileInputEl.addEventListener("change", (event) => restoreBackupFromFile(event).catch((err) => notifyError(err.message || "Failed to restore backup.")));
     }
 
     window.addEventListener("DOMContentLoaded", () => {
-        init().catch((err) => alert(err.message || "Failed to load Backup page."));
+        init().catch((err) => notifyError(err.message || "Failed to load Backup page."));
     });
 })();
