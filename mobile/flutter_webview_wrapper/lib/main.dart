@@ -530,8 +530,6 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
             } catch (_) {}
           };
 
-          syncFilledValues();
-
           if (!window.__axisCredentialsHooked) {
             window.__axisCredentialsHooked = true;
             if (form) {
@@ -926,6 +924,19 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     return true;
   }
 
+  void _openSavedAccountsFromKeyButton() {
+    if (_savedCredentials.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No saved users yet. Login once to save credentials.'),
+        ),
+      );
+      return;
+    }
+    unawaited(_maybeShowSavedAccountsPrompt(force: true));
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -947,10 +958,10 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           actions: [
-            if (_isLoginPageUrl(_currentUrl) && _savedCredentials.isNotEmpty)
+            if (_isLoginPageUrl(_currentUrl))
               IconButton(
                 tooltip: 'Saved Accounts',
-                onPressed: () => _maybeShowSavedAccountsPrompt(force: true),
+                onPressed: _openSavedAccountsFromKeyButton,
                 icon: const Icon(Icons.key_outlined),
               ),
             IconButton(
