@@ -652,9 +652,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
 
   Future<void> _saveAndOpenPdf(String fileName, String encodedData) async {
     final List<int> bytes = base64Decode(base64.normalize(encodedData));
-    final Directory saveDir = await _resolvePdfSaveDirectory();
-    final File pdfFile = File('${saveDir.path}${Platform.pathSeparator}$fileName');
-    await pdfFile.writeAsBytes(bytes, flush: true);
+    final File pdfFile = await _writePdfWithFallback(fileName, bytes);
 
     final dynamic openResult = await OpenFilex.open(
       pdfFile.path,
@@ -680,38 +678,59 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     }
   }
 
-  Future<Directory> _resolvePdfSaveDirectory() async {
-    if (Platform.isAndroid) {
+  Future<File> _writePdfWithFallback(String fileName, List<int> bytes) async {
+    final List<Directory> saveDirs = await _resolvePdfSaveDirectories();
+    Object? lastError;
+    for (final Directory dir in saveDirs) {
       try {
-        final Directory publicDownloadDir =
-            Directory('/storage/emulated/0/Download');
-        if (!await publicDownloadDir.exists()) {
-          await publicDownloadDir.create(recursive: true);
+        if (!await dir.exists()) {
+          await dir.create(recursive: true);
         }
-        return publicDownloadDir;
-      } catch (_) {
-        // Fallback to app-specific external storage when public download
-        // directory is not writable on this Android version/device.
+        final File candidate =
+            File('${dir.path}${Platform.pathSeparator}$fileName');
+        await candidate.writeAsBytes(bytes, flush: true);
+        return candidate;
+      } catch (err) {
+        lastError = err;
       }
+    }
+    if (lastError != null) {
+      throw lastError;
+    }
+    throw StateError('Failed to save PDF: no writable storage directory found.');
+  }
+
+  Future<List<Directory>> _resolvePdfSaveDirectories() async {
+    final List<Directory> dirs = <Directory>[];
+    final Set<String> seen = <String>{};
+    void addDir(Directory dir) {
+      final String key = dir.path.toLowerCase();
+      if (seen.contains(key)) return;
+      seen.add(key);
+      dirs.add(dir);
+    }
+
+    if (Platform.isAndroid) {
+      // Try public Downloads first when allowed.
+      addDir(Directory('/storage/emulated/0/Download'));
 
       final Directory? externalDir = await getExternalStorageDirectory();
       if (externalDir != null) {
-        final Directory downloadDir =
-            Directory('${externalDir.path}${Platform.pathSeparator}downloads');
-        if (!await downloadDir.exists()) {
-          await downloadDir.create(recursive: true);
-        }
-        return downloadDir;
+        addDir(
+          Directory('${externalDir.path}${Platform.pathSeparator}downloads'),
+        );
+        addDir(externalDir);
       }
     }
 
     final Directory docsDir = await getApplicationDocumentsDirectory();
-    final Directory downloadDir =
-        Directory('${docsDir.path}${Platform.pathSeparator}downloads');
-    if (!await downloadDir.exists()) {
-      await downloadDir.create(recursive: true);
+    addDir(Directory('${docsDir.path}${Platform.pathSeparator}downloads'));
+    addDir(docsDir);
+
+    if (dirs.isEmpty) {
+      addDir(Directory.systemTemp);
     }
-    return downloadDir;
+    return dirs;
   }
 
   Future<void> _installPdfSaveBridge() async {
