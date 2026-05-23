@@ -1,3 +1,23 @@
+.page-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: nowrap;
+    width: 100%;
+}
+
+.page-head h2 {
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.page-head .icon-btn {
+    margin-left: auto;
+    flex: 0 0 auto;
+}
+
 .backup-section {
     margin-top: 14px;
     padding: 14px;
@@ -29,6 +49,17 @@
     font-weight: 600;
 }
 
+.backup-checks input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    min-height: 16px;
+    max-width: 16px;
+    max-height: 16px;
+    margin: 0;
+    vertical-align: middle;
+}
+
 .backup-actions {
     margin-top: 12px;
     display: flex;
@@ -38,12 +69,6 @@
 
 .backup-actions .btn {
     min-width: 160px;
-}
-
-.backup-quick-links {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 8px;
 }
 
 .section-head {
@@ -66,4 +91,3 @@
         grid-template-columns: 1fr;
     }
 }
-
