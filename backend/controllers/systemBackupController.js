@@ -135,6 +135,28 @@ function getDriveOAuthCallbackUrl(req) {
   return `${getPublicApiOrigin(req)}/api/system-backup/drive/oauth/callback`;
 }
 
+function isIpLikeHost(hostname) {
+  const host = String(hostname || "").trim();
+  if (!host) return false;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return true;
+  if (/^\[[0-9a-fA-F:]+\]$/.test(host)) return true;
+  return false;
+}
+
+function shouldPreferOAuthJsonRedirect(req, callbackUrl) {
+  const envBase = String(process.env.PUBLIC_BASE_URL || "").trim();
+  if (envBase) return false;
+  try {
+    const parsed = new URL(String(callbackUrl || ""));
+    const host = String(parsed.hostname || "").trim();
+    if (isIpLikeHost(host)) return true;
+    if (parsed.protocol !== "https:") return true;
+    return false;
+  } catch (_err) {
+    return true;
+  }
+}
+
 function createOauthStateToken() {
   return crypto.randomBytes(24).toString("hex");
 }
@@ -1320,10 +1342,11 @@ exports.startGoogleDriveOAuth = async (req, res) => {
     pruneDriveOauthStates();
     const state = createOauthStateToken();
     const callbackUrl = getDriveOAuthCallbackUrl(req);
+    const redirectOverride = shouldPreferOAuthJsonRedirect(req, callbackUrl) ? null : callbackUrl;
     const uiOrigin = resolveUiOrigin(req);
 
     const auth = buildGoogleOAuthAuthorizeUrl(merged, {
-      redirectUri: callbackUrl,
+      redirectUri: redirectOverride,
       state,
     });
 
