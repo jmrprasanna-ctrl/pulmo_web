@@ -48,7 +48,8 @@ function buildSharedDriveInstruction(rootName) {
   const safeRoot = sanitizeDriveName(rootName || "AXIS CMS PULMO", "AXIS CMS PULMO");
   return (
     `Google Drive service account cannot store files in My Drive. `
-    + `Create folder "${safeRoot}" inside a Google Shared Drive and add the service account as Editor/Content manager, then retry.`
+    + `Create folder "${safeRoot}" inside a Google Shared Drive and add the service account as Editor/Content manager, then retry. `
+    + `If you only use personal Gmail (no Shared Drive), switch this integration from Service Account to OAuth user access.`
   );
 }
 
@@ -226,7 +227,7 @@ async function uploadBufferFile(drive, { parentId, fileName, mimeType, buffer })
     return created.data;
   } catch (err) {
     if (isStorageQuotaError(err)) {
-      throw new Error(buildSharedDriveInstruction(parentId || safeName));
+      throw new Error(buildSharedDriveInstruction());
     }
     throw err;
   }

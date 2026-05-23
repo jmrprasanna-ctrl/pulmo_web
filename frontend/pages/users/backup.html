@@ -61,6 +61,9 @@
             <label for="driveCredentialsJson">Google Drive Service Account JSON (or base64)</label>
             <textarea id="driveCredentialsJson" rows="6" placeholder='{"type":"service_account",...}'></textarea>
             <p id="driveCredentialsHint" class="muted">For security, saved JSON is not shown after refresh. Paste only when adding/updating key.</p>
+            <p class="backup-note">
+                Service Account works only with Google Shared Drive. If folder is in My Drive, uploads fail with storage quota error.
+            </p>
 
             <div class="backup-checks">
                 <label><input type="checkbox" id="driveEnabled"> Enable Google Drive backup</label>
