@@ -8,7 +8,7 @@ function getRole() {
 
 function canManageEmailSetup() {
     const role = getRole();
-    if (role === "admin" || role === "manager") return true;
+    if (role === "admin" || role === "administrator" || role === "manager" || role === "super_admin") return true;
     if (role === "user") {
         if (typeof window.hasUserGrantedPath === "function") {
             return window.hasUserGrantedPath("/support/email-setup.html");

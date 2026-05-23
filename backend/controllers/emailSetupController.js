@@ -1,9 +1,12 @@
 const EmailSetup = require("../models/EmailSetup");
+const { Client } = require("pg");
 const db = require("../config/database");
 
 const INVENTORY_DB_NAME = "inventory";
 const DEFAULT_COMPANY_NAME = "PULMO TECHNOLOGIES";
 const DEFAULT_FROM_EMAIL = "pulmotechnoogies@gmail.com";
+const RESERVED_DATABASES = new Set(["postgres", "template0", "template1"]);
+const CONTROL_DB_NAME = normalizeDatabaseName(process.env.DB_NAME || INVENTORY_DB_NAME) || INVENTORY_DB_NAME;
 
 function normalizeDatabaseName(value) {
   return db.normalizeDatabaseName(value);
@@ -19,6 +22,16 @@ function normalizeEmail(value) {
 function normalizeCompanyName(value) {
   const normalized = String(value || "").trim().replace(/\s+/g, " ");
   return normalized || "";
+}
+
+function getDbConfig(databaseName) {
+  return {
+    host: process.env.DB_HOST || "localhost",
+    port: Number(process.env.DB_PORT || 5432),
+    user: process.env.DB_USER || "postgres",
+    password: String(process.env.DB_PASSWORD || ""),
+    database: databaseName,
+  };
 }
 
 function getRole(req) {
@@ -96,13 +109,68 @@ function finalizeMappedOptions(map) {
   return options;
 }
 
+async function fetchDatabasesLikeDbCreateList() {
+  const adminClient = new Client(getDbConfig("postgres"));
+  const mainDbClient = new Client(getDbConfig(CONTROL_DB_NAME));
+  const optionMap = new Map();
+  try {
+    await adminClient.connect();
+    await mainDbClient.connect();
+
+    const companyMap = new Map();
+    const tableRs = await mainDbClient.query("SELECT to_regclass('public.company_databases') AS name");
+    if (tableRs.rows?.[0]?.name) {
+      const companyRs = await mainDbClient.query(
+        `SELECT database_name, company_name
+         FROM company_databases
+         ORDER BY LOWER(company_name) ASC, LOWER(database_name) ASC`
+      );
+      (companyRs.rows || []).forEach((row) => {
+        const dbName = normalizeDatabaseName(row?.database_name);
+        if (!dbName) return;
+        const companyName = normalizeCompanyName(row?.company_name);
+        if (companyName) {
+          companyMap.set(dbName, companyName);
+        }
+      });
+    }
+
+    const dbRs = await adminClient.query(
+      "SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname ASC"
+    );
+    (dbRs.rows || []).forEach((row) => {
+      const dbName = normalizeDatabaseName(row?.datname);
+      if (!dbName || RESERVED_DATABASES.has(dbName)) return;
+      optionMap.set(dbName, {
+        database_name: dbName,
+        company_name: companyMap.get(dbName) || "",
+        email: "",
+      });
+    });
+  } catch (_err) {
+    return [];
+  } finally {
+    await adminClient.end().catch(() => {});
+    await mainDbClient.end().catch(() => {});
+  }
+  return Array.from(optionMap.values());
+}
+
 async function resolveMappedDatabaseOptions(req) {
   const role = getRole(req);
   const userId = getUserId(req);
   const optionMap = new Map();
   const userScopedDbSet = new Set();
 
-  await db.withDatabase(INVENTORY_DB_NAME, async () => {
+  const dbCreateList = await fetchDatabasesLikeDbCreateList();
+  for (const row of dbCreateList) {
+    const option = createMappedOption(row);
+    if (!option) continue;
+    const current = optionMap.get(option.database_name);
+    optionMap.set(option.database_name, mergeMappedOptions(current, option));
+  }
+
+  await db.withDatabase(CONTROL_DB_NAME, async () => {
     const existsRs = await db.query(
       `SELECT to_regclass('public.company_databases') AS company_databases,
               to_regclass('public.user_mappings') AS user_mappings,
