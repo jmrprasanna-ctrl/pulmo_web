@@ -25,6 +25,12 @@ let userProfileSchemaEnsured = false;
 const ALLOWED_USER_DEPARTMENTS = ["Manager", "IT", "Finance", "Admin", "Cordinater", "Technician"];
 const ALLOWED_USER_DEPARTMENT_SET = new Set(ALLOWED_USER_DEPARTMENTS);
 const USER_DIRECTORY_DB = db.normalizeDatabaseName(process.env.DB_NAME || "inventory") || "inventory";
+const DEPARTMENT_ACCESS_TEMPLATE_TOKENS = {
+  Manager: ["pulmo"],
+  Finance: ["nishani"],
+  Cordinater: ["cordinater", "coordinator", "coordinater", "cordinator"],
+  IT: ["rajitha"],
+};
 
 function normalizeDepartmentToken(value) {
   return String(value || "")
@@ -58,6 +64,100 @@ function normalizeDatabaseName(value) {
 
 function getRequestDatabaseName(req) {
   return normalizeDatabaseName(req?.databaseName || req?.user?.database_name || req?.headers?.["x-database-name"]);
+}
+
+async function findDepartmentTemplateUser(department, transaction) {
+  const tokenCandidates = Array.isArray(DEPARTMENT_ACCESS_TEMPLATE_TOKENS[department])
+    ? DEPARTMENT_ACCESS_TEMPLATE_TOKENS[department]
+    : [];
+
+  for (const token of tokenCandidates) {
+    const tokenLike = `%${String(token || "").trim().toLowerCase()}%`;
+    if (!tokenLike || tokenLike === "%%") continue;
+    const templateResult = await db.query(
+      `SELECT id, username, department
+       FROM users
+       WHERE LOWER(COALESCE(username, '')) LIKE $1
+       ORDER BY CASE WHEN LOWER(COALESCE(department, '')) = $2 THEN 0 ELSE 1 END, id ASC
+       LIMIT 1`,
+      {
+        bind: [tokenLike, String(department || "").toLowerCase()],
+        transaction,
+      }
+    );
+    const rows = Array.isArray(templateResult?.[0]) ? templateResult[0] : [];
+    if (rows[0]?.id) {
+      return rows[0];
+    }
+  }
+
+  // Fallback: first user in the same department that already has access settings.
+  const fallbackResult = await db.query(
+    `SELECT u.id, u.username, u.department
+     FROM users u
+     WHERE LOWER(COALESCE(u.department, '')) = $1
+       AND EXISTS (
+         SELECT 1
+         FROM user_accesses ua
+         WHERE ua.user_id = u.id
+       )
+     ORDER BY u.id ASC
+     LIMIT 1`,
+    {
+      bind: [String(department || "").toLowerCase()],
+      transaction,
+    }
+  );
+  const fallbackRows = Array.isArray(fallbackResult?.[0]) ? fallbackResult[0] : [];
+  return fallbackRows[0] || null;
+}
+
+async function cloneDepartmentTemplateAccessToUser(targetUserId, department, transaction) {
+  const templateTokens = DEPARTMENT_ACCESS_TEMPLATE_TOKENS[department];
+  if (!Array.isArray(templateTokens) || templateTokens.length === 0) {
+    return { attempted: false, applied: false, reason: "department_template_not_configured" };
+  }
+
+  const templateUser = await findDepartmentTemplateUser(department, transaction);
+  if (!templateUser?.id) {
+    return { attempted: true, applied: false, reason: "template_user_not_found" };
+  }
+
+  const templateAccessRows = await UserAccess.findAll({
+    where: { user_id: Number(templateUser.id) },
+    order: [["updatedAt", "DESC"], ["id", "DESC"]],
+    transaction,
+  });
+
+  if (!Array.isArray(templateAccessRows) || templateAccessRows.length === 0) {
+    return {
+      attempted: true,
+      applied: false,
+      reason: "template_user_has_no_access",
+      template_user: String(templateUser.username || "").trim(),
+    };
+  }
+
+  for (const accessRow of templateAccessRows) {
+    const userDatabase = normalizeDatabaseName(accessRow?.user_database || accessRow?.database_name || USER_DIRECTORY_DB);
+    await UserAccess.upsert(
+      {
+        user_id: Number(targetUserId),
+        user_database: userDatabase,
+        allowed_pages_json: String(accessRow?.allowed_pages_json || "[]"),
+        allowed_actions_json: String(accessRow?.allowed_actions_json || "[]"),
+        database_name: normalizeDatabaseName(accessRow?.database_name || userDatabase),
+      },
+      { transaction }
+    );
+  }
+
+  return {
+    attempted: true,
+    applied: true,
+    template_user: String(templateUser.username || "").trim(),
+    copied_rows: templateAccessRows.length,
+  };
 }
 
 function parseBase64Payload(fileDataBase64) {
@@ -303,22 +403,35 @@ exports.addUser = async (req, res) => {
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
-      const user = await User.create({
-        username,
-        company,
-        department,
-        telephone,
-        email,
-        password: hashedPassword,
-        password_plain: String(password || "").trim(),
-        role: role || "user",
-      });
+      const transaction = await db.transaction();
+      let user = null;
+      let templateAccessResult = { attempted: false, applied: false };
+      try {
+        user = await User.create({
+          username,
+          company,
+          department,
+          telephone,
+          email,
+          password: hashedPassword,
+          password_plain: String(password || "").trim(),
+          role: role || "user",
+        }, { transaction });
+
+        templateAccessResult = await cloneDepartmentTemplateAccessToUser(user.id, department, transaction);
+        await transaction.commit();
+      } catch (txErr) {
+        await transaction.rollback();
+        throw txErr;
+      }
 
       res.status(201).json({
         id: user.id,
         username: user.username,
         email: user.email,
         role: user.role,
+        department: user.department,
+        access_template: templateAccessResult,
       });
     } catch (err) {
       console.error(err);
