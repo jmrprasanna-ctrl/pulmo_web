@@ -137,6 +137,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
   bool _offlinePasswordVisible = false;
   bool _isOfflineRetryInProgress = false;
   bool _showPasswordUpdateAction = false;
+  bool _credentialSaveWarningShown = false;
   String _passwordUpdateUsername = '';
   String _passwordUpdateValue = '';
   final Map<String, _PendingPdfTransfer> _pendingPdfTransfers =
@@ -245,8 +246,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
 
   Future<void> _loadSavedCredentials() async {
     try {
-      final String raw =
-          await _secureStorage.read(key: _credentialsListStorageKey) ?? '';
+      final String raw = await _readSavedCredentialsRaw();
       if (raw.trim().isNotEmpty) {
         final dynamic decoded = jsonDecode(raw);
         if (decoded is List) {
@@ -288,13 +288,57 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     }
   }
 
-  Future<void> _persistSavedCredentials() async {
+  Future<String> _readSavedCredentialsRaw() async {
+    try {
+      final String raw =
+          await _secureStorage.read(key: _credentialsListStorageKey) ?? '';
+      if (raw.trim().isNotEmpty) return raw;
+    } catch (_) {
+      // Fallback to local file below.
+    }
+    try {
+      final Directory docsDir = await getApplicationDocumentsDirectory();
+      final File fallbackFile = File(
+        '${docsDir.path}${Platform.pathSeparator}axis_saved_credentials_v1.json',
+      );
+      if (await fallbackFile.exists()) {
+        return await fallbackFile.readAsString();
+      }
+    } catch (_) {
+      // Ignore fallback read errors.
+    }
+    return '';
+  }
+
+  Future<bool> _writeSavedCredentialsRaw(String raw) async {
+    var wroteSecure = false;
+    try {
+      await _secureStorage.write(
+        key: _credentialsListStorageKey,
+        value: raw,
+      );
+      wroteSecure = true;
+    } catch (_) {
+      // Fallback to local file below.
+    }
+    if (wroteSecure) return true;
+    try {
+      final Directory docsDir = await getApplicationDocumentsDirectory();
+      final File fallbackFile = File(
+        '${docsDir.path}${Platform.pathSeparator}axis_saved_credentials_v1.json',
+      );
+      await fallbackFile.writeAsString(raw, flush: true);
+      return true;
+    } catch (_) {
+      // Ignore fallback write errors.
+      return false;
+    }
+  }
+
+  Future<bool> _persistSavedCredentials() async {
     final List<Map<String, dynamic>> payload =
         _savedCredentials.map((item) => item.toJson()).toList();
-    await _secureStorage.write(
-      key: _credentialsListStorageKey,
-      value: jsonEncode(payload),
-    );
+    return _writeSavedCredentialsRaw(jsonEncode(payload));
   }
 
   Future<void> _saveCredentials(String username, String password) async {
@@ -320,10 +364,36 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
       if (_savedCredentials.length > 20) {
         _savedCredentials = _savedCredentials.take(20).toList();
       }
-      await _persistSavedCredentials();
+      final bool persisted = await _persistSavedCredentials();
+      if (!persisted && mounted && !_credentialSaveWarningShown) {
+        _credentialSaveWarningShown = true;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Login worked, but this phone blocked credential save. Check app storage permission/settings.',
+            ),
+          ),
+        );
+      }
     } catch (_) {
-      // Ignore storage errors to keep login flow stable.
+      if (mounted && !_credentialSaveWarningShown) {
+        _credentialSaveWarningShown = true;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Login worked, but this phone blocked credential save. Check app storage permission/settings.',
+            ),
+          ),
+        );
+      }
     }
+  }
+
+  void _setPendingCredentials(String username, String password) {
+    final String cleanUsername = username.trim();
+    if (cleanUsername.isEmpty || password.isEmpty) return;
+    _pendingUsername = cleanUsername;
+    _pendingPassword = password;
   }
 
   void _handleCredentialsBridgeMessage(String rawMessage) {
@@ -335,11 +405,61 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
       final String username = (payload['username'] ?? '').toString().trim();
       final String password = (payload['password'] ?? '').toString();
       if (username.isEmpty || password.isEmpty) return;
-      _pendingUsername = username;
-      _pendingPassword = password;
+      _setPendingCredentials(username, password);
     } catch (_) {
       // Ignore malformed bridge messages.
     }
+  }
+
+  Future<void> _clearPendingCredentialState() async {
+    _pendingUsername = '';
+    _pendingPassword = '';
+    _preferredLoginUsername = '';
+    _preferredLoginPassword = '';
+    if (mounted) {
+      setState(() {
+        _showPasswordUpdateAction = false;
+        _passwordUpdateUsername = '';
+        _passwordUpdateValue = '';
+      });
+    } else {
+      _showPasswordUpdateAction = false;
+      _passwordUpdateUsername = '';
+      _passwordUpdateValue = '';
+    }
+  }
+
+  Future<bool> _isAuthenticatedInWebSession() async {
+    try {
+      final dynamic result = await _controller.runJavaScriptReturningResult('''
+        (function () {
+          try {
+            var token = '';
+            if (window.localStorage && typeof window.localStorage.getItem === 'function') {
+              token = String(window.localStorage.getItem('token') || '').trim();
+            }
+            return token ? '1' : '0';
+          } catch (_) {
+            return '0';
+          }
+        })();
+      ''');
+      final String raw = String(result ?? '').toLowerCase();
+      return raw.contains('1') || raw.contains('true');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _savePendingCredentialsIfLoginSucceeded(String url) async {
+    if (_pendingUsername.isEmpty || _pendingPassword.isEmpty) return;
+    if (_isLoginPageUrl(url)) return;
+
+    final bool authenticated = await _isAuthenticatedInWebSession();
+    if (!authenticated) return;
+
+    await _saveCredentials(_pendingUsername, _pendingPassword);
+    await _clearPendingCredentialState();
   }
 
   bool _isLoginFailureMessage(String message) {
@@ -432,14 +552,11 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
         _pendingUsername.isNotEmpty &&
         _pendingPassword.isNotEmpty) {
       await _saveCredentials(_pendingUsername, _pendingPassword);
-      _pendingUsername = '';
-      _pendingPassword = '';
-      _preferredLoginUsername = '';
-      _preferredLoginPassword = '';
-      _showPasswordUpdateAction = false;
-      _passwordUpdateUsername = '';
-      _passwordUpdateValue = '';
+      await _clearPendingCredentialState();
     }
+
+    // Fallback save path: some login flows do not land exactly on dashboard URL.
+    await _savePendingCredentialsIfLoginSucceeded(url);
 
     if (_isLoginPageUrl(url)) {
       await _enhanceLoginAutofill(url);
@@ -631,6 +748,28 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
               loginBtn.addEventListener('click', function () {
                 sendCredentialsToApp('click');
               });
+            }
+            if (user) {
+              user.addEventListener('keydown', function (ev) {
+                if (ev && ev.key === 'Enter') {
+                  sendCredentialsToApp('user-enter');
+                }
+              });
+            }
+            if (pass) {
+              pass.addEventListener('keydown', function (ev) {
+                if (ev && ev.key === 'Enter') {
+                  sendCredentialsToApp('pass-enter');
+                }
+              });
+            }
+            if (typeof window.login === 'function' && !window.__axisLoginFnWrapped) {
+              window.__axisLoginFnWrapped = true;
+              var originalLogin = window.login;
+              window.login = function () {
+                try { sendCredentialsToApp('window-login-fn'); } catch (_) {}
+                return originalLogin.apply(this, arguments);
+              };
             }
           }
 
@@ -1000,8 +1139,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
       return;
     }
 
-    _pendingUsername = username;
-    _pendingPassword = password;
+    _setPendingCredentials(username, password);
     _preferredLoginUsername = username;
     _preferredLoginPassword = password;
 
