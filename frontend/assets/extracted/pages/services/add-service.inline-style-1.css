@@ -1,0 +1,43 @@
+.page-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:nowrap;
+    width:100%;
+}
+.page-head h2{
+    margin:0;
+    flex:1 1 auto;
+    min-width:0;
+}
+.page-head .icon-btn{
+    margin-left:auto;
+    flex:0 0 auto;
+}
+
+.form-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(220px,1fr));
+    gap:12px;
+}
+
+#addServiceForm small{
+    display:block;
+    margin-top:6px;
+    color:#586f89;
+    font-size:12px;
+}
+
+.form-actions{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-top:12px;
+}
+
+@media (max-width: 900px){
+    .form-grid{
+        grid-template-columns:1fr;
+    }
+}

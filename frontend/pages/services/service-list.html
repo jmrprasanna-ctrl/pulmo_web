@@ -1,0 +1,110 @@
+<!--
+  System: PULMO WEB SYSTEM
+  Owner : CRONIT SOLLUTIONS
+  Author: JMR Prasanna
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Service List - PULMO TECHNOLOGIES</title>
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="../../assets/css/dashboard.css">
+<link rel="stylesheet" href="../../assets/extracted/pages/services/service-list.inline-style-1.css">
+</head>
+<body>
+<div class="sidebar">
+    <div class="logo">
+        <img src="../../assets/images/logo.png" alt="Logo">
+        <span>PULMO TECHNOLOGIES</span>
+    </div>
+    <ul class="nav-links">
+        <li><a href="../dashboard.html">Dashboard</a></li>
+        <li><a href="../products/product-list.html">Products</a></li>
+        <li><a href="../products/general-machine.html">Machines</a></li>
+        <li><a href="../customers/customer-list.html">Customers</a></li>
+        <li><a href="../invoices/invoice-list.html">Invoices</a></li>
+        <li><a href="../vendors/list-vendor.html">Vendors</a></li>
+        <li><a href="../expenses/expense-list.html">Expenses</a></li>
+        <li><a href="../reports/sales-report.html">Reports</a></li>
+        <li><a href="../analytics/sales-chart.html">Analytics</a></li>
+    </ul>
+</div>
+
+<div class="main-content">
+    <header class="page-head">
+        <h2>Service List</h2>
+        <a class="icon-btn" href="../dashboard.html" aria-label="Back to dashboard" title="Back to dashboard">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+    </header>
+
+    <div class="form-container">
+        <div class="form-actions">
+            <div class="action-row">
+                <a class="icon-btn" href="add-service.html" id="addServiceBtn" aria-label="Add service" title="Add service">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                </a>
+            </div>
+            <div class="date-filter">
+                <label for="filterFromDate">From Date</label>
+                <input type="date" id="filterFromDate">
+            </div>
+            <div class="date-filter">
+                <label for="filterToDate">To Date</label>
+                <input type="date" id="filterToDate">
+            </div>
+            <div class="date-filter">
+                <label for="filterServiceType">Service Type</label>
+                <select id="filterServiceType">
+                    <option value="">All</option>
+                    <option value="general">General</option>
+                    <option value="rental">Rental</option>
+                </select>
+            </div>
+            <input type="text" id="serviceSearch" class="search-inline" placeholder="Search Customer, Machine, Counter, Comment">
+        </div>
+
+        <div class="summary-row">
+            <div class="summary-box">
+                <div class="label">Filtered Entries</div>
+                <div class="value" id="serviceCount">0</div>
+            </div>
+            <div class="summary-box">
+                <div class="label">General Services</div>
+                <div class="value" id="generalCount">0</div>
+            </div>
+            <div class="summary-box">
+                <div class="label">Rental Services</div>
+                <div class="value" id="rentalCount">0</div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top:12px;">
+            <table id="serviceTable">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Customer</th>
+                        <th>Machine</th>
+                        <th>Counter</th>
+                        <th>Comment</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="serviceTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="../../assets/js/api.js"></script>
+<script src="../../assets/extracted/pages/services/service-list.inline-script-1.js"></script>
+</body>
+</html>

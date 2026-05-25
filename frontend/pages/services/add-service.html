@@ -1,0 +1,96 @@
+<!--
+  System: PULMO WEB SYSTEM
+  Owner : CRONIT SOLLUTIONS
+  Author: JMR Prasanna
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Add Service - PULMO TECHNOLOGIES</title>
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="../../assets/css/dashboard.css">
+<link rel="stylesheet" href="../../assets/extracted/pages/services/add-service.inline-style-1.css">
+</head>
+<body>
+<div class="sidebar">
+    <div class="logo">
+        <img src="../../assets/images/logo.png" alt="Logo">
+        <span>PULMO TECHNOLOGIES</span>
+    </div>
+    <ul class="nav-links">
+        <li><a href="../dashboard.html">Dashboard</a></li>
+        <li><a href="../products/product-list.html">Products</a></li>
+        <li><a href="../products/general-machine.html">Machines</a></li>
+        <li><a href="../customers/customer-list.html">Customers</a></li>
+        <li><a href="../invoices/invoice-list.html">Invoices</a></li>
+        <li><a href="../vendors/list-vendor.html">Vendors</a></li>
+        <li><a href="../expenses/expense-list.html">Expenses</a></li>
+        <li><a href="../reports/sales-report.html">Reports</a></li>
+        <li><a href="../analytics/sales-chart.html">Analytics</a></li>
+    </ul>
+</div>
+
+<div class="main-content">
+    <header class="page-head">
+        <h2>Add Service</h2>
+        <a class="icon-btn" href="service-list.html" aria-label="Back to service list" title="Back to service list">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+    </header>
+
+    <div class="form-container">
+        <form id="addServiceForm">
+            <div class="form-grid">
+                <div>
+                    <label for="serviceDate">Date</label>
+                    <input type="date" id="serviceDate" required>
+                </div>
+                <div>
+                    <label for="serviceType">Service Type</label>
+                    <select id="serviceType" required>
+                        <option value="general">General</option>
+                        <option value="rental">Rental</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="customerId">Customer</label>
+                    <select id="customerId" required>
+                        <option value="">Select Customer</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="machineId">Machine</label>
+                    <select id="machineId" required>
+                        <option value="">Select Machine</option>
+                    </select>
+                    <small id="machineHelpText">Select customer first.</small>
+                </div>
+            </div>
+
+            <label for="counterValue">Counter</label>
+            <input type="text" id="counterValue" placeholder="Enter counter value" required>
+
+            <label for="commentText">Comment</label>
+            <textarea id="commentText" rows="4" placeholder="Enter service comment"></textarea>
+
+            <div class="form-actions">
+                <button type="submit" class="icon-btn" aria-label="Save service" title="Save service">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5.5 3.5h11l2 2V20.5H5.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M8 3.5v5h7v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M8 14h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="../../assets/js/api.js"></script>
+<script src="../../assets/extracted/pages/services/add-service.inline-script-1.js"></script>
+</body>
+</html>

@@ -185,6 +185,13 @@ const ACCESS_MODULE_OPTIONS = [
     ],
   },
   {
+    module: "Services",
+    items: [
+      { path: "/services/service-list.html", label: "Service List", actions: ["view", "add", "delete"] },
+      { path: "/services/add-service.html", label: "Add Service", actions: ["view", "add"] },
+    ],
+  },
+  {
     module: "Communication",
     items: [
       { path: "/messages/messages.html", label: "Messages", actions: ["view", "add", "delete"] },

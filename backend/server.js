@@ -28,6 +28,7 @@ const RentalMachineCount = require("./models/RentalMachineCount");
 const Technician = require("./models/Technician");
 const SupportImportant = require("./models/SupportImportant");
 const SupportTechPay = require("./models/SupportTechPay");
+const ServiceRecord = require("./models/ServiceRecord");
 const CategoryModelOption = require("./models/CategoryModelOption");
 const UiSetting = require("./models/UiSetting");
 const EmailSetup = require("./models/EmailSetup");
@@ -56,6 +57,7 @@ const rentalMachineCountRoutes = require("./routes/rentalMachineCountRoutes");
 const technicianRoutes = require("./routes/technicianRoutes");
 const supportImportantRoutes = require("./routes/supportImportantRoutes");
 const supportTechPayRoutes = require("./routes/supportTechPayRoutes");
+const serviceRecordRoutes = require("./routes/serviceRecordRoutes");
 const categoryModelOptionRoutes = require("./routes/categoryModelOptionRoutes");
 const uiSettingsRoutes = require("./routes/uiSettingsRoutes");
 const emailSetupRoutes = require("./routes/emailSetupRoutes");
@@ -674,6 +676,77 @@ async function ensureSupportTechPaySchema() {
   });
 }
 
+async function ensureServiceRecordSchema() {
+  await runOnBusinessDatabases(async () => {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS service_records (
+        id SERIAL PRIMARY KEY,
+        service_date DATE NOT NULL DEFAULT CURRENT_DATE,
+        service_type VARCHAR(20) NOT NULL DEFAULT 'general',
+        customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
+        customer_name VARCHAR(255),
+        machine_ref_id INTEGER,
+        machine_code VARCHAR(120),
+        machine_title VARCHAR(255),
+        counter_value VARCHAR(120),
+        comment_text TEXT,
+        created_by INTEGER,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS service_date DATE;`);
+    await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS service_type VARCHAR(20) DEFAULT 'general';`);
+    await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL;`);
+    await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS customer_name VARCHAR(255);`);
+    await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS machine_ref_id INTEGER;`);
+    await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS machine_code VARCHAR(120);`);
+    await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS machine_title VARCHAR(255);`);
+    await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS counter_value VARCHAR(120);`);
+    await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS comment_text TEXT;`);
+    await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS created_by INTEGER;`);
+
+    await db.query(`
+      UPDATE service_records
+      SET service_type = 'general'
+      WHERE service_type IS NULL OR TRIM(service_type) = '';
+    `);
+    await db.query(`
+      UPDATE service_records
+      SET service_type = LOWER(TRIM(service_type))
+      WHERE service_type IS NOT NULL;
+    `);
+    await db.query(`
+      UPDATE service_records
+      SET service_type = 'general'
+      WHERE service_type NOT IN ('general', 'rental');
+    `);
+    await db.query(`
+      UPDATE service_records
+      SET service_date = COALESCE(service_date, DATE("createdAt"), CURRENT_DATE)
+      WHERE service_date IS NULL;
+    `);
+    await db.query(`
+      ALTER TABLE service_records
+      ALTER COLUMN service_date SET DEFAULT CURRENT_DATE;
+    `);
+
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS service_records_date_idx
+      ON service_records(service_date);
+    `);
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS service_records_customer_idx
+      ON service_records(customer_id);
+    `);
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS service_records_type_idx
+      ON service_records(service_type);
+    `);
+  });
+}
+
 async function ensureInvoiceImportantWarrantySchema() {
   await runOnBusinessDatabases(async () => {
     await db.query(`
@@ -1089,6 +1162,7 @@ app.use("/api/rental-machine-counts", rentalMachineCountRoutes);
 app.use("/api/technicians", technicianRoutes);
 app.use("/api/support-importants", supportImportantRoutes);
 app.use("/api/support-tech-pay", supportTechPayRoutes);
+app.use("/api/services", serviceRecordRoutes);
 app.use("/api/category-model-options", categoryModelOptionRoutes);
 app.use("/api/ui-settings", uiSettingsRoutes);
 app.use("/api/email-setup", emailSetupRoutes);
@@ -1152,6 +1226,7 @@ async function startServer() {
     await ensureInvoicePaymentSchema();
     await ensureSupportImportantSchema();
     await ensureSupportTechPaySchema();
+    await ensureServiceRecordSchema();
     await ensureInvoiceImportantWarrantySchema();
     await ensureDefaultCategories();
     await ensureDefaultCategoryModelOptions();

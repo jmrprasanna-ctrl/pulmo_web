@@ -420,6 +420,7 @@ function renderSidebarMenuByAccess(){
             ]
         },
         { path: "/support/support.html", label: "Support" },
+        { path: "/services/service-list.html", label: "Services" },
         { path: "/stock/stock.html", label: "Stock" },
         {
             path: "/hr/inout.html",
