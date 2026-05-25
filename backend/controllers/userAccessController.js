@@ -375,6 +375,29 @@ function parseAllowedActions(row) {
   }
 }
 
+function normalizeAccessRole(value) {
+  const role = String(value || "").trim().toLowerCase();
+  if (role === "coordinator" || role === "cordinator" || role === "co-ordinator" || role === "co ordinator" || role === "co_ordinator") {
+    return "user";
+  }
+  return role;
+}
+
+function getEmergencyRecoveryAccess(role) {
+  if (role !== "admin") {
+    return { pages: [], actions: [] };
+  }
+
+  const actions = expandImplicitActionDependencies([
+    "/dashboard.html::view",
+    "/users/backup.html::view",
+    "/users/backup.html::edit",
+  ]);
+  const pages = derivePagesFromActions(actions, ["/dashboard.html", "/users/backup.html"]);
+
+  return { pages, actions };
+}
+
 function derivePagesFromActions(actionKeys, fallbackPages) {
   const fromActions = (Array.isArray(actionKeys) ? actionKeys : [])
     .map((key) => String(key || "").trim().toLowerCase())
@@ -2855,30 +2878,46 @@ exports.getMyAccess = async (req, res) => {
   if (!Number.isFinite(userId) || userId <= 0) {
     return res.status(401).json({ message: "Invalid token user" });
   }
+  const role = normalizeAccessRole(req.user?.role);
 
   const userDatabase = normalizeUserDatabase(req.databaseName || req.user?.database_name || INVENTORY_DB_NAME);
+
+  const findAccessFromCurrentDb = async (targetDatabase) => {
+    try {
+      return await UserAccess.findOne({
+        where: { user_id: userId, user_database: targetDatabase },
+        order: [["updatedAt", "DESC"], ["id", "DESC"]],
+      });
+    } catch (_err) {
+      return null;
+    }
+  };
 
                                                                               
                                                                                         
   let row = await findAccessFromMainDb(userId, userDatabase);
   if (!row) {
-    row = await UserAccess.findOne({
-      where: { user_id: userId, user_database: userDatabase },
-      order: [["updatedAt", "DESC"], ["id", "DESC"]],
-    });
+    row = await findAccessFromCurrentDb(userDatabase);
   }
   if (!row && userDatabase !== INVENTORY_DB_NAME) {
     row = await findAccessFromMainDb(userId, INVENTORY_DB_NAME);
     if (!row) {
-      row = await UserAccess.findOne({
-        where: { user_id: userId, user_database: INVENTORY_DB_NAME },
-        order: [["updatedAt", "DESC"], ["id", "DESC"]],
-      });
+      row = await findAccessFromCurrentDb(INVENTORY_DB_NAME);
     }
   }
-  const allowedActions = parseAllowedActions(row);
-  const allowedPages = derivePagesFromActions(allowedActions, parseAllowedPages(row));
-  const hasAccessConfig = Boolean(row) || allowedPages.length > 0 || allowedActions.length > 0;
+  const parsedActions = parseAllowedActions(row);
+  const parsedPages = derivePagesFromActions(parsedActions, parseAllowedPages(row));
+  const hasStoredConfig = Boolean(row) || parsedPages.length > 0 || parsedActions.length > 0;
+  let allowedActions = parsedActions;
+  let allowedPages = parsedPages;
+  if (!hasStoredConfig) {
+    const emergency = getEmergencyRecoveryAccess(role);
+    if (emergency.pages.length > 0 || emergency.actions.length > 0) {
+      allowedActions = normalizeActions(emergency.actions);
+      allowedPages = normalizePages(emergency.pages);
+    }
+  }
+  const hasAccessConfig = hasStoredConfig || allowedPages.length > 0 || allowedActions.length > 0;
   const mappedProfile = await findMappedUserProfile(userId);
 
   res.json({

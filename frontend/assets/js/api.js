@@ -50,6 +50,8 @@ const USER_DEFAULT_ALLOWED_PATHS = [
     "/login.html",
     "/dashboard.html"
 ];
+const ADMIN_RECOVERY_ALLOWED_PATHS = ["/users/backup.html"];
+const ADMIN_RECOVERY_ALLOWED_ACTIONS = ["/users/backup.html::view", "/users/backup.html::edit"];
 let USER_ALLOWED_PATHS_RUNTIME = [...USER_DEFAULT_ALLOWED_PATHS];
 const USER_ALLOWED_CACHE_KEY = "userAllowedPathsRuntime";
 let USER_ALLOWED_ACTIONS_RUNTIME = [];
@@ -111,6 +113,20 @@ function syncStoredRoleAlias(){
 }
 
 syncStoredRoleAlias();
+
+function ensureAdminRecoveryAccess(){
+    const role = normalizeRoleValue(localStorage.getItem("role"));
+    if(role !== "admin") return;
+    USER_ALLOWED_PATHS_RUNTIME = Array.from(new Set([
+        ...USER_DEFAULT_ALLOWED_PATHS,
+        ...USER_ALLOWED_PATHS_RUNTIME,
+        ...ADMIN_RECOVERY_ALLOWED_PATHS
+    ]));
+    USER_ALLOWED_ACTIONS_RUNTIME = Array.from(new Set([
+        ...USER_ALLOWED_ACTIONS_RUNTIME.map((x) => String(x || "").trim().toLowerCase()).filter(Boolean),
+        ...ADMIN_RECOVERY_ALLOWED_ACTIONS
+    ]));
+}
 
 function buildPagesPath(fileName){
     const path = window.location.pathname.replace(/\\/g, "/");
@@ -940,6 +956,7 @@ async function loadUserAccessPermissions(){
     }else{
         USER_ALLOWED_PATHS_RUNTIME = [...USER_DEFAULT_ALLOWED_PATHS];
         USER_ALLOWED_ACTIONS_RUNTIME = [];
+        ensureAdminRecoveryAccess();
     }
     const cachedConfigState = String(localStorage.getItem(USER_ACCESS_CONFIG_ENABLED_CACHE_KEY) || "");
     const previousConfigState = cachedConfigState === "1"
@@ -961,6 +978,7 @@ async function loadUserAccessPermissions(){
             headers: { "Authorization": `Bearer ${token}` }
         });
         if(!res.ok){
+            ensureAdminRecoveryAccess();
             return;
         }
         const data = await res.json();
@@ -1018,10 +1036,14 @@ async function loadUserAccessPermissions(){
         const merged = new Set([
             "/login.html",
             "/dashboard.html",
-            ...dynamicPages
+            ...dynamicPages,
+            ...(role === "admin" ? ADMIN_RECOVERY_ALLOWED_PATHS : [])
         ]);
         USER_ALLOWED_PATHS_RUNTIME = Array.from(merged);
-        USER_ALLOWED_ACTIONS_RUNTIME = Array.from(new Set(normalizedActionKeys));
+        USER_ALLOWED_ACTIONS_RUNTIME = Array.from(new Set([
+            ...normalizedActionKeys,
+            ...(role === "admin" ? ADMIN_RECOVERY_ALLOWED_ACTIONS : [])
+        ]));
         localStorage.setItem(USER_ALLOWED_CACHE_KEY, JSON.stringify(USER_ALLOWED_PATHS_RUNTIME));
         localStorage.setItem(USER_ALLOWED_ACTIONS_CACHE_KEY, JSON.stringify(USER_ALLOWED_ACTIONS_RUNTIME));
         if(data.database_name){
@@ -1030,7 +1052,7 @@ async function loadUserAccessPermissions(){
                                                                                                        
         }
     }catch(_err){
-                                                     
+        ensureAdminRecoveryAccess();
     }
 }
 
