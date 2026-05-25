@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(100) NOT NULL,
     company VARCHAR(100),
-    department VARCHAR(100),
+    department VARCHAR(100) NOT NULL DEFAULT 'Cordinater',
     telephone VARCHAR(50),
     email VARCHAR(100) NOT NULL,
     role VARCHAR(20) DEFAULT 'user',
@@ -37,6 +37,21 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS password_plain VARCHAR(255);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP DEFAULT NOW();
 ALTER TABLE users ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP DEFAULT NOW();
 
+UPDATE users
+SET department = CASE
+    WHEN department IS NULL OR TRIM(department) = '' THEN 'Cordinater'
+    WHEN LOWER(REGEXP_REPLACE(TRIM(department), '[^a-z]+', '', 'g')) = 'manager' THEN 'Manager'
+    WHEN LOWER(REGEXP_REPLACE(TRIM(department), '[^a-z]+', '', 'g')) IN ('it', 'informationtechnology', 'informationtech') THEN 'IT'
+    WHEN LOWER(REGEXP_REPLACE(TRIM(department), '[^a-z]+', '', 'g')) IN ('finance', 'finances', 'accounts', 'accounting') THEN 'Finance'
+    WHEN LOWER(REGEXP_REPLACE(TRIM(department), '[^a-z]+', '', 'g')) IN ('admin', 'administrator') THEN 'Admin'
+    WHEN LOWER(REGEXP_REPLACE(TRIM(department), '[^a-z]+', '', 'g')) IN ('cordinater', 'coordinator', 'coordinater', 'cordinator') THEN 'Cordinater'
+    WHEN LOWER(REGEXP_REPLACE(TRIM(department), '[^a-z]+', '', 'g')) IN ('technician', 'tech') THEN 'Technician'
+    ELSE 'Cordinater'
+END;
+
+ALTER TABLE users ALTER COLUMN department SET DEFAULT 'Cordinater';
+ALTER TABLE users ALTER COLUMN department SET NOT NULL;
+
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -45,6 +60,21 @@ BEGIN
     ) THEN
         ALTER TABLE users ADD CONSTRAINT users_email_unique UNIQUE (email);
     END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'users_department_allowed_chk'
+          AND conrelid = 'users'::regclass
+    ) THEN
+        ALTER TABLE users DROP CONSTRAINT users_department_allowed_chk;
+    END IF;
+
+    ALTER TABLE users
+    ADD CONSTRAINT users_department_allowed_chk
+    CHECK (department IN ('Manager', 'IT', 'Finance', 'Admin', 'Cordinater', 'Technician'));
 END $$;
 
                              

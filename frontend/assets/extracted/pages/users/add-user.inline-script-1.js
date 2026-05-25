@@ -1,3 +1,5 @@
+const USER_DEPARTMENTS = new Set(["Manager", "IT", "Finance", "Admin", "Cordinater", "Technician"]);
+
 window.addEventListener("load", () => {
             const form = document.getElementById('addUserForm');
             const companyInput = document.getElementById('company');
@@ -14,13 +16,18 @@ window.addEventListener("load", () => {
 
             form.addEventListener('submit', async e => {
                 e.preventDefault();
+                const selectedDepartment = String(document.getElementById('department').value || "").trim();
+                if(!USER_DEPARTMENTS.has(selectedDepartment)){
+                    alert("Please select a valid department.");
+                    return;
+                }
                 const user = {
                     username: document.getElementById('username').value.trim(),
                     email: document.getElementById('email').value.trim(),
                     password: document.getElementById('password').value,
                     role: document.getElementById('role').value,
                     company: document.getElementById('company').value.trim(),
-                    department: document.getElementById('department').value.trim(),
+                    department: selectedDepartment,
                     telephone: document.getElementById('tel').value.trim()
                 };
                 try{

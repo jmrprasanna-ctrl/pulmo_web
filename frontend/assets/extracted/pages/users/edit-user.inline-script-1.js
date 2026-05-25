@@ -3,6 +3,22 @@ function getUserId(){
             return params.get("id");
         }
 
+        const USER_DEPARTMENTS = new Set(["Manager", "IT", "Finance", "Admin", "Cordinater", "Technician"]);
+
+        function ensureDepartmentOption(value){
+            const select = document.getElementById('department');
+            if(!select) return "";
+            const raw = String(value || "").trim();
+            if(!raw) return "";
+            if(USER_DEPARTMENTS.has(raw)) return raw;
+
+            const option = document.createElement("option");
+            option.value = raw;
+            option.textContent = `${raw} (Legacy)`;
+            select.appendChild(option);
+            return raw;
+        }
+
         function isCurrentLoggedInUser(targetUserId){
             const currentUserId = String(localStorage.getItem("userId") || "").trim();
             const targetId = String(targetUserId || "").trim();
@@ -20,7 +36,7 @@ function getUserId(){
                 const user = await request(`/users/${id}`,"GET");
                 document.getElementById('username').value = user.username || "";
                 document.getElementById('company').value = user.company || "";
-                document.getElementById('department').value = user.department || "";
+                document.getElementById('department').value = ensureDepartmentOption(user.department) || "";
                 document.getElementById('tel').value = user.telephone || "";
                 document.getElementById('email').value = user.email || "";
                 document.getElementById('role').value = user.role || "";
@@ -53,12 +69,17 @@ function getUserId(){
             form.addEventListener('submit', async e => {
                 e.preventDefault();
                 const id = getUserId();
+                const selectedDepartment = String(document.getElementById('department').value || "").trim();
+                if(!USER_DEPARTMENTS.has(selectedDepartment)){
+                    alert("Please select a valid department.");
+                    return;
+                }
                 const payload = {
                     username: document.getElementById('username').value.trim(),
                     email: document.getElementById('email').value.trim(),
                     role: document.getElementById('role').value,
                     company: document.getElementById('company').value.trim(),
-                    department: document.getElementById('department').value.trim(),
+                    department: selectedDepartment,
                     telephone: document.getElementById('tel').value.trim()
                 };
                 const password = document.getElementById('password').value;

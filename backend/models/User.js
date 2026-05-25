@@ -5,7 +5,14 @@ const User = db.define("User", {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     username: { type: DataTypes.STRING, allowNull: false },
     company: { type: DataTypes.STRING },
-    department: { type: DataTypes.STRING },
+    department: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: "Cordinater",
+        validate: {
+            isIn: [["Manager", "IT", "Finance", "Admin", "Cordinater", "Technician"]],
+        },
+    },
     telephone: { type: DataTypes.STRING },
     email: { type: DataTypes.STRING, unique: true, allowNull: false },
                                                                        

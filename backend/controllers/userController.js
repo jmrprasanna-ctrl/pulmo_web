@@ -22,6 +22,29 @@ const USER_PROFILE_STORAGE_ROOT = path.resolve(__dirname, "../storage/user-profi
 const PROFILE_IMAGE_ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".bmp", ".gif", ".png", ".tif", ".tiff", ".webp"]);
 
 let userProfileSchemaEnsured = false;
+const ALLOWED_USER_DEPARTMENTS = ["Manager", "IT", "Finance", "Admin", "Cordinater", "Technician"];
+const ALLOWED_USER_DEPARTMENT_SET = new Set(ALLOWED_USER_DEPARTMENTS);
+
+function normalizeDepartmentToken(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z]+/g, "");
+}
+
+function normalizeUserDepartment(value) {
+  const token = normalizeDepartmentToken(value);
+  if (!token) return "";
+
+  if (token === "manager") return "Manager";
+  if (token === "it" || token === "informationtechnology" || token === "informationtech") return "IT";
+  if (token === "finance" || token === "finances" || token === "accounts" || token === "accounting") return "Finance";
+  if (token === "admin" || token === "administrator") return "Admin";
+  if (token === "cordinater" || token === "coordinator" || token === "coordinater" || token === "cordinator") return "Cordinater";
+  if (token === "technician" || token === "tech") return "Technician";
+
+  return "";
+}
 
 function normalizeDatabaseName(value) {
   const normalized = db.normalizeDatabaseName(value);
@@ -245,9 +268,25 @@ exports.getUserById = async (req, res) => {
 };
 
 exports.addUser = async (req, res) => {
-  const { username, company, department, telephone, email, password, role } = req.body;
+  const username = String(req.body?.username || "").trim();
+  const company = String(req.body?.company || "").trim();
+  const department = normalizeUserDepartment(req.body?.department);
+  const telephone = String(req.body?.telephone || "").trim();
+  const email = String(req.body?.email || "").trim();
+  const password = String(req.body?.password || "");
+  const role = String(req.body?.role || "").trim().toLowerCase();
 
   try {
+    if (!username || !company || !telephone || !email || !password || !role) {
+      return res.status(400).json({ message: "Missing required fields." });
+    }
+
+    if (!ALLOWED_USER_DEPARTMENT_SET.has(department)) {
+      return res.status(400).json({
+        message: `Department must be one of: ${ALLOWED_USER_DEPARTMENTS.join(", ")}`,
+      });
+    }
+
     const existing = await User.findOne({ where: { email } });
     if (existing) {
       return res.status(400).json({ message: "Email already in use" });
@@ -279,7 +318,14 @@ exports.addUser = async (req, res) => {
 
 exports.updateUser = async (req, res) => {
   const { id } = req.params;
-  const { username, company, department, telephone, email, password, role } = req.body;
+  const username = typeof req.body?.username === "undefined" ? undefined : String(req.body.username || "").trim();
+  const company = typeof req.body?.company === "undefined" ? undefined : String(req.body.company || "").trim();
+  const departmentRaw = typeof req.body?.department === "undefined" ? undefined : req.body.department;
+  const department = typeof departmentRaw === "undefined" ? undefined : normalizeUserDepartment(departmentRaw);
+  const telephone = typeof req.body?.telephone === "undefined" ? undefined : String(req.body.telephone || "").trim();
+  const email = typeof req.body?.email === "undefined" ? undefined : String(req.body.email || "").trim();
+  const password = typeof req.body?.password === "undefined" ? "" : String(req.body.password || "");
+  const role = typeof req.body?.role === "undefined" ? undefined : String(req.body.role || "").trim().toLowerCase();
 
   try {
     await ensureUserSuperColumn();
@@ -298,6 +344,12 @@ exports.updateUser = async (req, res) => {
       if (existing && existing.id !== user.id) {
         return res.status(400).json({ message: "Email already in use" });
       }
+    }
+
+    if (typeof department !== "undefined" && !ALLOWED_USER_DEPARTMENT_SET.has(department)) {
+      return res.status(400).json({
+        message: `Department must be one of: ${ALLOWED_USER_DEPARTMENTS.join(", ")}`,
+      });
     }
 
     user.username = username ?? user.username;
