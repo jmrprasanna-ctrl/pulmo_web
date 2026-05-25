@@ -444,7 +444,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
           }
         })();
       ''');
-      final String raw = String(result ?? '').toLowerCase();
+      final String raw = (result ?? '').toString().toLowerCase();
       return raw.contains('1') || raw.contains('true');
     } catch (_) {
       return false;
