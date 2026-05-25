@@ -16,6 +16,7 @@ const String kWebAppUrl = String.fromEnvironment(
   defaultValue: 'http://54.242.44.172/pages/login.html',
 );
 const String _credentialsChannelName = 'AxisCredentialsBridge';
+const String _loginStatusChannelName = 'AxisLoginStatusBridge';
 const String _pdfChannelName = 'AxisPdfBridge';
 const String _credentialsListStorageKey = 'axis_saved_credentials_v1';
 const String _legacyUsernameStorageKey = 'axis_saved_username';
@@ -135,6 +136,9 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
   String _preferredLoginPassword = '';
   bool _offlinePasswordVisible = false;
   bool _isOfflineRetryInProgress = false;
+  bool _showPasswordUpdateAction = false;
+  String _passwordUpdateUsername = '';
+  String _passwordUpdateValue = '';
   final Map<String, _PendingPdfTransfer> _pendingPdfTransfers =
       <String, _PendingPdfTransfer>{};
 
@@ -150,6 +154,12 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
         _credentialsChannelName,
         onMessageReceived: (JavaScriptMessage message) {
           _handleCredentialsBridgeMessage(message.message);
+        },
+      )
+      ..addJavaScriptChannel(
+        _loginStatusChannelName,
+        onMessageReceived: (JavaScriptMessage message) {
+          _handleLoginStatusBridgeMessage(message.message);
         },
       )
       ..addJavaScriptChannel(
@@ -332,6 +342,82 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     }
   }
 
+  bool _isLoginFailureMessage(String message) {
+    final String lower = message.trim().toLowerCase();
+    if (lower.isEmpty) return false;
+    return lower.contains('invalid password') ||
+        lower.contains('invalid credentials') ||
+        lower.contains('incorrect password') ||
+        lower.contains('wrong password') ||
+        lower.contains('login failed');
+  }
+
+  void _handleLoginStatusBridgeMessage(String rawMessage) {
+    try {
+      final dynamic payload = jsonDecode(rawMessage);
+      if (payload is! Map) return;
+      final String type = (payload['type'] ?? '').toString().trim();
+      if (type != 'login-alert') return;
+
+      final String message = (payload['message'] ?? '').toString();
+      if (!_isLoginFailureMessage(message)) return;
+
+      final String username = (payload['username'] ?? '').toString().trim();
+      final String password = (payload['password'] ?? '').toString();
+      final String pickedUsername =
+          username.isNotEmpty ? username : _pendingUsername.trim();
+      final String pickedPassword = password.isNotEmpty ? password : _pendingPassword;
+      if (pickedUsername.isEmpty || pickedPassword.isEmpty) return;
+
+      final _SavedCredential? saved = _findSavedCredentialByUsername(pickedUsername);
+      if (saved == null) return;
+      if (saved.password == pickedPassword) {
+        return;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _showPasswordUpdateAction = true;
+        _passwordUpdateUsername = pickedUsername;
+        _passwordUpdateValue = pickedPassword;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Password changed for $pickedUsername. Tap update button to save new password.',
+          ),
+        ),
+      );
+    } catch (_) {
+      // Ignore malformed bridge messages.
+    }
+  }
+
+  Future<void> _updateSavedPasswordFromFailureState() async {
+    final String username = _passwordUpdateUsername.trim();
+    final String password = _passwordUpdateValue;
+    if (username.isEmpty || password.isEmpty) return;
+
+    await _saveCredentials(username, password);
+    _preferredLoginUsername = username;
+    _preferredLoginPassword = password;
+    final _SavedCredential? saved = _findSavedCredentialByUsername(username);
+    if (saved != null) {
+      await _applyCredentialToLoginForm(saved);
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _showPasswordUpdateAction = false;
+      _passwordUpdateUsername = '';
+      _passwordUpdateValue = '';
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Saved password updated for $username.')),
+    );
+  }
+
   Future<void> _handlePageFinished(String url) async {
     if (mounted) {
       setState(() {
@@ -350,6 +436,9 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
       _pendingPassword = '';
       _preferredLoginUsername = '';
       _preferredLoginPassword = '';
+      _showPasswordUpdateAction = false;
+      _passwordUpdateUsername = '';
+      _passwordUpdateValue = '';
     }
 
     if (_isLoginPageUrl(url)) {
@@ -464,6 +553,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
           var pass = document.getElementById('password');
           var loginBtn = document.getElementById('loginBtn');
           var credentialBridge = window.$_credentialsChannelName;
+          var loginStatusBridge = window.$_loginStatusChannelName;
 
           if (form) {
             form.setAttribute('method', 'post');
@@ -542,6 +632,27 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
                 sendCredentialsToApp('click');
               });
             }
+          }
+
+          if (!window.__axisLoginAlertHooked) {
+            window.__axisLoginAlertHooked = true;
+            var originalAlert = typeof window.alert === 'function' ? window.alert.bind(window) : null;
+            window.alert = function (msg) {
+              try {
+                var alertText = String(msg == null ? '' : msg);
+                if (loginStatusBridge && typeof loginStatusBridge.postMessage === 'function') {
+                  loginStatusBridge.postMessage(JSON.stringify({
+                    type: 'login-alert',
+                    message: alertText,
+                    username: user ? String(user.value || '').trim() : '',
+                    password: pass ? String(pass.value || '') : ''
+                  }));
+                }
+              } catch (_) {}
+              if (originalAlert) {
+                return originalAlert(msg);
+              }
+            };
           }
 
           clearLoginValues();
@@ -982,6 +1093,14 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
                 tooltip: 'Saved Accounts',
                 onPressed: _openSavedAccountsFromKeyButton,
                 icon: const Icon(Icons.key_outlined),
+              ),
+            if (_isLoginPageUrl(_currentUrl) && _showPasswordUpdateAction)
+              IconButton(
+                tooltip: 'Update Saved Password',
+                onPressed: () {
+                  unawaited(_updateSavedPasswordFromFailureState());
+                },
+                icon: const Icon(Icons.lock_reset),
               ),
             IconButton(
               tooltip: 'Refresh',
