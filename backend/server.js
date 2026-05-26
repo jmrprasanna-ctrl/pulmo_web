@@ -1123,12 +1123,13 @@ async function ensureUserDepartmentSchema() {
       UPDATE users
       SET department = CASE
         WHEN department IS NULL OR TRIM(department) = '' THEN 'Cordinater'
-        WHEN LOWER(REGEXP_REPLACE(TRIM(department), '[^a-z]+', '', 'g')) = 'manager' THEN 'Manager'
-        WHEN LOWER(REGEXP_REPLACE(TRIM(department), '[^a-z]+', '', 'g')) IN ('it', 'informationtechnology', 'informationtech') THEN 'IT'
-        WHEN LOWER(REGEXP_REPLACE(TRIM(department), '[^a-z]+', '', 'g')) IN ('finance', 'finances', 'accounts', 'accounting') THEN 'Finance'
-        WHEN LOWER(REGEXP_REPLACE(TRIM(department), '[^a-z]+', '', 'g')) IN ('admin', 'administrator') THEN 'Admin'
-        WHEN LOWER(REGEXP_REPLACE(TRIM(department), '[^a-z]+', '', 'g')) IN ('cordinater', 'coordinator', 'coordinater', 'cordinator') THEN 'Cordinater'
-        WHEN LOWER(REGEXP_REPLACE(TRIM(department), '[^a-z]+', '', 'g')) IN ('technician', 'tech') THEN 'Technician'
+        WHEN department IN ('Manager', 'IT', 'Finance', 'Admin', 'Cordinater', 'Technician') THEN department
+        WHEN REGEXP_REPLACE(LOWER(TRIM(department)), '[^a-z]+', '', 'g') = 'manager' THEN 'Manager'
+        WHEN REGEXP_REPLACE(LOWER(TRIM(department)), '[^a-z]+', '', 'g') IN ('it', 'informationtechnology', 'informationtech') THEN 'IT'
+        WHEN REGEXP_REPLACE(LOWER(TRIM(department)), '[^a-z]+', '', 'g') IN ('finance', 'finances', 'accounts', 'accounting') THEN 'Finance'
+        WHEN REGEXP_REPLACE(LOWER(TRIM(department)), '[^a-z]+', '', 'g') IN ('admin', 'administrator') THEN 'Admin'
+        WHEN REGEXP_REPLACE(LOWER(TRIM(department)), '[^a-z]+', '', 'g') IN ('cordinater', 'coordinator', 'coordinater', 'cordinator') THEN 'Cordinater'
+        WHEN REGEXP_REPLACE(LOWER(TRIM(department)), '[^a-z]+', '', 'g') IN ('technician', 'tech') THEN 'Technician'
         ELSE 'Cordinater'
       END;
     `);
