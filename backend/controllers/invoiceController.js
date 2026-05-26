@@ -848,7 +848,7 @@ exports.getSealVImage = async (req,res)=>{
 
 exports.createInvoice = async (req,res)=>{
     const { invoice_no, invoice_date, quotation_date, quotation2_date, quotation3_date, quotation2_customer_name, quotation3_customer_name, customer_id, items, importants, machine_description, serial_no, machine_count, support_technician, support_technician_percentage, payment_method } = req.body;
-    if(!customer_id || !invoice_no || !items || !items.length) {
+    if(!customer_id || !items || !items.length) {
         return res.status(400).json({message:"Invalid data"});
     }
     try{

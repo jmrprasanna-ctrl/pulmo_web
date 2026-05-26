@@ -705,10 +705,9 @@ document.getElementById("invoiceForm").addEventListener("submit", async function
         return !hasProductId && !hasProductCode;
     });
 
-    if(!customerId || !invoiceNo || !invoiceDate || !quotationDate || items.length===0 || hasInvalidItem){
+    if(!customerId || !invoiceDate || !quotationDate || items.length===0 || hasInvalidItem){
         const reasons = [];
         if(!customerId) reasons.push("customer");
-        if(!invoiceNo) reasons.push("invoice no");
         if(!invoiceDate) reasons.push("invoice date");
         if(!quotationDate) reasons.push("quotation date");
         if(items.length === 0) reasons.push("product rows");
