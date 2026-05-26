@@ -394,7 +394,7 @@ function renderSidebarMenuByAccess(){
     const normalizePath = (value) => `/${String(value || "").trim().toLowerCase().replace(/\\/g, "/").replace(/^\/+/, "")}`;
     const menuEntries = [
         { path: "/dashboard.html", label: "Dashboard" },
-        { path: "/services/service-list.html", label: "Services" },
+        { path: "/services/service-list.html", label: "Visits" },
         {
             path: "/products/product-list.html",
             label: "Administration",

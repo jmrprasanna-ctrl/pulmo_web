@@ -185,10 +185,10 @@ const ACCESS_MODULE_OPTIONS = [
     ],
   },
   {
-    module: "Services",
+    module: "Visits",
     items: [
-      { path: "/services/service-list.html", label: "Service List", actions: ["view", "add", "delete"] },
-      { path: "/services/add-service.html", label: "Add Service", actions: ["view", "add"] },
+      { path: "/services/service-list.html", label: "Customer Visits", actions: ["view", "add", "delete"] },
+      { path: "/services/add-service.html", label: "Add Visit", actions: ["view", "add"] },
     ],
   },
   {
