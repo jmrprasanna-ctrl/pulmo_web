@@ -69,6 +69,9 @@ const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");                              
 
 const app = express();
+const SLOW_API_REQUEST_MS = Math.max(100, Number(process.env.SLOW_API_REQUEST_MS || 1200));
+let httpServer = null;
+let shutdownInProgress = false;
 let appHealth = {
   ok: false,
   dbConnected: false,
@@ -1223,6 +1226,29 @@ async function ensureUserDepartmentSchema() {
 app.use(cors());
 app.disable("x-powered-by");
 app.use((req, res, next) => {
+  const startedAt = process.hrtime.bigint();
+  const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  req.requestId = requestId;
+  res.setHeader("X-Request-Id", requestId);
+
+  const originalEnd = res.end;
+  res.end = function patchedEnd(...args) {
+    const elapsedMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
+    if (!res.headersSent) {
+      res.setHeader("X-Response-Time-Ms", elapsedMs.toFixed(1));
+    }
+    if (req.path.startsWith("/api/") && elapsedMs >= SLOW_API_REQUEST_MS) {
+      console.warn(
+        `[slow-api] ${req.method} ${req.originalUrl} ${res.statusCode} ${elapsedMs.toFixed(1)}ms` +
+          ` req_id=${requestId} db=${String(req.databaseName || req.user?.database_name || "-")}`
+      );
+    }
+    return originalEnd.apply(this, args);
+  };
+
+  next();
+});
+app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "SAMEORIGIN");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -1280,9 +1306,21 @@ app.use("/api/hr", hrRoutes);
 app.get("/", (_req, res) => res.redirect("/pages/login.html"));
 app.get("/api/health", (_req, res) => {
   const statusCode = appHealth.ok ? 200 : 503;
+  const memory = process.memoryUsage();
+  const registeredDatabases = typeof db.getDatabaseKeys === "function" ? db.getDatabaseKeys() : [];
   res.status(statusCode).json({
     ...appHealth,
     now: new Date().toISOString(),
+    uptime_seconds: Math.floor(process.uptime()),
+    memory: {
+      rss_mb: Number((memory.rss / (1024 * 1024)).toFixed(1)),
+      heap_used_mb: Number((memory.heapUsed / (1024 * 1024)).toFixed(1)),
+      heap_total_mb: Number((memory.heapTotal / (1024 * 1024)).toFixed(1)),
+    },
+    database_registry: {
+      count: Array.isArray(registeredDatabases) ? registeredDatabases.length : 0,
+      names: Array.isArray(registeredDatabases) ? registeredDatabases : [],
+    },
   });
 });
 
@@ -1355,7 +1393,7 @@ async function startServer() {
       console.warn("Startup checks report missing dependencies. Check /api/health for details.");
     }
 
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    httpServer = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   } catch (err) {
     const checks = await getRuntimeChecks().catch(() => null);
     appHealth = {
@@ -1372,6 +1410,45 @@ async function startServer() {
     console.error("Startup failed:", err);
   }
 }
+
+async function shutdownGracefully(signal, exitCode = 0) {
+  if (shutdownInProgress) return;
+  shutdownInProgress = true;
+  console.warn(`[shutdown] Received ${signal}. Closing server...`);
+
+  try {
+    if (httpServer) {
+      await new Promise((resolve) => {
+        httpServer.close(() => resolve());
+      });
+    }
+  } catch (_err) {
+  }
+
+  try {
+    await db.close();
+  } catch (_err) {
+  }
+
+  process.exit(exitCode);
+}
+
+process.on("SIGINT", () => {
+  shutdownGracefully("SIGINT", 0);
+});
+
+process.on("SIGTERM", () => {
+  shutdownGracefully("SIGTERM", 0);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[unhandledRejection]", reason);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("[uncaughtException]", err);
+  shutdownGracefully("uncaughtException", 1);
+});
 
 startServer();
 

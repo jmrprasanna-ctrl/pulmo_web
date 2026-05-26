@@ -21,6 +21,7 @@ const String _pdfChannelName = 'AxisPdfBridge';
 const String _credentialsListStorageKey = 'axis_saved_credentials_v1';
 const String _legacyUsernameStorageKey = 'axis_saved_username';
 const String _legacyPasswordStorageKey = 'axis_saved_password';
+const String _androidPublicDownloadsPath = '/storage/emulated/0/Download';
 
 class _SavedCredential {
   const _SavedCredential({
@@ -121,7 +122,6 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
 
   late final WebViewController _controller;
   late final Uri _startUri;
-  Future<void>? _credentialsLoadFuture;
 
   int _loadingProgress = 0;
   bool _hasMainFrameError = false;
@@ -142,12 +142,15 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
   String _passwordUpdateValue = '';
   final Map<String, _PendingPdfTransfer> _pendingPdfTransfers =
       <String, _PendingPdfTransfer>{};
+  String _lastPdfBridgeInjectedUrl = '';
+  bool _skipAndroidPublicDownloadPath = false;
+  List<Directory>? _cachedPdfSaveDirectories;
 
   @override
   void initState() {
     super.initState();
     _startUri = Uri.tryParse(kWebAppUrl) ?? Uri.parse('about:blank');
-    _credentialsLoadFuture = _loadSavedCredentials();
+    unawaited(_loadSavedCredentials());
 
     final WebViewController controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -172,8 +175,13 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
+            final int normalized = progress.clamp(0, 100);
+            final int delta = (normalized - _loadingProgress).abs();
+            final bool shouldUpdate =
+                normalized == 0 || normalized == 100 || delta >= 4;
+            if (!shouldUpdate || !mounted) return;
             setState(() {
-              _loadingProgress = progress;
+              _loadingProgress = normalized;
             });
           },
           onPageStarted: (String url) {
@@ -181,7 +189,9 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
               _hasMainFrameError = false;
               _errorText = '';
               _currentUrl = url;
+              _loadingProgress = 0;
               _pendingPdfTransfers.clear();
+              _lastPdfBridgeInjectedUrl = '';
               if (_isLoginPageUrl(url)) {
                 _credentialPromptShownForCurrentLogin = false;
               }
@@ -560,11 +570,19 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
 
     if (_isLoginPageUrl(url)) {
       await _enhanceLoginAutofill(url);
-      await _installPdfSaveBridge();
       return;
     }
-    await _enhanceLoginAutofill(url);
-    await _installPdfSaveBridge();
+    if (_shouldInstallPdfBridge(url) && _lastPdfBridgeInjectedUrl != url) {
+      await _installPdfSaveBridge();
+      _lastPdfBridgeInjectedUrl = url;
+    }
+  }
+
+  bool _shouldInstallPdfBridge(String url) {
+    final Uri? uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    final String scheme = uri.scheme.toLowerCase();
+    return scheme == 'http' || scheme == 'https';
   }
 
   Future<void> _applyCredentialToLoginForm(_SavedCredential credential) async {
@@ -942,6 +960,10 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
         return candidate;
       } catch (err) {
         lastError = err;
+        if (_isAndroidPublicDownloadPermissionIssue(dir, err)) {
+          _skipAndroidPublicDownloadPath = true;
+          _cachedPdfSaveDirectories = null;
+        }
       }
     }
     if (lastError != null) {
@@ -950,7 +972,22 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     throw StateError('Failed to save PDF: no writable storage directory found.');
   }
 
+  bool _isAndroidPublicDownloadPermissionIssue(Directory dir, Object err) {
+    if (!Platform.isAndroid) return false;
+    if (dir.path != _androidPublicDownloadsPath) return false;
+    if (err is! FileSystemException) return false;
+    final String errorText = err.toString().toLowerCase();
+    return errorText.contains('permission denied') ||
+        errorText.contains('errno = 13') ||
+        errorText.contains('operation not permitted');
+  }
+
   Future<List<Directory>> _resolvePdfSaveDirectories() async {
+    final List<Directory>? cachedDirs = _cachedPdfSaveDirectories;
+    if (cachedDirs != null && cachedDirs.isNotEmpty) {
+      return List<Directory>.from(cachedDirs);
+    }
+
     final List<Directory> dirs = <Directory>[];
     final Set<String> seen = <String>{};
     void addDir(Directory dir) {
@@ -961,8 +998,10 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     }
 
     if (Platform.isAndroid) {
-      // Try public Downloads first when allowed.
-      addDir(Directory('/storage/emulated/0/Download'));
+      if (!_skipAndroidPublicDownloadPath) {
+        // Try public Downloads first when allowed.
+        addDir(Directory(_androidPublicDownloadsPath));
+      }
 
       final Directory? externalDir = await getExternalStorageDirectory();
       if (externalDir != null) {
@@ -980,6 +1019,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     if (dirs.isEmpty) {
       addDir(Directory.systemTemp);
     }
+    _cachedPdfSaveDirectories = List<Directory>.from(dirs);
     return dirs;
   }
 

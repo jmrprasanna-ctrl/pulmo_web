@@ -13,6 +13,70 @@ const { queueDailyDatabaseBackup } = require("./systemBackupController");
 const { Op, fn, col, where: sqWhere } = require("sequelize");
 
 const MONTH_NAMES_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const SUMMARY_CACHE_TTL_MS = Math.max(1000, Number(process.env.DASHBOARD_SUMMARY_CACHE_TTL_MS || 15000));
+const DAILY_BACKUP_TRIGGER_COOLDOWN_MS = Math.max(1000, Number(process.env.DASHBOARD_DAILY_BACKUP_COOLDOWN_MS || 300000));
+const dashboardSummaryCache = new Map();
+const backupTriggerState = new Map();
+
+function buildSummaryCacheKey(databaseName, period, dateText) {
+    const dbName = String(databaseName || "inventory").trim().toLowerCase() || "inventory";
+    const safePeriod = String(period || "day").trim().toLowerCase() || "day";
+    const safeDate = String(dateText || "").trim() || "na";
+    return `${dbName}|${safePeriod}|${safeDate}`;
+}
+
+function getCachedSummary(cacheKey) {
+    const cached = dashboardSummaryCache.get(cacheKey);
+    if (!cached) return null;
+    if (Date.now() > cached.expiresAt) {
+        dashboardSummaryCache.delete(cacheKey);
+        return null;
+    }
+    return cached.payload;
+}
+
+function setCachedSummary(cacheKey, payload) {
+    if (dashboardSummaryCache.size > 300) {
+        const now = Date.now();
+        for (const [key, value] of dashboardSummaryCache.entries()) {
+            if (!value || now > value.expiresAt) {
+                dashboardSummaryCache.delete(key);
+            }
+        }
+        if (dashboardSummaryCache.size > 300) {
+            const firstKey = dashboardSummaryCache.keys().next().value;
+            if (firstKey !== undefined) {
+                dashboardSummaryCache.delete(firstKey);
+            }
+        }
+    }
+    dashboardSummaryCache.set(cacheKey, {
+        payload,
+        expiresAt: Date.now() + SUMMARY_CACHE_TTL_MS,
+    });
+}
+
+function maybeQueueDailyBackup(databaseName) {
+    const safeDb = String(databaseName || "").trim().toLowerCase();
+    if (!safeDb) return;
+    if (backupTriggerState.size > 200) {
+        const nowForCleanup = Date.now();
+        for (const [key, value] of backupTriggerState.entries()) {
+            if (!Number.isFinite(value) || nowForCleanup - Number(value) > (DAILY_BACKUP_TRIGGER_COOLDOWN_MS * 4)) {
+                backupTriggerState.delete(key);
+            }
+        }
+    }
+    const now = Date.now();
+    const lastTriggeredAt = Number(backupTriggerState.get(safeDb) || 0);
+    if (now - lastTriggeredAt < DAILY_BACKUP_TRIGGER_COOLDOWN_MS) {
+        return;
+    }
+    backupTriggerState.set(safeDb, now);
+    queueDailyDatabaseBackup(safeDb).catch((backupErr) => {
+        console.error("[dashboard] Daily database backup warning:", backupErr?.message || backupErr);
+    });
+}
 
 function sumTechnicianPaid(rows){
     return (Array.isArray(rows) ? rows : []).reduce((sum, inv) => {
@@ -371,6 +435,7 @@ exports.getSummary = async (req,res)=>{
     let baseDate = new Date();
     let periodStart = new Date(baseDate);
     let periodEnd = new Date(baseDate);
+    let summaryCacheKey = "";
     try{
         period = String(req.query.period || "day").toLowerCase();
         const dateStr = req.query.date;
@@ -385,9 +450,7 @@ exports.getSummary = async (req,res)=>{
         const requestedDbName = String(
             req.databaseName || req.user?.database_name || req.headers["x-database-name"] || process.env.DB_NAME || "inventory"
         ).trim().toLowerCase() || "inventory";
-        queueDailyDatabaseBackup(requestedDbName).catch((backupErr) => {
-            console.error("[dashboard] Daily database backup warning:", backupErr?.message || backupErr);
-        });
+        maybeQueueDailyBackup(requestedDbName);
 
         if(period === "week"){
             const day = periodStart.getDay();         
@@ -409,6 +472,12 @@ exports.getSummary = async (req,res)=>{
         }
         const periodStartDate = toDateOnlyText(periodStart) || new Date(periodStart).toISOString().slice(0, 10);
         const periodEndDate = toDateOnlyText(periodEnd) || new Date(periodEnd).toISOString().slice(0, 10);
+        const cacheDateText = toDateOnlyText(baseDate) || periodStartDate;
+        summaryCacheKey = buildSummaryCacheKey(requestedDbName, period, cacheDateText);
+        const cachedPayload = getCachedSummary(summaryCacheKey);
+        if (cachedPayload) {
+            return res.json(cachedPayload);
+        }
 
         const totalUsers = await User.count();
         const totalGeneralMachines = await GeneralMachine.count({
@@ -696,7 +765,7 @@ exports.getSummary = async (req,res)=>{
             monthlyProfit.push(Number(monthProfit.toFixed(2)));
         }
 
-        res.json({
+        const payload = {
             totalUsers,
             totalGeneralMachines,
             totalRentalMachines,
@@ -739,7 +808,10 @@ exports.getSummary = async (req,res)=>{
             period,
             periodStart,
             periodEnd
-        });
+        };
+
+        setCachedSummary(summaryCacheKey, payload);
+        res.json(payload);
 
     }catch(err){
         if(isSchemaCompatibilityError(err)){
@@ -751,10 +823,17 @@ exports.getSummary = async (req,res)=>{
             });
             try{
                 const compatibleSummary = await buildSchemaCompatibleSummary(period, periodStart, periodEnd, baseDate);
+                if (summaryCacheKey) {
+                    setCachedSummary(summaryCacheKey, compatibleSummary);
+                }
                 return res.json(compatibleSummary);
             }catch(compatErr){
                 console.error("[dashboard] Compatible summary fallback failed.", compatErr);
-                return res.json(buildEmptySummaryPayload(period, periodStart, periodEnd, baseDate));
+                const emptyPayload = buildEmptySummaryPayload(period, periodStart, periodEnd, baseDate);
+                if (summaryCacheKey) {
+                    setCachedSummary(summaryCacheKey, emptyPayload);
+                }
+                return res.json(emptyPayload);
             }
         }
         console.error(err);

@@ -1,10 +1,17 @@
 const jwt = require("jsonwebtoken");
 const db = require("../config/database");
-const { Client } = require("pg");
 
 const DEFAULT_DB = db.normalizeDatabaseName(process.env.DB_NAME || "inventory") || "inventory";
+const USER_DB_CACHE_TTL_MS = Math.max(1000, Number(process.env.AUTH_USER_DB_CACHE_TTL_MS || 30000));
 const ensuredMachineEntryDateDbs = new Set();
 const ensuredCatalogSeedDbs = new Set();
+const ensuredRegisteredDbs = new Set(
+  (typeof db.getDatabaseKeys === "function" ? db.getDatabaseKeys() : [])
+    .map((name) => db.normalizeDatabaseName(name))
+    .filter(Boolean)
+);
+const userDatabaseCache = new Map();
+const registerDbInFlight = new Map();
 const DEFAULT_CATEGORIES = [
   "Photocopier",
   "Printer",
@@ -34,72 +41,126 @@ const DEFAULT_CATEGORY_MODELS = {
   Service: ["OTHER"],
 };
 
-function getAuthDbClient() {
-  return new Client({
-    host: process.env.DB_HOST || "localhost",
-    port: Number(process.env.DB_PORT || 5432),
-    user: process.env.DB_USER || "postgres",
-    password: String(process.env.DB_PASSWORD || ""),
-    database: DEFAULT_DB,
+function getCachedUserDatabaseInfo(userId) {
+  const cached = userDatabaseCache.get(userId);
+  if (!cached) return null;
+  if (Date.now() > cached.expiresAt) {
+    userDatabaseCache.delete(userId);
+    return null;
+  }
+  return cached.payload;
+}
+
+function setCachedUserDatabaseInfo(userId, payload) {
+  if (userDatabaseCache.size > 5000) {
+    const now = Date.now();
+    for (const [key, value] of userDatabaseCache.entries()) {
+      if (!value || now > value.expiresAt) {
+        userDatabaseCache.delete(key);
+      }
+    }
+    if (userDatabaseCache.size > 5000) {
+      const firstKey = userDatabaseCache.keys().next().value;
+      if (firstKey !== undefined) {
+        userDatabaseCache.delete(firstKey);
+      }
+    }
+  }
+  userDatabaseCache.set(userId, {
+    payload,
+    expiresAt: Date.now() + USER_DB_CACHE_TTL_MS,
   });
 }
 
-async function resolveUserAssignedDatabase(userId) {
-  const client = getAuthDbClient();
+async function resolveUserDatabaseInfoUncached(userId) {
   try {
-    await client.connect();
-    const rs = await client.query(
-      `SELECT database_name
-       FROM user_accesses
-       WHERE user_id = $1
-         AND LOWER(COALESCE(user_database, 'inventory')) = 'inventory'
-       ORDER BY "updatedAt" DESC NULLS LAST, "createdAt" DESC NULLS LAST, id DESC
-       LIMIT 1`,
-      [userId]
-    );
-    const selected = db.normalizeDatabaseName(rs.rows[0]?.database_name || "");
-    if (selected) {
-      return selected;
-    }
+    return await db.withDatabase(DEFAULT_DB, async () => {
+      const [rows] = await db.query(
+        `SELECT
+           (SELECT database_name
+            FROM user_mappings
+            WHERE user_id = $1
+            ORDER BY "updatedAt" DESC NULLS LAST, id DESC
+            LIMIT 1) AS mapped_database_name,
+           (SELECT database_name
+            FROM user_accesses
+            WHERE user_id = $1
+              AND LOWER(COALESCE(user_database, 'inventory')) = 'inventory'
+            ORDER BY "updatedAt" DESC NULLS LAST, "createdAt" DESC NULLS LAST, id DESC
+            LIMIT 1) AS assigned_database_name`,
+        { bind: [userId] }
+      );
 
-    const mappingRs = await client.query(
-      `SELECT database_name
-       FROM user_mappings
-       WHERE user_id = $1
-       ORDER BY "updatedAt" DESC NULLS LAST, id DESC
-       LIMIT 1`,
-      [userId]
-    );
-    const mapped = db.normalizeDatabaseName(mappingRs.rows[0]?.database_name || "");
-    if (mapped) {
-      return mapped;
-    }
-    return DEFAULT_DB;
+      const row = Array.isArray(rows) ? rows[0] : null;
+      const mappedDb = db.normalizeDatabaseName(row?.mapped_database_name || "");
+      const assignedDb = db.normalizeDatabaseName(row?.assigned_database_name || "") || mappedDb || DEFAULT_DB;
+      return {
+        mappedDb: mappedDb || null,
+        assignedDb: assignedDb || DEFAULT_DB,
+      };
+    });
   } catch (_err) {
-    return null;
-  } finally {
-    await client.end().catch(() => {});
+    return {
+      mappedDb: null,
+      assignedDb: null,
+    };
   }
 }
 
-async function resolveMappedDatabase(userId) {
-  const client = getAuthDbClient();
+async function resolveUserDatabaseInfo(userId) {
+  if (!Number.isFinite(userId) || userId <= 0) {
+    return { mappedDb: null, assignedDb: null };
+  }
+
+  const cached = getCachedUserDatabaseInfo(userId);
+  if (cached) {
+    return cached;
+  }
+
+  const resolved = await resolveUserDatabaseInfoUncached(userId);
+  setCachedUserDatabaseInfo(userId, resolved);
+  return resolved;
+}
+
+async function ensureRegisteredDatabase(databaseName) {
+  const normalized = db.normalizeDatabaseName(databaseName || "");
+  if (!normalized) {
+    throw new Error("Invalid database name.");
+  }
+
+  if (ensuredRegisteredDbs.has(normalized)) {
+    return normalized;
+  }
+
+  const existingInFlight = registerDbInFlight.get(normalized);
+  if (existingInFlight) {
+    await existingInFlight;
+    return normalized;
+  }
+
+  const pending = db
+    .registerDatabase(normalized)
+    .then(() => {
+      ensuredRegisteredDbs.add(normalized);
+      return normalized;
+    })
+    .finally(() => {
+      registerDbInFlight.delete(normalized);
+    });
+
+  registerDbInFlight.set(normalized, pending);
+  await pending;
+  return normalized;
+}
+
+async function warmupDatabaseCatalog(targetDb) {
   try {
-    await client.connect();
-    const rs = await client.query(
-      `SELECT database_name
-       FROM user_mappings
-       WHERE user_id = $1
-       ORDER BY "updatedAt" DESC NULLS LAST, id DESC
-       LIMIT 1`,
-      [userId]
-    );
-    const selected = db.normalizeDatabaseName(rs.rows[0]?.database_name || "");
-    return selected || null;
+    await ensureCatalogSeedData(targetDb);
   } catch (_err) {
-    return null;
-  } finally {
-    await client.end().catch(() => {});
+  }
+  try {
+    await ensureMachineEntryDateColumns(targetDb);
+  } catch (_err) {
   }
 }
 
@@ -215,45 +276,36 @@ const authMiddleware = async (req, res, next) => {
     const tokenDb = db.normalizeDatabaseName(decoded?.database_name || "");
     if (tokenDb) {
       try {
-        await db.registerDatabase(tokenDb);
+        await ensureRegisteredDatabase(tokenDb);
         targetDb = tokenDb;
       } catch (_err) {
       }
     }
 
     if (Number.isFinite(userId) && userId > 0) {
-      const mappedDb = await resolveMappedDatabase(userId);
-      if (mappedDb) {
+      const resolvedDbInfo = await resolveUserDatabaseInfo(userId);
+
+      if (role === "user") {
+        const assignedDb = resolvedDbInfo.assignedDb || resolvedDbInfo.mappedDb || tokenDb || DEFAULT_DB;
+        if (!assignedDb) {
+          return res.status(503).json({ message: "Unable to resolve user database assignment." });
+        }
         try {
-          await db.registerDatabase(mappedDb);
-          targetDb = mappedDb;
+          await ensureRegisteredDatabase(assignedDb);
+          targetDb = assignedDb;
+        } catch (_err) {
+          return res.status(403).json({ message: "Invalid assigned database access." });
+        }
+      } else if (resolvedDbInfo.mappedDb) {
+        try {
+          await ensureRegisteredDatabase(resolvedDbInfo.mappedDb);
+          targetDb = resolvedDbInfo.mappedDb;
         } catch (_err) {
         }
       }
     }
 
-    if (role === "user") {
-      const assignedDb = await resolveUserAssignedDatabase(userId);
-      if (!assignedDb) {
-        return res.status(503).json({ message: "Unable to resolve user database assignment." });
-      }
-      try {
-        await db.registerDatabase(assignedDb);
-      } catch (_err) {
-        return res.status(403).json({ message: "Invalid assigned database access." });
-      }
-      targetDb = assignedDb;
-    }
-
-    try {
-      await ensureCatalogSeedData(targetDb);
-    } catch (_err) {
-    }
-
-    try {
-      await ensureMachineEntryDateColumns(targetDb);
-    } catch (_err) {
-    }
+    await warmupDatabaseCatalog(targetDb);
 
     req.user = decoded;
     req.databaseName = targetDb;
