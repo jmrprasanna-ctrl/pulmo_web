@@ -16,6 +16,7 @@ const ALLOWED_WARRANTY_PERIODS = new Set(["3 month", "6 month", "1 year", "2 yea
 const USER_PREF_TABLE = "user_preference_settings";
 const USER_QUOTATION_RENDER_TABLE = "user_quotation_render_settings";
 const ensuredUserPrefTableByDb = new Set();
+const ensuredInvoiceTableByDb = new Set();
 const INVENTORY_DB_NAME = "inventory";
 
 function normalizeWarrantyPeriod(value){
@@ -345,6 +346,55 @@ async function ensureUserPreferenceTableForCurrentDb() {
     ensuredUserPrefTableByDb.add(activeDb);
 }
 
+async function ensureInvoiceTableForCurrentDb() {
+    const activeDb = String(db.getCurrentDatabase ? db.getCurrentDatabase() : "").trim().toLowerCase() || "inventory";
+    if (ensuredInvoiceTableByDb.has(activeDb)) return;
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS invoices (
+            id SERIAL PRIMARY KEY,
+            invoice_no VARCHAR(255),
+            invoice_date DATE,
+            quotation_date DATE,
+            quotation2_date DATE,
+            quotation3_date DATE,
+            quotation2_customer_name VARCHAR(255),
+            quotation3_customer_name VARCHAR(255),
+            customer_id INTEGER,
+            machine_description VARCHAR(255),
+            serial_no VARCHAR(255),
+            machine_count INTEGER DEFAULT 0,
+            support_technician VARCHAR(255),
+            support_technician_percentage DOUBLE PRECISION,
+            payment_method VARCHAR(64) DEFAULT 'Cash',
+            cheque_no VARCHAR(255),
+            payment_status VARCHAR(32) DEFAULT 'Pending',
+            payment_date DATE,
+            total_amount DOUBLE PRECISION DEFAULT 0,
+            "createdAt" TIMESTAMP DEFAULT NOW(),
+            "updatedAt" TIMESTAMP DEFAULT NOW()
+        );
+    `);
+    await db.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS invoice_date DATE;`);
+    await db.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS quotation_date DATE;`);
+    await db.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS quotation2_date DATE;`);
+    await db.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS quotation3_date DATE;`);
+    await db.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS quotation2_customer_name VARCHAR(255);`);
+    await db.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS quotation3_customer_name VARCHAR(255);`);
+    await db.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS machine_description VARCHAR(255);`);
+    await db.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS serial_no VARCHAR(255);`);
+    await db.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS machine_count INTEGER DEFAULT 0;`);
+    await db.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS support_technician VARCHAR(255);`);
+    await db.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS support_technician_percentage DOUBLE PRECISION;`);
+    await db.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_method VARCHAR(64) DEFAULT 'Cash';`);
+    await db.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS cheque_no VARCHAR(255);`);
+    await db.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_status VARCHAR(32) DEFAULT 'Pending';`);
+    await db.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_date DATE;`);
+    await db.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS total_amount DOUBLE PRECISION DEFAULT 0;`);
+    await db.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP DEFAULT NOW();`);
+    await db.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP DEFAULT NOW();`);
+    ensuredInvoiceTableByDb.add(activeDb);
+}
+
 async function resolveUserPreferencePath(req, columnName) {
     const userId = Number(req?.user?.id || req?.user?.userId || 0);
     if (!Number.isFinite(userId) || userId <= 0) return "";
@@ -450,6 +500,7 @@ function getYearTokenFromIsoDate(isoDate) {
 }
 
 async function generateNextInvoiceNoByYear(yearToken) {
+    await ensureInvoiceTableForCurrentDb();
     const safeYear = /^\d{2}$/.test(String(yearToken || "")) ? String(yearToken) : new Date().toISOString().slice(2, 4);
     const prefix = `${safeYear}INV`;
 
@@ -488,6 +539,7 @@ async function generateNextInvoiceNoByYear(yearToken) {
 
 exports.listInvoices = async (req,res)=>{
     try{
+        await ensureInvoiceTableForCurrentDb();
         const invoices = await Invoice.findAll({
             include:[{ model: Customer, attributes:["id","name","customer_mode"] }],
             order:[["invoice_date","DESC"],["createdAt","DESC"]]
@@ -522,6 +574,7 @@ exports.listInvoices = async (req,res)=>{
 exports.getInvoice = async (req,res)=>{
     const { id } = req.params;
     try{
+        await ensureInvoiceTableForCurrentDb();
         const invoice = await Invoice.findByPk(id,{
             include:[
                 { model: Customer, attributes:["id","name","address","tel","email"] },
@@ -585,6 +638,7 @@ exports.getInvoice = async (req,res)=>{
 exports.deleteInvoice = async (req,res)=>{
     const { id } = req.params;
     try{
+        await ensureInvoiceTableForCurrentDb();
         const invoice = await Invoice.findByPk(id, { include:[{ model: InvoiceItem }, { model: InvoiceImportant }] });
         if(!invoice) return res.status(404).json({ message: "Invoice not found" });
 
@@ -615,6 +669,7 @@ exports.deleteInvoice = async (req,res)=>{
 
 exports.generateInvoiceNo = async (req,res)=>{
     try{
+        await ensureInvoiceTableForCurrentDb();
         const requestedDate = normalizeIsoDate(req.query?.date || req.query?.invoice_date || "");
         const effectiveDate = requestedDate || new Date().toISOString().slice(0, 10);
         const yearToken = getYearTokenFromIsoDate(effectiveDate);
@@ -852,6 +907,7 @@ exports.createInvoice = async (req,res)=>{
         return res.status(400).json({message:"Invalid data"});
     }
     try{
+        await ensureInvoiceTableForCurrentDb();
         let total_amount = 0;
         for(const item of items){
             const gross = Number(item.gross) || 0;
@@ -1009,6 +1065,7 @@ exports.createInvoice = async (req,res)=>{
 
 exports.listWarrantyInvoices = async (_req, res) => {
     try{
+        await ensureInvoiceTableForCurrentDb();
         const invoices = await Invoice.findAll({
             include: [
                 { model: Customer, attributes: ["id","name"] },
@@ -1093,6 +1150,7 @@ exports.getQuotation3TemplatePdf = async (req,res)=>{
 exports.updateInvoicePayment = async (req,res)=>{
     const { id } = req.params;
     try{
+        await ensureInvoiceTableForCurrentDb();
         const invoice = await Invoice.findByPk(id);
         if(!invoice){
             return res.status(404).json({ message: "Invoice not found" });
@@ -1238,6 +1296,7 @@ exports.updateInvoicePayment = async (req,res)=>{
 exports.deleteInvoicePayment = async (req,res)=>{
     const { id } = req.params;
     try{
+        await ensureInvoiceTableForCurrentDb();
         const invoice = await Invoice.findByPk(id);
         if(!invoice){
             return res.status(404).json({ message: "Invoice not found" });
@@ -1270,6 +1329,7 @@ exports.deleteInvoicePayment = async (req,res)=>{
 exports.sendInvoiceEmail = async (req, res) => {
     const { id } = req.params;
     try{
+        await ensureInvoiceTableForCurrentDb();
         const invoice = await Invoice.findByPk(id, {
             include: [
                 { model: Customer, attributes: ["id", "name", "address", "tel", "email"] },
