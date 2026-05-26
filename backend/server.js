@@ -1133,6 +1133,34 @@ async function ensureUserDepartmentSchema() {
         ELSE 'Cordinater'
       END;
     `);
+    // One-time safety backfill: restore likely intended departments for legacy rows
+    // that were previously overwritten to "Cordinater".
+    await db.query(`
+      UPDATE users
+      SET department = CASE
+        WHEN REGEXP_REPLACE(LOWER(TRIM(COALESCE(username, ''))), '[^a-z0-9]+', '', 'g') LIKE '%nishani%' THEN 'Finance'
+        WHEN REGEXP_REPLACE(LOWER(TRIM(COALESCE(username, ''))), '[^a-z0-9]+', '', 'g') LIKE '%rajitha%' THEN 'IT'
+        WHEN REGEXP_REPLACE(LOWER(TRIM(COALESCE(username, ''))), '[^a-z0-9]+', '', 'g') LIKE '%pulmo%' THEN 'Manager'
+        WHEN REGEXP_REPLACE(LOWER(TRIM(COALESCE(username, ''))), '[^a-z0-9]+', '', 'g') LIKE '%cordinater%'
+          OR REGEXP_REPLACE(LOWER(TRIM(COALESCE(username, ''))), '[^a-z0-9]+', '', 'g') LIKE '%coordinator%'
+          OR REGEXP_REPLACE(LOWER(TRIM(COALESCE(username, ''))), '[^a-z0-9]+', '', 'g') LIKE '%coordinater%'
+          OR REGEXP_REPLACE(LOWER(TRIM(COALESCE(username, ''))), '[^a-z0-9]+', '', 'g') LIKE '%cordinator%' THEN 'Cordinater'
+        WHEN LOWER(TRIM(COALESCE(role, ''))) = 'manager' THEN 'Manager'
+        WHEN LOWER(TRIM(COALESCE(role, ''))) = 'admin' THEN 'Admin'
+        ELSE department
+      END
+      WHERE department = 'Cordinater'
+        AND (
+          REGEXP_REPLACE(LOWER(TRIM(COALESCE(username, ''))), '[^a-z0-9]+', '', 'g') LIKE '%nishani%'
+          OR REGEXP_REPLACE(LOWER(TRIM(COALESCE(username, ''))), '[^a-z0-9]+', '', 'g') LIKE '%rajitha%'
+          OR REGEXP_REPLACE(LOWER(TRIM(COALESCE(username, ''))), '[^a-z0-9]+', '', 'g') LIKE '%pulmo%'
+          OR REGEXP_REPLACE(LOWER(TRIM(COALESCE(username, ''))), '[^a-z0-9]+', '', 'g') LIKE '%cordinater%'
+          OR REGEXP_REPLACE(LOWER(TRIM(COALESCE(username, ''))), '[^a-z0-9]+', '', 'g') LIKE '%coordinator%'
+          OR REGEXP_REPLACE(LOWER(TRIM(COALESCE(username, ''))), '[^a-z0-9]+', '', 'g') LIKE '%coordinater%'
+          OR REGEXP_REPLACE(LOWER(TRIM(COALESCE(username, ''))), '[^a-z0-9]+', '', 'g') LIKE '%cordinator%'
+          OR LOWER(TRIM(COALESCE(role, ''))) IN ('manager', 'admin')
+        );
+    `);
     await db.query(`
       ALTER TABLE users
       ALTER COLUMN department SET DEFAULT 'Cordinater';
