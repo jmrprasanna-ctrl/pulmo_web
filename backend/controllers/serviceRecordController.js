@@ -77,6 +77,12 @@ async function ensureServiceRecordColumns() {
         allowNull: true,
       });
     }
+    if (!columns.service_note) {
+      await queryInterface.addColumn(tableName, "service_note", {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      });
+    }
   } catch (_err) {
     // Ignore schema-guard errors; normal API errors will still be returned by handlers.
   }
@@ -160,6 +166,7 @@ exports.createServiceRecord = async (req, res) => {
     const service_spare = normalizeServiceSpare(raw_service_spare);
     const customer_id = parsePositiveInt(req.body.customer_id);
     const machine_ref_id = parsePositiveInt(req.body.machine_ref_id);
+    const service_note = String(req.body.service_note || "").trim();
     const counter_value = String(req.body.counter_value || "").trim();
     const comment_text = String(req.body.comment_text || "").trim();
 
@@ -217,6 +224,7 @@ exports.createServiceRecord = async (req, res) => {
       machine_code: String(machine.machine_id || "").trim(),
       machine_title: String(machine.machine_title || "").trim(),
       service_spare: service_spare || null,
+      service_note: service_note.slice(0, 2000),
       counter_value: counter_value.slice(0, 120),
       comment_text: comment_text.slice(0, 2000),
       created_by: Number(req.user?.id || req.user?.userId || 0) || null,

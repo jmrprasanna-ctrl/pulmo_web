@@ -7,8 +7,9 @@ const customerIdEl = document.getElementById("customerId");
 const machineIdEl = document.getElementById("machineId");
 const serviceSpareEl = document.getElementById("serviceSpare");
 const counterValueEl = document.getElementById("counterValue");
+const noteTextEl = document.getElementById("noteText");
+const noteWrapEl = document.getElementById("noteWrap");
 const commentTextEl = document.getElementById("commentText");
-const commentWrapEl = document.getElementById("commentWrap");
 const machineHelpTextEl = document.getElementById("machineHelpText");
 
 const SPARE_OPTIONS = [
@@ -29,7 +30,7 @@ const SPARE_OPTIONS = [
     "Other",
 ];
 const SPARE_LOOKUP = Object.fromEntries(SPARE_OPTIONS.map((label) => [String(label).toLowerCase(), label]));
-const COMMENT_SPARE_SET = new Set(["copier", "printer", "other"]);
+const NOTE_SPARE_SET = new Set(["copier", "printer", "other"]);
 
 const today = new Date();
 serviceDateEl.value = today.toISOString().slice(0, 10);
@@ -56,16 +57,16 @@ function normalizeServiceSpare(value) {
     return raw && SPARE_LOOKUP[raw] ? SPARE_LOOKUP[raw] : "";
 }
 
-function updateCommentVisibility() {
+function updateNoteVisibility() {
     const spare = normalizeServiceSpare(serviceSpareEl?.value);
-    const shouldShow = COMMENT_SPARE_SET.has(String(spare || "").toLowerCase());
-    if (commentWrapEl) {
-        commentWrapEl.style.display = shouldShow ? "" : "none";
+    const shouldShow = NOTE_SPARE_SET.has(String(spare || "").toLowerCase());
+    if (noteWrapEl) {
+        noteWrapEl.style.display = shouldShow ? "" : "none";
     }
-    if (commentTextEl) {
-        commentTextEl.disabled = !shouldShow;
+    if (noteTextEl) {
+        noteTextEl.disabled = !shouldShow;
         if (!shouldShow) {
-            commentTextEl.value = "";
+            noteTextEl.value = "";
         }
     }
 }
@@ -194,7 +195,7 @@ customerIdEl.addEventListener("change", async () => {
 });
 
 serviceSpareEl?.addEventListener("change", () => {
-    updateCommentVisibility();
+    updateNoteVisibility();
 });
 
 addServiceFormEl.addEventListener("submit", async (event) => {
@@ -207,6 +208,7 @@ addServiceFormEl.addEventListener("submit", async (event) => {
     const machine_ref_id = Number.parseInt(machineIdEl.value, 10);
     const service_spare = normalizeServiceSpare(serviceSpareEl?.value);
     const counter_value = String(counterValueEl.value || "").trim();
+    const service_note = String(noteTextEl?.value || "").trim();
     const comment_text = String(commentTextEl.value || "").trim();
 
     if (!service_date) {
@@ -241,6 +243,7 @@ addServiceFormEl.addEventListener("submit", async (event) => {
         customer_id,
         machine_ref_id,
         service_spare,
+        service_note,
         counter_value,
         comment_text,
     };
@@ -257,5 +260,5 @@ addServiceFormEl.addEventListener("submit", async (event) => {
 });
 
 updateModeVisibility();
-updateCommentVisibility();
+updateNoteVisibility();
 loadInitialData();
