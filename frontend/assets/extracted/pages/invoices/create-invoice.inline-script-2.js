@@ -672,9 +672,10 @@ document.getElementById("invoiceForm").addEventListener("submit", async function
     const invoiceDate = document.getElementById("invoiceDate").value;
     const quotationDate = document.getElementById("quotationDate").value;
     const items = Array.from(document.querySelectorAll(".invoice-product-row")).map(r=>{
+        const parsedProductId = parseInt(r.querySelector(".productId").value, 10);
         return {
-            productId: parseInt(r.querySelector(".productId").value, 10),
-            product_id: r.querySelector(".productCode")?.value || "",
+            productId: Number.isFinite(parsedProductId) ? parsedProductId : null,
+            product_id: String(r.querySelector(".productCode")?.value || "").trim(),
             description: r.querySelector(".description").value,
             qty: parseInt(r.querySelector(".qty").value),
             rate: parseFloat(r.querySelector(".rate").value),
@@ -682,8 +683,13 @@ document.getElementById("invoiceForm").addEventListener("submit", async function
             gross: parseFloat(r.querySelector(".gross").value)
         }
     });
+    const hasInvalidItem = items.some((item) => {
+        const hasProductId = Number.isFinite(Number(item.productId)) && Number(item.productId) > 0;
+        const hasProductCode = String(item.product_id || "").trim().length > 0;
+        return !hasProductId && !hasProductCode;
+    });
 
-    if(!customerId || !invoiceNo || !invoiceDate || !quotationDate || items.length===0 || items.some(i => !i.productId)){
+    if(!customerId || !invoiceNo || !invoiceDate || !quotationDate || items.length===0 || hasInvalidItem){
         alert("Select customer and add products");
         return;
     }

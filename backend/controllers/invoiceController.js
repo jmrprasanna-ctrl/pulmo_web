@@ -924,8 +924,23 @@ exports.createInvoice = async (req,res)=>{
             total_amount
         });
         for(const item of items){
-            const productId = Number(item.productId);
-            if(!productId){
+            let productRecord = null;
+            let productId = Number(item.productId);
+            if(!Number.isFinite(productId) || productId <= 0){
+                const fallbackProductCode = String(item.product_id || "").trim();
+                if(fallbackProductCode){
+                    productRecord = await Product.findOne({ where: { product_id: fallbackProductCode } });
+                    if(!productRecord){
+                        productRecord = await Product.findOne({
+                            where: { product_id: { [Op.iLike]: fallbackProductCode } }
+                        });
+                    }
+                    if(productRecord){
+                        productId = Number(productRecord.id);
+                    }
+                }
+            }
+            if(!Number.isFinite(productId) || productId <= 0){
                 return res.status(400).json({ message: "Invalid product in invoice items" });
             }
             await InvoiceItem.create({ 
@@ -937,10 +952,12 @@ exports.createInvoice = async (req,res)=>{
                 gross: Number(item.gross) || 0
             });
                            
-            const product = await Product.findByPk(productId);
-            if(product) {
-                product.count = product.count - (Number(item.qty) || 0);
-                await product.save();
+            if(!productRecord){
+                productRecord = await Product.findByPk(productId);
+            }
+            if(productRecord) {
+                productRecord.count = productRecord.count - (Number(item.qty) || 0);
+                await productRecord.save();
             }
         }
         if(Array.isArray(importants) && importants.length){
