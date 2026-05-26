@@ -77,13 +77,36 @@
                     </select>
                     <small id="machineHelpText">Select customer first.</small>
                 </div>
+                <div>
+                    <label for="serviceSpare">Spares</label>
+                    <select id="serviceSpare" required>
+                        <option value="">Select Spare</option>
+                        <option value="Copier">Copier</option>
+                        <option value="Printer">Printer</option>
+                        <option value="Drum Assembly">Drum Assembly</option>
+                        <option value="Developer assembly">Developer assembly</option>
+                        <option value="CIS">CIS</option>
+                        <option value="Laser Assembly">Laser Assembly</option>
+                        <option value="M/Board">M/Board</option>
+                        <option value="P/Board">P/Board</option>
+                        <option value="Drum OPC">Drum OPC</option>
+                        <option value="Cleaning Blade">Cleaning Blade</option>
+                        <option value="Developer Rollor">Developer Rollor</option>
+                        <option value="Developer">Developer</option>
+                        <option value="Pickup Rollor">Pickup Rollor</option>
+                        <option value="S/Pad">S/Pad</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
             </div>
 
             <label for="counterValue">Counter</label>
             <input type="text" id="counterValue" placeholder="Enter counter value" required>
 
-            <label for="commentText">Comment</label>
-            <textarea id="commentText" rows="4" placeholder="Enter service comment"></textarea>
+            <div id="commentWrap" style="display:none;">
+                <label for="commentText">Comment</label>
+                <textarea id="commentText" rows="4" placeholder="Enter service comment"></textarea>
+            </div>
 
             <div class="form-actions">
                 <button type="submit" class="icon-btn" id="saveServiceBtn" aria-label="Update service" title="Update service">

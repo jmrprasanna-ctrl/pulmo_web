@@ -5,9 +5,31 @@ const serviceModeWrapEl = document.getElementById("serviceModeWrap");
 const serviceModeEl = document.getElementById("serviceMode");
 const customerIdEl = document.getElementById("customerId");
 const machineIdEl = document.getElementById("machineId");
+const serviceSpareEl = document.getElementById("serviceSpare");
 const counterValueEl = document.getElementById("counterValue");
 const commentTextEl = document.getElementById("commentText");
+const commentWrapEl = document.getElementById("commentWrap");
 const machineHelpTextEl = document.getElementById("machineHelpText");
+
+const SPARE_OPTIONS = [
+    "Copier",
+    "Printer",
+    "Drum Assembly",
+    "Developer assembly",
+    "CIS",
+    "Laser Assembly",
+    "M/Board",
+    "P/Board",
+    "Drum OPC",
+    "Cleaning Blade",
+    "Developer Rollor",
+    "Developer",
+    "Pickup Rollor",
+    "S/Pad",
+    "Other",
+];
+const SPARE_LOOKUP = Object.fromEntries(SPARE_OPTIONS.map((label) => [String(label).toLowerCase(), label]));
+const COMMENT_SPARE_SET = new Set(["copier", "printer", "other"]);
 
 const today = new Date();
 serviceDateEl.value = today.toISOString().slice(0, 10);
@@ -27,6 +49,25 @@ function normalizeServiceMode(value) {
     const raw = String(value || "").trim().toLowerCase();
     if (raw === "breakdown" || raw === "service") return raw;
     return "";
+}
+
+function normalizeServiceSpare(value) {
+    const raw = String(value || "").trim().toLowerCase();
+    return raw && SPARE_LOOKUP[raw] ? SPARE_LOOKUP[raw] : "";
+}
+
+function updateCommentVisibility() {
+    const spare = normalizeServiceSpare(serviceSpareEl?.value);
+    const shouldShow = COMMENT_SPARE_SET.has(String(spare || "").toLowerCase());
+    if (commentWrapEl) {
+        commentWrapEl.style.display = shouldShow ? "" : "none";
+    }
+    if (commentTextEl) {
+        commentTextEl.disabled = !shouldShow;
+        if (!shouldShow) {
+            commentTextEl.value = "";
+        }
+    }
 }
 
 function updateModeVisibility() {
@@ -152,6 +193,10 @@ customerIdEl.addEventListener("change", async () => {
     await refreshMachineOptions();
 });
 
+serviceSpareEl?.addEventListener("change", () => {
+    updateCommentVisibility();
+});
+
 addServiceFormEl.addEventListener("submit", async (event) => {
     event.preventDefault();
 
@@ -160,6 +205,7 @@ addServiceFormEl.addEventListener("submit", async (event) => {
     const service_mode = service_type === "general" ? normalizeServiceMode(serviceModeEl?.value) : "";
     const customer_id = selectedCustomerId();
     const machine_ref_id = Number.parseInt(machineIdEl.value, 10);
+    const service_spare = normalizeServiceSpare(serviceSpareEl?.value);
     const counter_value = String(counterValueEl.value || "").trim();
     const comment_text = String(commentTextEl.value || "").trim();
 
@@ -179,6 +225,10 @@ addServiceFormEl.addEventListener("submit", async (event) => {
         alert("Please select a machine.");
         return;
     }
+    if (!service_spare) {
+        alert("Please select a spare.");
+        return;
+    }
     if (!counter_value) {
         alert("Counter is required.");
         return;
@@ -190,6 +240,7 @@ addServiceFormEl.addEventListener("submit", async (event) => {
         service_mode,
         customer_id,
         machine_ref_id,
+        service_spare,
         counter_value,
         comment_text,
     };
@@ -206,4 +257,5 @@ addServiceFormEl.addEventListener("submit", async (event) => {
 });
 
 updateModeVisibility();
+updateCommentVisibility();
 loadInitialData();

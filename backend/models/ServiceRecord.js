@@ -18,6 +18,7 @@ const ServiceRecord = db.define(
     machine_ref_id: { type: DataTypes.INTEGER, allowNull: true },
     machine_code: { type: DataTypes.STRING, allowNull: true },
     machine_title: { type: DataTypes.STRING, allowNull: true },
+    service_spare: { type: DataTypes.STRING, allowNull: true },
     counter_value: { type: DataTypes.STRING, allowNull: true },
     comment_text: { type: DataTypes.TEXT, allowNull: true },
     created_by: { type: DataTypes.INTEGER, allowNull: true },
