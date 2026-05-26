@@ -8,6 +8,7 @@ const ServiceRecord = db.define(
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     service_date: { type: DataTypes.DATEONLY, allowNull: false, defaultValue: DataTypes.NOW },
     service_type: { type: DataTypes.STRING, allowNull: false, defaultValue: "general" },
+    service_mode: { type: DataTypes.STRING, allowNull: true, defaultValue: null },
     customer_id: {
       type: DataTypes.INTEGER,
       allowNull: true,

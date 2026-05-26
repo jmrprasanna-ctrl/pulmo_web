@@ -402,7 +402,8 @@ function renderSidebarMenuByAccess(){
                 { path: "/products/product-list.html", label: "Products" },
                 { path: "/customers/customer-list.html", label: "Customers" },
                 { path: "/vendors/list-vendor.html", label: "Vendors" },
-                { path: "/users/technician-list.html", label: "Support Technician" }
+                { path: "/users/technician-list.html", label: "Support Technician" },
+                { path: "/support/support.html", label: "Support" }
             ]
         },
         {
@@ -415,7 +416,7 @@ function renderSidebarMenuByAccess(){
         },
         {
             path: "/invoices/invoice-list.html",
-            label: "Payment",
+            label: "Sales",
             children: [
                 { path: "/invoices/invoice-list.html", label: "Invoices" },
                 { path: "/products/add-rental-count.html", label: "Rental Count" },
@@ -436,7 +437,6 @@ function renderSidebarMenuByAccess(){
                 { path: "/support/warrenty.html", label: "Warrenty" }
             ]
         },
-        { path: "/support/support.html", label: "Support" },
         { path: "/stock/stock.html", label: "Stock" },
         {
             path: "/hr/inout.html",

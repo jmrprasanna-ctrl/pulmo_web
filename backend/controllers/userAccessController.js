@@ -136,22 +136,18 @@ const ACCESS_MODULE_OPTIONS = [
     ],
   },
   {
+    module: "Administration",
+    items: [
+      { path: "/users/technician-list.html", label: "Support Technician", actions: ["view", "add", "edit", "delete"] },
+      { path: "/support/support.html", label: "Support", actions: ["view", "add", "edit", "delete"] },
+    ],
+  },
+  {
     module: "Expenses",
     items: [
       { path: "/expenses/expense-list.html", label: "Expenses List", actions: ["view", "add", "edit", "delete"] },
       { path: "/expenses/add-expense.html", label: "Add Expense", actions: ["view", "add"] },
       { path: "/expenses/edit-expense.html", label: "Edit Expense", actions: ["view", "edit"] },
-    ],
-  },
-  {
-    module: "Invoices",
-    items: [
-      { path: "/invoices/invoice-list.html", label: "Invoice List", actions: ["view", "add", "edit", "delete"] },
-      { path: "/invoices/create-invoice.html", label: "Create Invoice", actions: ["view", "add", "edit"] },
-      { path: "/invoices/view-invoice.html", label: "View Invoice", actions: ["view"] },
-      { path: "/invoices/view-quotation.html", label: "View Quotation", actions: ["view"] },
-      { path: "/invoices/view-quotation-2.html", label: "View Quotation 2", actions: ["view"] },
-      { path: "/invoices/view-quotation-3.html", label: "View Quotation 3", actions: ["view"] },
     ],
   },
   {
@@ -187,8 +183,20 @@ const ACCESS_MODULE_OPTIONS = [
   {
     module: "Visits",
     items: [
-      { path: "/services/service-list.html", label: "Customer Visits", actions: ["view", "add", "delete"] },
+      { path: "/services/service-list.html", label: "Customer Visits", actions: ["view", "add", "edit"] },
       { path: "/services/add-service.html", label: "Add Visit", actions: ["view", "add"] },
+      { path: "/services/edit-service.html", label: "Edit Visit", actions: ["view", "edit", "delete"] },
+    ],
+  },
+  {
+    module: "Sales",
+    items: [
+      { path: "/invoices/invoice-list.html", label: "Invoice List", actions: ["view", "add", "edit", "delete"] },
+      { path: "/invoices/create-invoice.html", label: "Create Invoice", actions: ["view", "add", "edit"] },
+      { path: "/invoices/view-invoice.html", label: "View Invoice", actions: ["view"] },
+      { path: "/invoices/view-quotation.html", label: "View Quotation", actions: ["view"] },
+      { path: "/invoices/view-quotation-2.html", label: "View Quotation 2", actions: ["view"] },
+      { path: "/invoices/view-quotation-3.html", label: "View Quotation 3", actions: ["view"] },
     ],
   },
   {
@@ -196,10 +204,8 @@ const ACCESS_MODULE_OPTIONS = [
     items: [
       { path: "/messages/messages.html", label: "Messages", actions: ["view", "add", "delete"] },
       { path: "/notifications/notifications.html", label: "Notifications", actions: ["view"] },
-      { path: "/support/support.html", label: "Support", actions: ["view", "add", "edit", "delete"] },
       { path: "/support/warrenty.html", label: "Warrenty", actions: ["view"] },
       { path: "/support/warranty-invoice-view.html", label: "Warranty Invoice View", actions: ["view"] },
-      { path: "/users/technician-list.html", label: "Support Technician", actions: ["view", "add", "edit", "delete"] },
     ],
   },
   {
@@ -285,6 +291,7 @@ function normalizeActions(rawActions) {
       list
         .map((x) => String(x || "").trim().toLowerCase())
         .map((x) => x.replace("/support/warrenty-invoice-view.html::", "/support/warranty-invoice-view.html::"))
+        .map((x) => (x === "/services/service-list.html::delete" ? "/services/edit-service.html::delete" : x))
         .filter(Boolean)
         .filter((x) => ACCESS_ACTION_SET.has(x))
     )
@@ -346,12 +353,31 @@ function expandImplicitActionDependencies(actionKeys) {
     add("/users/add-technician.html", "view");
     add("/users/add-technician.html", "add");
   }
+  if (set.has(toActionKey("/services/service-list.html", "add"))) {
+    add("/services/add-service.html", "view");
+    add("/services/add-service.html", "add");
+  }
   if (
     set.has(toActionKey("/users/technician-list.html", "add")) ||
     set.has(toActionKey("/users/technician-list.html", "edit")) ||
     set.has(toActionKey("/users/technician-list.html", "delete"))
   ) {
     add("/users/technician-list.html", "view");
+  }
+  if (
+    set.has(toActionKey("/services/service-list.html", "add")) ||
+    set.has(toActionKey("/services/service-list.html", "edit")) ||
+    set.has(toActionKey("/services/edit-service.html", "edit")) ||
+    set.has(toActionKey("/services/edit-service.html", "delete"))
+  ) {
+    add("/services/service-list.html", "view");
+  }
+  if (set.has(toActionKey("/services/service-list.html", "edit"))) {
+    add("/services/edit-service.html", "view");
+    add("/services/edit-service.html", "edit");
+  }
+  if (set.has(toActionKey("/services/edit-service.html", "delete"))) {
+    add("/services/edit-service.html", "view");
   }
 
   return normalizeActions(Array.from(set));

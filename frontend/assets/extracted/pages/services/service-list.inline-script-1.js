@@ -1,6 +1,8 @@
 const filterFromDateEl = document.getElementById("filterFromDate");
 const filterToDateEl = document.getElementById("filterToDate");
 const filterServiceTypeEl = document.getElementById("filterServiceType");
+const filterServiceModeWrapEl = document.getElementById("filterServiceModeWrap");
+const filterServiceModeEl = document.getElementById("filterServiceMode");
 const serviceSearchEl = document.getElementById("serviceSearch");
 const serviceTableBodyEl = document.getElementById("serviceTableBody");
 const addServiceBtn = document.getElementById("addServiceBtn");
@@ -22,11 +24,15 @@ const canAddService = canManage
             ? (hasUserActionPermission("/services/service-list.html", "add") || hasUserActionPermission("/services/add-service.html", "add"))
             : false)
         : false);
-const canDeleteService = canManage
+const canEditService = canManage
     ? true
     : (role === "user"
         ? (typeof hasUserActionPermission === "function"
-            ? hasUserActionPermission("/services/service-list.html", "delete")
+            ? (
+                hasUserActionPermission("/services/service-list.html", "edit")
+                || hasUserActionPermission("/services/edit-service.html", "view")
+                || hasUserActionPermission("/services/edit-service.html", "edit")
+            )
             : false)
         : false);
 
@@ -49,8 +55,29 @@ function formatDate(value) {
     return d.toLocaleDateString();
 }
 
+function normalizeServiceType(value) {
+    return String(value || "").trim().toLowerCase() === "rental" ? "rental" : "general";
+}
+
+function normalizeServiceMode(value) {
+    const raw = String(value || "").trim().toLowerCase();
+    if (raw === "breakdown" || raw === "service") return raw;
+    return "";
+}
+
+function getRowMode(row) {
+    const type = normalizeServiceType(row?.service_type);
+    if (type !== "general") return "";
+    const mode = normalizeServiceMode(row?.service_mode);
+    return mode || "service";
+}
+
 function formatType(value) {
-    return String(value || "").toLowerCase() === "rental" ? "Rental" : "General";
+    return normalizeServiceType(value) === "rental" ? "Rental" : "General";
+}
+
+function formatModeValue(value) {
+    return normalizeServiceMode(value) === "breakdown" ? "Breakdown" : "Service";
 }
 
 function escapeHtml(value) {
@@ -69,18 +96,36 @@ function isRowWithinDate(rowDate, fromDate, toDate) {
     return true;
 }
 
+function shouldShowModeFilter() {
+    return String(filterServiceTypeEl?.value || "").trim().toLowerCase() === "general";
+}
+
+function updateModeFilterVisibility() {
+    const showMode = shouldShowModeFilter();
+    if (filterServiceModeWrapEl) {
+        filterServiceModeWrapEl.style.display = showMode ? "" : "none";
+    }
+    if (filterServiceModeEl && !showMode) {
+        filterServiceModeEl.value = "";
+    }
+}
+
 function applyFilters() {
     const fromDate = safeDateOnly(filterFromDateEl.value);
     const toDate = safeDateOnly(filterToDateEl.value);
     const typeFilter = String(filterServiceTypeEl.value || "").trim().toLowerCase();
+    const modeFilter = shouldShowModeFilter() ? normalizeServiceMode(filterServiceModeEl.value) : "";
     const query = String(serviceSearchEl.value || "").trim().toLowerCase();
 
     const filtered = allServiceRows.filter((row) => {
         const serviceDate = safeDateOnly(row.service_date);
         if (!isRowWithinDate(serviceDate, fromDate, toDate)) return false;
 
-        const rowType = String(row.service_type || "").trim().toLowerCase();
+        const rowType = normalizeServiceType(row.service_type);
         if (typeFilter && rowType !== typeFilter) return false;
+
+        const rowMode = getRowMode(row);
+        if (modeFilter && (rowType !== "general" || rowMode !== modeFilter)) return false;
 
         if (!query) return true;
 
@@ -92,6 +137,7 @@ function applyFilters() {
             row.comment_text,
             row.service_date,
             row.service_type,
+            row.service_mode,
         ].some((value) => String(value || "").toLowerCase().includes(query));
     });
 
@@ -101,23 +147,12 @@ function applyFilters() {
 
 function updateSummary(rows) {
     const total = rows.length;
-    const general = rows.filter((row) => String(row.service_type || "").toLowerCase() !== "rental").length;
+    const general = rows.filter((row) => normalizeServiceType(row.service_type) !== "rental").length;
     const rental = total - general;
 
     document.getElementById("serviceCount").innerText = String(total);
     document.getElementById("generalCount").innerText = String(general);
     document.getElementById("rentalCount").innerText = String(rental);
-}
-
-function buildDeleteButton(rowId) {
-    if (!canDeleteService) return "-";
-    return `
-        <button class="icon-btn table-action-btn" type="button" data-service-delete-id="${rowId}" aria-label="Delete service" title="Delete service">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M9 3.5h6m-8 3h10m-8 0v12h6v-12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-        </button>
-    `;
 }
 
 function renderRows(rows) {
@@ -132,41 +167,36 @@ function renderRows(rows) {
 
     rows.forEach((row) => {
         const tr = document.createElement("tr");
-        const typeValue = String(row.service_type || "").toLowerCase() === "rental" ? "rental" : "general";
+        const rowId = Number.parseInt(row.id, 10);
+        const typeValue = normalizeServiceType(row.service_type);
         const machineText = [String(row.machine_code || "").trim(), String(row.machine_title || "").trim()]
             .filter(Boolean)
             .join(" - ");
 
+        const rowMode = getRowMode(row);
+        const modeBadge = typeValue === "general"
+            ? `<span class="service-type-badge ${rowMode === "breakdown" ? "mode-breakdown" : "mode-service"}">${escapeHtml(formatModeValue(rowMode))}</span>`
+            : "-";
+
         tr.innerHTML = `
             <td>${escapeHtml(formatDate(row.service_date))}</td>
             <td><span class="service-type-badge ${typeValue}">${escapeHtml(formatType(row.service_type))}</span></td>
+            <td>${modeBadge}</td>
             <td>${escapeHtml(row.customer_name || "-")}</td>
             <td>${escapeHtml(machineText || "-")}</td>
             <td>${escapeHtml(row.counter_value || "-")}</td>
             <td>${escapeHtml(row.comment_text || "-")}</td>
-            <td>${buildDeleteButton(row.id)}</td>
         `;
+
+        if (canEditService && Number.isFinite(rowId) && rowId > 0) {
+            tr.classList.add("service-row-clickable");
+            tr.addEventListener("click", () => {
+                window.location.href = `edit-service.html?id=${rowId}`;
+            });
+        }
+
         serviceTableBodyEl.appendChild(tr);
     });
-
-    if (canDeleteService) {
-        serviceTableBodyEl.querySelectorAll("[data-service-delete-id]").forEach((button) => {
-            button.addEventListener("click", async (event) => {
-                const id = Number.parseInt(event.currentTarget.getAttribute("data-service-delete-id"), 10);
-                if (!Number.isFinite(id) || id <= 0) return;
-                if (!confirm("Delete this service entry?")) return;
-
-                try {
-                    await request(`/services/${id}`, "DELETE");
-                    allServiceRows = allServiceRows.filter((row) => Number(row.id) !== id);
-                    applyFilters();
-                    showMessageBox("Service entry deleted successfully.");
-                } catch (err) {
-                    alert(err.message || "Failed to delete service entry.");
-                }
-            });
-        });
-    }
 }
 
 async function loadServiceRows() {
@@ -181,7 +211,12 @@ async function loadServiceRows() {
 
 filterFromDateEl.addEventListener("change", applyFilters);
 filterToDateEl.addEventListener("change", applyFilters);
-filterServiceTypeEl.addEventListener("change", applyFilters);
+filterServiceTypeEl.addEventListener("change", () => {
+    updateModeFilterVisibility();
+    applyFilters();
+});
+filterServiceModeEl?.addEventListener("change", applyFilters);
 serviceSearchEl.addEventListener("input", applyFilters);
 
+updateModeFilterVisibility();
 loadServiceRows();

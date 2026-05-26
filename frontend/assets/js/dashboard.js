@@ -291,6 +291,7 @@ function toDashboardMenuHref(canonicalPath){
 
 const DASHBOARD_MENU_ENTRIES = [
     { path: "/dashboard.html", label: "Dashboard" },
+    { path: "/services/service-list.html", label: "Visits" },
     {
         path: "/products/product-list.html",
         label: "Administration",
@@ -298,7 +299,8 @@ const DASHBOARD_MENU_ENTRIES = [
             { path: "/products/product-list.html", label: "Products" },
             { path: "/customers/customer-list.html", label: "Customers" },
             { path: "/vendors/list-vendor.html", label: "Vendors" },
-            { path: "/users/technician-list.html", label: "Support Technician" }
+            { path: "/users/technician-list.html", label: "Support Technician" },
+            { path: "/support/support.html", label: "Support" }
         ]
     },
     {
@@ -311,7 +313,7 @@ const DASHBOARD_MENU_ENTRIES = [
     },
     {
         path: "/invoices/invoice-list.html",
-        label: "Payment",
+        label: "Sales",
         children: [
             { path: "/invoices/invoice-list.html", label: "Invoices" },
             { path: "/products/add-rental-count.html", label: "Rental Count" },
@@ -332,7 +334,6 @@ const DASHBOARD_MENU_ENTRIES = [
             { path: "/support/warrenty.html", label: "Warrenty" }
         ]
     },
-    { path: "/support/support.html", label: "Support" },
     { path: "/stock/stock.html", label: "Stock" },
     {
         path: "/hr/inout.html",

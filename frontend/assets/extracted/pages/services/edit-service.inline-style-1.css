@@ -1,0 +1,12 @@
+.form-actions .icon-btn{
+    margin-top:0;
+}
+
+.form-actions .icon-btn.btn-danger{
+    background:#dc3545;
+    color:#fff;
+}
+
+.form-actions .icon-btn.btn-danger:hover{
+    background:#bb2d3b;
+}

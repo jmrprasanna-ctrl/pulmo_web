@@ -683,6 +683,7 @@ async function ensureServiceRecordSchema() {
         id SERIAL PRIMARY KEY,
         service_date DATE NOT NULL DEFAULT CURRENT_DATE,
         service_type VARCHAR(20) NOT NULL DEFAULT 'general',
+        service_mode VARCHAR(20),
         customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
         customer_name VARCHAR(255),
         machine_ref_id INTEGER,
@@ -698,6 +699,7 @@ async function ensureServiceRecordSchema() {
 
     await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS service_date DATE;`);
     await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS service_type VARCHAR(20) DEFAULT 'general';`);
+    await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS service_mode VARCHAR(20);`);
     await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL;`);
     await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS customer_name VARCHAR(255);`);
     await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS machine_ref_id INTEGER;`);
@@ -724,6 +726,26 @@ async function ensureServiceRecordSchema() {
     `);
     await db.query(`
       UPDATE service_records
+      SET service_mode = NULL
+      WHERE service_type = 'rental';
+    `);
+    await db.query(`
+      UPDATE service_records
+      SET service_mode = 'service'
+      WHERE service_type = 'general' AND (service_mode IS NULL OR TRIM(service_mode) = '');
+    `);
+    await db.query(`
+      UPDATE service_records
+      SET service_mode = LOWER(TRIM(service_mode))
+      WHERE service_mode IS NOT NULL;
+    `);
+    await db.query(`
+      UPDATE service_records
+      SET service_mode = 'service'
+      WHERE service_type = 'general' AND service_mode NOT IN ('breakdown', 'service');
+    `);
+    await db.query(`
+      UPDATE service_records
       SET service_date = COALESCE(service_date, DATE("createdAt"), CURRENT_DATE)
       WHERE service_date IS NULL;
     `);
@@ -743,6 +765,10 @@ async function ensureServiceRecordSchema() {
     await db.query(`
       CREATE INDEX IF NOT EXISTS service_records_type_idx
       ON service_records(service_type);
+    `);
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS service_records_mode_idx
+      ON service_records(service_mode);
     `);
   });
 }

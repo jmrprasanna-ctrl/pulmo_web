@@ -60,11 +60,19 @@
                 <input type="date" id="filterToDate">
             </div>
             <div class="date-filter">
-                <label for="filterServiceType">Service Type</label>
+                <label for="filterServiceType">Type</label>
                 <select id="filterServiceType">
                     <option value="">All</option>
                     <option value="general">General</option>
                     <option value="rental">Rental</option>
+                </select>
+            </div>
+            <div class="date-filter" id="filterServiceModeWrap" style="display:none;">
+                <label for="filterServiceMode">Mode</label>
+                <select id="filterServiceMode">
+                    <option value="">All</option>
+                    <option value="breakdown">Breakdown</option>
+                    <option value="service">Service</option>
                 </select>
             </div>
             <input type="text" id="serviceSearch" class="search-inline" placeholder="Search Customer, Machine, Counter, Comment">
@@ -91,11 +99,11 @@
                     <tr>
                         <th>Date</th>
                         <th>Type</th>
+                        <th>Mode</th>
                         <th>Customer</th>
                         <th>Machine</th>
                         <th>Counter</th>
                         <th>Comment</th>
-                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="serviceTableBody"></tbody>

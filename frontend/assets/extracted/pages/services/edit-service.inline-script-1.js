@@ -1,4 +1,4 @@
-const addServiceFormEl = document.getElementById("addServiceForm");
+const editServiceFormEl = document.getElementById("editServiceForm");
 const serviceDateEl = document.getElementById("serviceDate");
 const serviceTypeEl = document.getElementById("serviceType");
 const serviceModeWrapEl = document.getElementById("serviceModeWrap");
@@ -8,9 +8,41 @@ const machineIdEl = document.getElementById("machineId");
 const counterValueEl = document.getElementById("counterValue");
 const commentTextEl = document.getElementById("commentText");
 const machineHelpTextEl = document.getElementById("machineHelpText");
+const saveServiceBtn = document.getElementById("saveServiceBtn");
+const deleteServiceBtn = document.getElementById("deleteServiceBtn");
 
-const today = new Date();
-serviceDateEl.value = today.toISOString().slice(0, 10);
+const rawRole = String(localStorage.getItem("role") || "").toLowerCase();
+const role = ["coordinator", "cordinator", "co-ordinator", "co ordinator", "co_ordinator"].includes(rawRole) ? "user" : rawRole;
+const selectedDb = String(localStorage.getItem("selectedDatabaseName") || "").toLowerCase();
+const isTrainingUser = role === "user" && selectedDb === "demo";
+const canManage = role === "admin" || role === "manager" || isTrainingUser;
+const canEditService = canManage
+    ? true
+    : (role === "user"
+        ? (typeof hasUserActionPermission === "function"
+            ? (
+                hasUserActionPermission("/services/service-list.html", "edit")
+                || hasUserActionPermission("/services/edit-service.html", "edit")
+            )
+            : false)
+        : false);
+const canDeleteService = canManage
+    ? true
+    : (role === "user"
+        ? (typeof hasUserActionPermission === "function"
+            ? (
+                hasUserActionPermission("/services/edit-service.html", "delete")
+                || hasUserActionPermission("/services/service-list.html", "delete")
+            )
+            : false)
+        : false);
+
+const serviceId = Number.parseInt(new URLSearchParams(window.location.search).get("id"), 10);
+if (!Number.isFinite(serviceId) || serviceId <= 0) {
+    alert("Invalid visit id.");
+    window.location.href = "service-list.html";
+    throw new Error("Invalid visit id.");
+}
 
 let customerRows = [];
 const machineCache = {
@@ -29,23 +61,6 @@ function normalizeServiceMode(value) {
     return "";
 }
 
-function updateModeVisibility() {
-    const serviceType = normalizeServiceType(serviceTypeEl.value);
-    const isGeneral = serviceType === "general";
-    if (serviceModeWrapEl) {
-        serviceModeWrapEl.style.display = isGeneral ? "" : "none";
-    }
-    if (serviceModeEl) {
-        serviceModeEl.disabled = !isGeneral;
-        if (isGeneral) {
-            const normalized = normalizeServiceMode(serviceModeEl.value);
-            serviceModeEl.value = normalized || "service";
-        } else {
-            serviceModeEl.value = "";
-        }
-    }
-}
-
 function selectedCustomerId() {
     const id = Number.parseInt(customerIdEl.value, 10);
     return Number.isFinite(id) && id > 0 ? id : 0;
@@ -55,7 +70,23 @@ function setMachineHint(message) {
     machineHelpTextEl.textContent = message;
 }
 
-function setMachineOptions(rows) {
+function updateModeVisibility() {
+    const serviceType = normalizeServiceType(serviceTypeEl.value);
+    const isGeneral = serviceType === "general";
+    if (serviceModeWrapEl) {
+        serviceModeWrapEl.style.display = isGeneral ? "" : "none";
+    }
+    if (serviceModeEl) {
+        serviceModeEl.disabled = !isGeneral || !canEditService;
+        if (isGeneral) {
+            serviceModeEl.value = normalizeServiceMode(serviceModeEl.value) || "service";
+        } else {
+            serviceModeEl.value = "";
+        }
+    }
+}
+
+function setMachineOptions(rows, preferredMachineId = 0) {
     machineIdEl.innerHTML = `<option value="">Select Machine</option>`;
     rows.forEach((row) => {
         const machineId = Number(row.id);
@@ -68,9 +99,15 @@ function setMachineOptions(rows) {
         option.textContent = [machineCode, machineTitle].filter(Boolean).join(" - ") || `Machine #${machineId}`;
         machineIdEl.appendChild(option);
     });
+
+    if (preferredMachineId) {
+        const preferred = String(preferredMachineId);
+        const exists = Array.from(machineIdEl.options).some((opt) => opt.value === preferred);
+        machineIdEl.value = exists ? preferred : "";
+    }
 }
 
-function setCustomerOptions() {
+function setCustomerOptions(preferredCustomerId = 0) {
     const serviceType = normalizeServiceType(serviceTypeEl.value);
     const filteredCustomers = (Array.isArray(customerRows) ? customerRows : [])
         .filter((row) => String(row.customer_mode || "").trim().toLowerCase() === serviceType)
@@ -87,8 +124,11 @@ function setCustomerOptions() {
         customerIdEl.appendChild(option);
     });
 
-    machineIdEl.innerHTML = `<option value="">Select Machine</option>`;
-    setMachineHint("Select customer first.");
+    if (preferredCustomerId) {
+        const preferred = String(preferredCustomerId);
+        const exists = Array.from(customerIdEl.options).some((opt) => opt.value === preferred);
+        customerIdEl.value = exists ? preferred : "";
+    }
 }
 
 async function fetchMachinesByType(serviceType) {
@@ -107,10 +147,10 @@ async function fetchMachinesByType(serviceType) {
     return machineCache.general;
 }
 
-async function refreshMachineOptions() {
+async function refreshMachineOptions(preferredMachineId = 0) {
     const customerId = selectedCustomerId();
     if (!customerId) {
-        setMachineOptions([]);
+        setMachineOptions([], 0);
         setMachineHint("Select customer first.");
         return;
     }
@@ -119,27 +159,52 @@ async function refreshMachineOptions() {
     try {
         const rows = await fetchMachinesByType(serviceType);
         const filteredRows = rows.filter((row) => Number(row.customer_id) === customerId);
-        setMachineOptions(filteredRows);
+        setMachineOptions(filteredRows, preferredMachineId);
         if (!filteredRows.length) {
             setMachineHint("No machines found for selected customer.");
         } else {
             setMachineHint(`${filteredRows.length} machine(s) available.`);
         }
     } catch (_err) {
-        setMachineOptions([]);
+        setMachineOptions([], 0);
         setMachineHint("Failed to load machines.");
     }
 }
 
-async function loadInitialData() {
+async function loadCustomers() {
     try {
         const rows = await request("/customers", "GET");
         customerRows = Array.isArray(rows) ? rows : [];
-        setCustomerOptions();
     } catch (_err) {
-        customerIdEl.innerHTML = `<option value="">Failed to load customers</option>`;
-        setMachineHint("Failed to load customers.");
+        customerRows = [];
     }
+}
+
+function applyPermissionState() {
+    if (saveServiceBtn && !canEditService) {
+        saveServiceBtn.style.display = "none";
+    }
+    if (deleteServiceBtn && !canDeleteService) {
+        deleteServiceBtn.style.display = "none";
+    }
+    if (!canEditService) {
+        [serviceDateEl, serviceTypeEl, serviceModeEl, customerIdEl, machineIdEl, counterValueEl, commentTextEl].forEach((el) => {
+            if (el) el.disabled = true;
+        });
+    }
+}
+
+async function loadServiceEntry() {
+    const row = await request(`/services/${serviceId}`, "GET");
+    serviceDateEl.value = String(row.service_date || "").slice(0, 10);
+    serviceTypeEl.value = normalizeServiceType(row.service_type);
+    serviceModeEl.value = normalizeServiceMode(row.service_mode) || "service";
+    counterValueEl.value = String(row.counter_value || "");
+    commentTextEl.value = String(row.comment_text || "");
+
+    setCustomerOptions(Number(row.customer_id || 0));
+    await refreshMachineOptions(Number(row.machine_ref_id || 0));
+    updateModeVisibility();
 }
 
 serviceTypeEl.addEventListener("change", async () => {
@@ -152,12 +217,13 @@ customerIdEl.addEventListener("change", async () => {
     await refreshMachineOptions();
 });
 
-addServiceFormEl.addEventListener("submit", async (event) => {
+editServiceFormEl.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (!canEditService) return;
 
     const service_date = String(serviceDateEl.value || "").trim();
     const service_type = normalizeServiceType(serviceTypeEl.value);
-    const service_mode = service_type === "general" ? normalizeServiceMode(serviceModeEl?.value) : "";
+    const service_mode = service_type === "general" ? normalizeServiceMode(serviceModeEl.value) : "";
     const customer_id = selectedCustomerId();
     const machine_ref_id = Number.parseInt(machineIdEl.value, 10);
     const counter_value = String(counterValueEl.value || "").trim();
@@ -195,15 +261,44 @@ addServiceFormEl.addEventListener("submit", async (event) => {
     };
 
     try {
-        await request("/services", "POST", payload);
-        showMessageBox("Service added successfully.");
+        await request(`/services/${serviceId}`, "PUT", payload);
+        showMessageBox("Visit updated successfully.");
         setTimeout(() => {
             window.location.href = "service-list.html";
         }, 500);
     } catch (err) {
-        alert(err.message || "Failed to add service.");
+        alert(err.message || "Failed to update visit.");
     }
 });
 
-updateModeVisibility();
-loadInitialData();
+deleteServiceBtn?.addEventListener("click", async () => {
+    if (!canDeleteService) return;
+    if (!confirm("Delete this visit entry?")) return;
+
+    try {
+        await request(`/services/${serviceId}`, "DELETE");
+        showMessageBox("Visit deleted successfully.");
+        setTimeout(() => {
+            window.location.href = "service-list.html";
+        }, 500);
+    } catch (err) {
+        alert(err.message || "Failed to delete visit.");
+    }
+});
+
+(async () => {
+    if (!canEditService && !canDeleteService) {
+        alert("You do not have permission to access this page.");
+        window.location.href = "service-list.html";
+        return;
+    }
+    applyPermissionState();
+    updateModeVisibility();
+    await loadCustomers();
+    try {
+        await loadServiceEntry();
+    } catch (err) {
+        alert(err.message || "Failed to load visit entry.");
+        window.location.href = "service-list.html";
+    }
+})();

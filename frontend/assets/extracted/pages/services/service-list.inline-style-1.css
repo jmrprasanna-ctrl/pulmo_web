@@ -85,15 +85,20 @@
     color:#147a42;
 }
 
-.table-action-btn{
-    width:34px;
-    min-width:34px;
-    max-width:34px;
-    height:34px;
-    min-height:34px;
-    margin-top:0;
-    padding:0;
-    border-radius:10px;
+.service-type-badge.mode-breakdown{
+    background:#fff4e5;
+    color:#b45309;
+}
+.service-type-badge.mode-service{
+    background:#eef2ff;
+    color:#4338ca;
+}
+
+.service-row-clickable{
+    cursor:pointer;
+}
+.service-row-clickable:hover{
+    background:#f6fbff;
 }
 
 @media (max-width: 900px){
