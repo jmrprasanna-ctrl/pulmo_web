@@ -385,6 +385,9 @@ function expandImplicitActionDependencies(actionKeys) {
   if (set.has(toActionKey("/services/edit-service.html", "delete"))) {
     add("/services/edit-service.html", "view");
   }
+  if (set.has(toActionKey("/users/invoice-section.html", "edit"))) {
+    add("/users/invoice-section.html", "view");
+  }
 
   return normalizeActions(Array.from(set));
 }

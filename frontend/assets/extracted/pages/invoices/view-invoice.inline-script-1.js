@@ -1110,8 +1110,9 @@ function initLogoWithNameControl(){
 function initSupportTechnicianControl(){
     const supTechChk = document.getElementById("supportTechnicianChk");
     if(!supTechChk) return;
-    supTechChk.checked = false;
-    getLayoutConfig("supportTechnician").visible = false;
+    const initialVisible = getLayoutVisible("supportTechnician");
+    supTechChk.checked = !!initialVisible;
+    getLayoutConfig("supportTechnician").visible = !!initialVisible;
 
     supTechChk.addEventListener("change", async () => {
         getLayoutConfig("supportTechnician").visible = !!supTechChk.checked;
@@ -1195,6 +1196,58 @@ function initLayoutEditor(){
     rightBtn.addEventListener("click", async () => moveSelectedLayout(LAYOUT_STEP, 0));
     upBtn.addEventListener("click", async () => moveSelectedLayout(0, -LAYOUT_STEP));
     downBtn.addEventListener("click", async () => moveSelectedLayout(0, LAYOUT_STEP));
+}
+
+function applyInvoiceSectionAccess(){
+    const invoiceSectionBtn = document.getElementById("invoiceSectionSettingsBtn");
+    if(!invoiceSectionBtn) return;
+    if(typeof hasUserGrantedPath === "function" && !hasUserGrantedPath(INVOICE_SECTION_PATH)){
+        invoiceSectionBtn.style.display = "none";
+        return;
+    }
+    invoiceSectionBtn.style.display = "";
+}
+
+async function saveInvoiceRenderInputs(){
+    const payload = {
+        render_visibility: collectInvoiceRenderVisibility(),
+        render_overrides: {
+            layout_state: collectInvoiceRenderLayoutState(),
+            selected_address_key: normalizeAddressKey(selectedAddressKey),
+            logo_with_name_data_url: String(logoWithNameDataUrl || "").trim()
+        }
+    };
+    const mappingDbName = invMapData && invMapData.mapping && invMapData.mapping.database_name
+        ? String(invMapData.mapping.database_name).trim().toLowerCase()
+        : "";
+    if(mappingDbName){
+        payload.database_name = mappingDbName;
+    }
+    try{
+        const res = await request("/users/inv-map/me/invoice-render-inputs", "PUT", payload);
+        invMapData = invMapData && typeof invMapData === "object" ? invMapData : {};
+        invMapData.invoice_render_visibility = res?.render_visibility || payload.render_visibility;
+        invMapData.invoice_render_overrides = res?.render_overrides || payload.render_overrides;
+        localStorage.setItem(ADDRESS_STORAGE_KEY, normalizeAddressKey(selectedAddressKey));
+        localStorage.setItem(LOGO_STORAGE_KEY, String(logoWithNameDataUrl || "").trim());
+        if(typeof showMessageBox === "function"){
+            showMessageBox(res?.message || "Invoice render inputs saved.");
+        }else{
+            alert(res?.message || "Invoice render inputs saved.");
+        }
+    }catch(err){
+        alert(err?.message || "Failed to save invoice render inputs.");
+    }
+}
+
+function initSaveRenderInputsButton(){
+    const saveBtn = document.getElementById("saveRenderInputsBtn");
+    if(!saveBtn) return;
+    if(!canConfigurePreview){
+        saveBtn.style.display = "none";
+        return;
+    }
+    saveBtn.addEventListener("click", saveInvoiceRenderInputs);
 }
 
 async function renderInvoice(){
@@ -1497,10 +1550,12 @@ async function buildRenderedPdfFromQuotationPage(invoiceId, pageName, buildFnNam
 
 window.addEventListener("DOMContentLoaded", async () => {
     await loadInvMapFlags();
+    applyInvoiceRenderSettingsFromInvMap();
     const saveInvDateBtn = document.getElementById("saveInvDateBtn");
     if(saveInvDateBtn){
         saveInvDateBtn.addEventListener("click", updateInvoiceDateFromTile);
     }
+    applyInvoiceSectionAccess();
     applyPreviewAccessByRole();
     if(canConfigurePreview){
         initEditModeControl();
@@ -1512,6 +1567,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         initLogoWithNameControl();
         initSupportTechnicianControl();
         initLayoutEditor();
+        initSaveRenderInputsButton();
     }
     const deleteBtn = document.getElementById("deleteInvoiceBtn");
     if(deleteBtn){
