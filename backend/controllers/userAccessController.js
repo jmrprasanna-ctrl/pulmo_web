@@ -20,6 +20,7 @@ const COMPANY_LOGO_EXTENSIONS = new Set([".jpg", ".jpeg", ".bmp", ".gif", ".tiff
 const USER_INVOICE_MAPPING_TABLE = "user_invoice_mappings";
 const USER_QUOTATION_RENDER_TABLE = "user_quotation_render_settings";
 const INV_MAP_PATH = "/users/inv-map.html";
+const INVOICE_SECTION_PATH = "/users/invoice-section.html";
 const QUOTATION2_RENDER_KEYS = new Set([
   "customerName",
   "customerAddress",
@@ -71,6 +72,10 @@ const QUOTATION3_RENDER_KEYS = new Set([
   "sealC",
   "sealV",
 ]);
+const INVOICE_RENDER_KEYS = new Set([
+  ...QUOTATION3_RENDER_KEYS,
+]);
+const MAX_INVOICE_LOGO_DATA_URL_LENGTH = 2_000_000;
 const ensuredUiSettingsDbSet = new Set();
 const DEFAULT_CATEGORIES = [
   "Photocopier",
@@ -221,6 +226,7 @@ const ACCESS_MODULE_OPTIONS = [
       { path: "/users/company-create.html", label: "Company Create", actions: ["view", "add", "delete"] },
       { path: "/users/mapped.html", label: "Mapped", actions: ["view", "add"] },
       { path: "/users/inv-map.html", label: "Inv Map", actions: ["view", "add", "delete"] },
+      { path: "/users/invoice-section.html", label: "Invoice Section", actions: ["view", "edit"] },
       { path: "/users/user-preference.html", label: "User Preference", actions: ["view", "edit"] },
       { path: "/users/preference.html", label: "System Preference", actions: ["view", "edit"] },
       { path: "/users/user-logged.html", label: "User Logged Times", actions: ["view"] },
@@ -790,6 +796,56 @@ function parseQuotationRenderOverrides(row) {
     return normalizeQuotation2RenderOverrides(parsed);
   } catch (_err) {
     return { item_names_by_invoice: {}, item_rates_by_invoice: {}, layout_state: {} };
+  }
+}
+
+function normalizeInvoiceRenderOverrides(raw) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  const layoutStateRaw = source.layout_state && typeof source.layout_state === "object"
+    ? source.layout_state
+    : {};
+  const layoutState = {};
+  Object.entries(layoutStateRaw).forEach(([layoutKey, rawConfig]) => {
+    const safeLayoutKey = String(layoutKey || "").trim();
+    if (!INVOICE_RENDER_KEYS.has(safeLayoutKey)) return;
+    if (!rawConfig || typeof rawConfig !== "object") return;
+    const next = {};
+    const x = Number(rawConfig.x);
+    const y = Number(rawConfig.y);
+    const font = Number(rawConfig.font);
+    const fontFamily = String(rawConfig.fontFamily || "").trim().slice(0, 80);
+    const fontWeight = String(rawConfig.fontWeight || "").trim().toLowerCase() === "bold" ? "bold" : "normal";
+    const visible = rawConfig.visible;
+    if (Number.isFinite(x)) next.x = x;
+    if (Number.isFinite(y)) next.y = y;
+    if (Number.isFinite(font) && font > 0) next.font = font;
+    if (fontFamily) next.fontFamily = fontFamily;
+    next.fontWeight = fontWeight;
+    if (typeof visible === "boolean") next.visible = visible;
+    if (Object.keys(next).length) {
+      layoutState[safeLayoutKey] = next;
+    }
+  });
+  const selectedAddressKey = String(source.selected_address_key || "").trim().toLowerCase() === "colombo"
+    ? "colombo"
+    : "v";
+  let logoWithNameDataUrl = String(source.logo_with_name_data_url || "").trim();
+  if (logoWithNameDataUrl.length > MAX_INVOICE_LOGO_DATA_URL_LENGTH) {
+    logoWithNameDataUrl = "";
+  }
+  return {
+    layout_state: layoutState,
+    selected_address_key: selectedAddressKey,
+    logo_with_name_data_url: logoWithNameDataUrl,
+  };
+}
+
+function parseInvoiceRenderOverrides(row) {
+  try {
+    const parsed = JSON.parse(String(row?.render_overrides_json || "{}"));
+    return normalizeInvoiceRenderOverrides(parsed);
+  } catch (_err) {
+    return { layout_state: {}, selected_address_key: "v", logo_with_name_data_url: "" };
   }
 }
 
@@ -2677,6 +2733,19 @@ exports.getMyInvMap = async (req, res) => {
     const quotation3RenderOverrides = quotation3Rs.rowCount
       ? parseQuotationRenderOverrides(quotation3Rs.rows[0])
       : { item_names_by_invoice: {}, item_rates_by_invoice: {}, layout_state: {} };
+    const invoiceRs = await mainDbClient.query(
+      `SELECT render_visibility_json, render_overrides_json
+       FROM ${USER_QUOTATION_RENDER_TABLE}
+       WHERE user_id = $1 AND LOWER(database_name) = LOWER($2) AND quotation_type = 'invoice'
+       LIMIT 1`,
+      [Number(canonicalUserId || row.user_id || 0), databaseName]
+    );
+    const invoiceRenderVisibility = invoiceRs.rowCount
+      ? parseQuotationRenderVisibility(invoiceRs.rows[0], INVOICE_RENDER_KEYS)
+      : {};
+    const invoiceRenderOverrides = invoiceRs.rowCount
+      ? parseInvoiceRenderOverrides(invoiceRs.rows[0])
+      : { layout_state: {}, selected_address_key: "v", logo_with_name_data_url: "" };
     res.json({
       mapping: {
         user_id: Number(canonicalUserId || row.user_id || 0),
@@ -2703,6 +2772,8 @@ exports.getMyInvMap = async (req, res) => {
       quotation2_render_overrides: quotation2RenderOverrides,
       quotation3_render_visibility: quotation3RenderVisibility,
       quotation3_render_overrides: quotation3RenderOverrides,
+      invoice_render_visibility: invoiceRenderVisibility,
+      invoice_render_overrides: invoiceRenderOverrides,
     });
   } catch (err) {
     res.status(500).json({ message: err.message || "Failed to load your Inv Map." });
@@ -2712,9 +2783,22 @@ exports.getMyInvMap = async (req, res) => {
 };
 
 async function saveMyQuotationRenderSettings(req, res, options) {
-  const quotationType = options?.quotationType === "quotation3" ? "quotation3" : "quotation2";
-  const allowedKeys = quotationType === "quotation3" ? QUOTATION3_RENDER_KEYS : QUOTATION2_RENDER_KEYS;
-  const label = quotationType === "quotation3" ? "Quotation 3" : "Quotation 2";
+  const requestedType = String(options?.quotationType || "").trim().toLowerCase();
+  const quotationType = requestedType === "quotation3"
+    ? "quotation3"
+    : requestedType === "invoice"
+      ? "invoice"
+      : "quotation2";
+  const allowedKeys = quotationType === "quotation3"
+    ? QUOTATION3_RENDER_KEYS
+    : quotationType === "invoice"
+      ? INVOICE_RENDER_KEYS
+      : QUOTATION2_RENDER_KEYS;
+  const label = quotationType === "quotation3"
+    ? "Quotation 3"
+    : quotationType === "invoice"
+      ? "Invoice"
+      : "Quotation 2";
   const userId = Number(req.user?.id || req.user?.userId || 0);
   if (!Number.isFinite(userId) || userId <= 0) {
     return res.status(401).json({ message: "Invalid token user." });
@@ -2734,7 +2818,9 @@ async function saveMyQuotationRenderSettings(req, res, options) {
     return res.status(400).json({ message: "At least one render visibility value is required." });
   }
   const normalizedOverrides = hasOverridesPayload
-    ? normalizeQuotation2RenderOverrides(rawOverrides)
+    ? quotationType === "invoice"
+      ? normalizeInvoiceRenderOverrides(rawOverrides)
+      : normalizeQuotation2RenderOverrides(rawOverrides)
     : null;
 
   const cfg = getDbConfig();
@@ -2764,7 +2850,10 @@ async function saveMyQuotationRenderSettings(req, res, options) {
     );
     const existingRow = existingRs.rowCount ? existingRs.rows[0] : null;
     const finalVisibility = normalizedVisibility || parseQuotationRenderVisibility(existingRow, allowedKeys);
-    const finalOverrides = normalizedOverrides || parseQuotationRenderOverrides(existingRow);
+    const finalOverrides = normalizedOverrides
+      || (quotationType === "invoice"
+        ? parseInvoiceRenderOverrides(existingRow)
+        : parseQuotationRenderOverrides(existingRow));
     await mainDbClient.query(
       `INSERT INTO ${USER_QUOTATION_RENDER_TABLE}
        (user_id, database_name, quotation_type, render_visibility_json, render_overrides_json, created_by, "createdAt", "updatedAt")
@@ -2802,6 +2891,10 @@ exports.saveMyQuotation2RenderVisibility = async (req, res) => {
 
 exports.saveMyQuotation3RenderVisibility = async (req, res) => {
   return saveMyQuotationRenderSettings(req, res, { quotationType: "quotation3" });
+};
+
+exports.saveMyInvoiceRenderVisibility = async (req, res) => {
+  return saveMyQuotationRenderSettings(req, res, { quotationType: "invoice" });
 };
 
 exports.getUserAccess = async (req, res) => {

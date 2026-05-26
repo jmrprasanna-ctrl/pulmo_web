@@ -7,6 +7,10 @@ const BASE_H = 1754;
 const currentRole = String(localStorage.getItem("role") || "").trim().toLowerCase();
 const canConfigurePreview = currentRole === "admin" || currentRole === "manager";
 let invMapFlags = null;
+let invMapData = null;
+const LOGO_STORAGE_KEY = "invoice_logo_with_name_data_url";
+const ADDRESS_STORAGE_KEY = "invoice_selected_address_key";
+const INVOICE_SECTION_PATH = "/users/invoice-section.html";
 
 function hasMappedFeature(featureKey){
     if(!invMapFlags) return true;
@@ -16,9 +20,11 @@ function hasMappedFeature(featureKey){
 async function loadInvMapFlags(){
     try{
         const res = await request("/users/inv-map/me", "GET");
+        invMapData = res && typeof res === "object" ? res : null;
         const flags = res && res.feature_flags && typeof res.feature_flags === "object" ? res.feature_flags : null;
         invMapFlags = flags;
     }catch(_err){
+        invMapData = null;
         invMapFlags = null;
     }
 }
@@ -46,7 +52,6 @@ let sealVLoadFailedNotified = false;
 let logoWithNameEnabled = false;
 let logoWithNameImage = null;
 let logoWithNameDataUrl = "";
-const LOGO_STORAGE_KEY = "invoice_logo_with_name_data_url";
 const LAYOUT_STEP = 4;
 const layoutState = {
     customerName: { x: 0, y: 0, font: 25, fontFamily: INPUT_FONT_FAMILY, fontWeight: "normal" },
@@ -111,6 +116,10 @@ const ADDRESS_TEXTS = {
 };
 let selectedAddressKey = "v";
 
+function normalizeAddressKey(value){
+    return String(value || "").trim().toLowerCase() === "colombo" ? "colombo" : "v";
+}
+
 function getLayoutConfig(key){
     return layoutState[key] || { x: 0, y: 0, font: INPUT_FONT_SIZE, fontFamily: INPUT_FONT_FAMILY, fontWeight: "normal" };
 }
@@ -131,6 +140,78 @@ function getLayoutFontWeight(key){
 
 function getLayoutVisible(key){
     return getLayoutConfig(key).visible !== false;
+}
+
+function normalizeLayoutConfig(raw){
+    const source = raw && typeof raw === "object" ? raw : {};
+    const next = {};
+    const x = Number(source.x);
+    const y = Number(source.y);
+    const font = Number(source.font);
+    const family = String(source.fontFamily || "").trim();
+    const weight = String(source.fontWeight || "").trim().toLowerCase() === "bold" ? "bold" : "normal";
+    if(Number.isFinite(x)) next.x = x;
+    if(Number.isFinite(y)) next.y = y;
+    if(Number.isFinite(font) && font > 0) next.font = font;
+    if(family) next.fontFamily = family.slice(0, 80);
+    next.fontWeight = weight;
+    if(typeof source.visible === "boolean") next.visible = source.visible;
+    return next;
+}
+
+function applyInvoiceRenderSettingsFromInvMap(){
+    const visibility = invMapData && invMapData.invoice_render_visibility && typeof invMapData.invoice_render_visibility === "object"
+        ? invMapData.invoice_render_visibility
+        : null;
+    const overrides = invMapData && invMapData.invoice_render_overrides && typeof invMapData.invoice_render_overrides === "object"
+        ? invMapData.invoice_render_overrides
+        : null;
+
+    if(visibility){
+        Object.entries(visibility).forEach(([key, value]) => {
+            if(!Object.prototype.hasOwnProperty.call(layoutState, key)) return;
+            layoutState[key].visible = !!value;
+        });
+    }
+
+    const layoutOverrides = overrides && overrides.layout_state && typeof overrides.layout_state === "object"
+        ? overrides.layout_state
+        : null;
+    if(layoutOverrides){
+        Object.entries(layoutOverrides).forEach(([key, value]) => {
+            if(!Object.prototype.hasOwnProperty.call(layoutState, key)) return;
+            const merged = normalizeLayoutConfig(value);
+            layoutState[key] = { ...layoutState[key], ...merged };
+        });
+    }
+
+    const localAddress = localStorage.getItem(ADDRESS_STORAGE_KEY);
+    const selectedAddressFromServer = overrides ? overrides.selected_address_key : "";
+    selectedAddressKey = normalizeAddressKey(selectedAddressFromServer || localAddress || "v");
+    localStorage.setItem(ADDRESS_STORAGE_KEY, selectedAddressKey);
+
+    const localLogo = String(localStorage.getItem(LOGO_STORAGE_KEY) || "").trim();
+    const logoFromServer = overrides ? String(overrides.logo_with_name_data_url || "").trim() : "";
+    logoWithNameDataUrl = logoFromServer || localLogo;
+    if(logoFromServer){
+        localStorage.setItem(LOGO_STORAGE_KEY, logoFromServer);
+    }
+}
+
+function collectInvoiceRenderVisibility(){
+    const visibility = {};
+    Object.keys(layoutState).forEach((key) => {
+        visibility[key] = layoutState[key].visible !== false;
+    });
+    return visibility;
+}
+
+function collectInvoiceRenderLayoutState(){
+    const out = {};
+    Object.entries(layoutState).forEach(([key, rawCfg]) => {
+        out[key] = normalizeLayoutConfig(rawCfg);
+    });
+    return out;
 }
 
 function money(value){
@@ -933,38 +1014,7 @@ function initEditModeControl(){
 }
 
 function initAddressControls(){
-    const cChk = document.getElementById("addressColomboChk");
-    const vChk = document.getElementById("addressVChk");
-    if(!cChk || !vChk) return;
-    cChk.checked = false;
-    vChk.checked = true;
-    selectedAddressKey = "v";
-
-    cChk.addEventListener("change", async () => {
-        if(cChk.checked){
-            vChk.checked = false;
-            selectedAddressKey = "colombo";
-        }else if(!vChk.checked){
-            cChk.checked = true;
-            selectedAddressKey = "colombo";
-        }else{
-            selectedAddressKey = "v";
-        }
-        await refreshPreviewFromLatest();
-    });
-
-    vChk.addEventListener("change", async () => {
-        if(vChk.checked){
-            cChk.checked = false;
-            selectedAddressKey = "v";
-        }else if(!cChk.checked){
-            vChk.checked = true;
-            selectedAddressKey = "v";
-        }else{
-            selectedAddressKey = "colombo";
-        }
-        await refreshPreviewFromLatest();
-    });
+    selectedAddressKey = normalizeAddressKey(selectedAddressKey);
 }
 
 function initSignControl(){
@@ -1037,38 +1087,19 @@ function initSealVControl(){
 
 function initLogoWithNameControl(){
     const logoChk = document.getElementById("logoWithNameChk");
-    const fileInput = document.getElementById("logoFileInput");
-    const browseBtn = document.getElementById("logoBrowseBtn");
-    if(!logoChk || !fileInput || !browseBtn) return;
+    if(!logoChk) return;
     const allowed = hasMappedFeature("logo");
 
-    logoWithNameDataUrl = String(localStorage.getItem(LOGO_STORAGE_KEY) || "");
+    logoWithNameDataUrl = String(logoWithNameDataUrl || localStorage.getItem(LOGO_STORAGE_KEY) || "").trim();
     logoWithNameEnabled = !!logoWithNameDataUrl;
     logoChk.checked = logoWithNameEnabled;
     logoWithNameImage = null;
     logoChk.disabled = !allowed;
-    browseBtn.disabled = !allowed;
     if(!allowed){
         logoWithNameEnabled = false;
         logoChk.checked = false;
         return;
     }
-
-    browseBtn.addEventListener("click", () => fileInput.click());
-    fileInput.addEventListener("change", async () => {
-        const file = fileInput.files && fileInput.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = async () => {
-            logoWithNameDataUrl = String(reader.result || "");
-            localStorage.setItem(LOGO_STORAGE_KEY, logoWithNameDataUrl);
-            logoWithNameImage = null;
-            logoWithNameEnabled = true;
-            logoChk.checked = true;
-            await refreshPreviewFromLatest();
-        };
-        reader.readAsDataURL(file);
-    });
 
     logoChk.addEventListener("change", async () => {
         logoWithNameEnabled = !!logoChk.checked;

@@ -1,0 +1,84 @@
+<!--
+  System: PULMO WEB SYSTEM
+  Owner : CRONIT SOLLUTIONS
+  Author: JMR Prasanna
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Section - PULMO TECHNOLOGIES</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="../../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../../assets/extracted/pages/users/invoice-section.inline-style-1.css">
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <img src="../../assets/images/logo.png" alt="Company Logo">
+            <span>PULMO TECHNOLOGIES</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="../dashboard.html">Dashboard</a></li>
+            <li><a href="../products/product-list.html">Products</a></li>
+            <li><a href="../products/general-machine.html">Machines</a></li>
+            <li><a href="../customers/customer-list.html">Customers</a></li>
+            <li><a href="../invoices/invoice-list.html">Invoices</a></li>
+            <li><a href="../vendors/list-vendor.html">Vendors</a></li>
+            <li><a href="../expenses/expense-list.html">Expenses</a></li>
+            <li><a href="../reports/sales-report.html">Reports</a></li>
+            <li><a href="../analytics/sales-chart.html">Analytics</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <header class="page-head">
+            <h2>Invoice Section</h2>
+            <a class="icon-btn" href="inv-map.html" aria-label="Back to inv map" title="Back to inv map">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </a>
+        </header>
+
+        <section class="card invoice-section-card">
+            <div class="invoice-section-grid">
+                <div>
+                    <label for="mappedDatabaseName">Mapped Database</label>
+                    <input type="text" id="mappedDatabaseName" readonly>
+                </div>
+                <div>
+                    <label for="addressProfileSelect">Invoice Company Name</label>
+                    <select id="addressProfileSelect">
+                        <option value="v">Address V</option>
+                        <option value="colombo">Colombo</option>
+                    </select>
+                </div>
+                <div class="status-cell">
+                    <label>Mapping Status</label>
+                    <p id="mappingStatusText">-</p>
+                </div>
+            </div>
+
+            <div class="invoice-section-field">
+                <label for="invoiceLogoFileInput">Invoice Details Logo</label>
+                <input type="file" id="invoiceLogoFileInput" accept="image/*" hidden>
+                <div class="invoice-section-actions">
+                    <button class="btn btn-secondary" type="button" id="invoiceLogoBrowseBtn">Browse Logo</button>
+                    <button class="btn btn-secondary" type="button" id="invoiceLogoClearBtn">Clear Logo</button>
+                </div>
+                <p class="invoice-section-hint">This logo is used by Invoice Details render preview when logo checkbox is enabled.</p>
+                <div class="invoice-section-logo-preview" id="invoiceLogoPreviewWrap"></div>
+            </div>
+
+            <div class="invoice-section-actions">
+                <button class="btn" type="button" id="saveInvoiceSectionBtn">Save Invoice Section</button>
+            </div>
+        </section>
+    </div>
+
+    <script src="../../assets/js/api.js"></script>
+    <script src="../../assets/extracted/pages/users/invoice-section.inline-script-1.js"></script>
+</body>
+</html>

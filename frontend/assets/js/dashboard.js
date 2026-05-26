@@ -363,7 +363,8 @@ const DASHBOARD_MENU_ENTRIES = [
                     { path: "/users/db-create.html", label: "DB Create" },
                     { path: "/users/company-create.html", label: "Company Create" },
                     { path: "/users/mapped.html", label: "Mapped" },
-                    { path: "/users/inv-map.html", label: "Inv Map" }
+                    { path: "/users/inv-map.html", label: "Inv Map" },
+                    { path: "/users/invoice-section.html", label: "Invoice Section" }
                 ]
             },
             { path: "/support/email-setup.html", label: "Email" }

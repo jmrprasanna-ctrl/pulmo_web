@@ -31,6 +31,7 @@ const {
   verifyInvMap,
   saveInvMap,
   getMyInvMap,
+  saveMyInvoiceRenderVisibility,
   saveMyQuotation2RenderVisibility,
   saveMyQuotation3RenderVisibility,
   getUserAccess,
@@ -48,6 +49,7 @@ router.use(authMiddleware);
 router.get("/assignable", roleMiddleware(["admin","manager","user"]), getUsers);
 router.get("/access/me", getMyAccess);
 router.get("/inv-map/me", roleMiddleware(["admin","manager","user"]), getMyInvMap);
+router.put("/inv-map/me/invoice-render-inputs", roleMiddleware(["admin","manager","user"]), saveMyInvoiceRenderVisibility);
 router.put("/inv-map/me/quotation2-render-inputs", roleMiddleware(["admin","manager","user"]), saveMyQuotation2RenderVisibility);
 router.put("/inv-map/me/quotation3-render-inputs", roleMiddleware(["admin","manager","user"]), saveMyQuotation3RenderVisibility);
 router.get("/profiles", roleMiddleware(["admin","manager","user"]), getUserProfiles);

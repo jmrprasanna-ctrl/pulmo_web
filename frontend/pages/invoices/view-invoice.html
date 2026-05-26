@@ -25,14 +25,6 @@
     </header>
     <div class="invoice-address-controls">
         <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
-            <input type="checkbox" id="addressColomboChk">
-            Colombo
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
-            <input type="checkbox" id="addressVChk" checked>
-            Address V
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
             <input type="checkbox" id="sign1Chk">
             SIGN C
         </label>
@@ -60,14 +52,7 @@
             <input type="checkbox" id="editModeChk">
             Edit
         </label>
-        <input type="file" id="logoFileInput" accept="image/*" style="display:none;">
-        <button class="icon-btn" type="button" id="logoBrowseBtn" aria-label="Browse logo" title="Browse logo">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 16V7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                <path d="m8.5 10.5 3.5-3.5 3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M5 16.5v1a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            </svg>
-        </button>
+        <a class="btn btn-secondary" href="../users/invoice-section.html" id="invoiceSectionSettingsBtn" style="margin-top:0;min-height:38px;display:inline-flex;align-items:center;">Invoice Section</a>
         <div class="invoice-date-inline">
             <label for="invDateInput" style="margin:0;font-weight:600;color:#1d3655;white-space:nowrap;">Inv Date</label>
             <input type="date" id="invDateInput">
@@ -147,12 +132,12 @@
             <option value="Lucida Sans">Lucida Sans</option>
         </select>
         <label for="layoutWeightSelect" style="margin:0;font-weight:600;color:#1d3655;white-space:nowrap;">Weight</label>
-        <select id="layoutWeightSelect" style="min-width:92px;">
+        <select id="layoutWeightSelect" style="min-width:74px;">
             <option value="bold">Bold</option>
             <option value="normal" selected>Unbold</option>
         </select>
         <label for="layoutPreviewSelect" style="margin:0;font-weight:600;color:#1d3655;white-space:nowrap;">Preview</label>
-        <select id="layoutPreviewSelect" style="min-width:110px;">
+        <select id="layoutPreviewSelect" style="min-width:92px;">
             <option value="true" selected>Preview</option>
             <option value="false">Not Preview</option>
         </select>
@@ -160,6 +145,7 @@
         <button class="btn btn-secondary" type="button" id="moveRightBtn">&gt;</button>
         <button class="btn btn-secondary" type="button" id="moveUpBtn">^</button>
         <button class="btn btn-secondary" type="button" id="moveDownBtn">v</button>
+        <button class="btn btn-primary" type="button" id="saveRenderInputsBtn">Save Render</button>
     </div>
     <div class="invoice-image-wrap">
         <img id="invoicePreview" class="invoice-image" alt="Invoice preview">
