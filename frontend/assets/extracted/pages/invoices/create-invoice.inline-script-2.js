@@ -668,14 +668,30 @@ document.getElementById("invoiceForm").addEventListener("submit", async function
     const supportTechPercentageRaw = supTechEnabled ? document.getElementById("supportTechnicianPercentage").value : "";
     const supportTechPercentage = supportTechPercentageRaw === "" ? null : Number(supportTechPercentageRaw);
     const paymentMethod = document.getElementById("paymentMethod").value || "Cash";
-    const invoiceNo = document.getElementById("invoiceNo").value;
-    const invoiceDate = document.getElementById("invoiceDate").value;
-    const quotationDate = document.getElementById("quotationDate").value;
+    let invoiceNo = String(document.getElementById("invoiceNo").value || "").trim();
+    let invoiceDate = String(document.getElementById("invoiceDate").value || "").trim();
+    let quotationDate = String(document.getElementById("quotationDate").value || "").trim();
+    if(!invoiceDate){
+        invoiceDate = new Date().toISOString().slice(0, 10);
+        document.getElementById("invoiceDate").value = invoiceDate;
+    }
+    if(!quotationDate){
+        quotationDate = invoiceDate;
+        document.getElementById("quotationDate").value = quotationDate;
+    }
+    if(!invoiceNo){
+        await refreshInvoiceNoBySelectedDate();
+        invoiceNo = String(document.getElementById("invoiceNo").value || "").trim();
+    }
     const items = Array.from(document.querySelectorAll(".invoice-product-row")).map(r=>{
         const parsedProductId = parseInt(r.querySelector(".productId").value, 10);
+        const hiddenProductCode = String(r.querySelector(".productCode")?.value || "").trim();
+        const typedProductText = String(r.querySelector(".product-search")?.value || "").trim();
+        const normalizedTypedCode = typedProductText.split(" - ")[0].trim();
+        const fallbackProductCode = hiddenProductCode || normalizedTypedCode || typedProductText;
         return {
             productId: Number.isFinite(parsedProductId) ? parsedProductId : null,
-            product_id: String(r.querySelector(".productCode")?.value || "").trim(),
+            product_id: fallbackProductCode,
             description: r.querySelector(".description").value,
             qty: parseInt(r.querySelector(".qty").value),
             rate: parseFloat(r.querySelector(".rate").value),
@@ -690,7 +706,14 @@ document.getElementById("invoiceForm").addEventListener("submit", async function
     });
 
     if(!customerId || !invoiceNo || !invoiceDate || !quotationDate || items.length===0 || hasInvalidItem){
-        alert("Select customer and add products");
+        const reasons = [];
+        if(!customerId) reasons.push("customer");
+        if(!invoiceNo) reasons.push("invoice no");
+        if(!invoiceDate) reasons.push("invoice date");
+        if(!quotationDate) reasons.push("quotation date");
+        if(items.length === 0) reasons.push("product rows");
+        if(hasInvalidItem) reasons.push("valid product selection");
+        alert(`Please complete: ${reasons.join(", ")}`);
         return;
     }
 

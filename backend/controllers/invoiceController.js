@@ -929,10 +929,19 @@ exports.createInvoice = async (req,res)=>{
             if(!Number.isFinite(productId) || productId <= 0){
                 const fallbackProductCode = String(item.product_id || "").trim();
                 if(fallbackProductCode){
-                    productRecord = await Product.findOne({ where: { product_id: fallbackProductCode } });
+                    const candidateCode = fallbackProductCode.split(" - ")[0].trim() || fallbackProductCode;
+                    productRecord = await Product.findOne({ where: { product_id: candidateCode } });
+                    if(!productRecord){
+                        productRecord = await Product.findOne({ where: { product_id: { [Op.iLike]: candidateCode } } });
+                    }
                     if(!productRecord){
                         productRecord = await Product.findOne({
-                            where: { product_id: { [Op.iLike]: fallbackProductCode } }
+                            where: {
+                                [Op.or]: [
+                                    { description: { [Op.iLike]: fallbackProductCode } },
+                                    { model: { [Op.iLike]: fallbackProductCode } }
+                                ]
+                            }
                         });
                     }
                     if(productRecord){
