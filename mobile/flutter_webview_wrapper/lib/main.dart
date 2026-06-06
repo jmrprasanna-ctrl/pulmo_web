@@ -18,6 +18,7 @@ const String kWebAppUrl = String.fromEnvironment(
 const String _credentialsChannelName = 'AxisCredentialsBridge';
 const String _loginStatusChannelName = 'AxisLoginStatusBridge';
 const String _pdfChannelName = 'AxisPdfBridge';
+const String _fileChannelName = 'AxisFileBridge';
 const String _credentialsListStorageKey = 'axis_saved_credentials_v1';
 const String _legacyUsernameStorageKey = 'axis_saved_username';
 const String _legacyPasswordStorageKey = 'axis_saved_password';
@@ -44,7 +45,8 @@ class _SavedCredential {
     if (raw is! Map) return null;
     final String username = (raw['username'] ?? '').toString().trim();
     final String password = (raw['password'] ?? '').toString();
-    final int updatedAtMs = int.tryParse((raw['updatedAtMs'] ?? '').toString()) ??
+    final int updatedAtMs =
+        int.tryParse((raw['updatedAtMs'] ?? '').toString()) ??
         DateTime.now().millisecondsSinceEpoch;
     if (username.isEmpty || password.isEmpty) return null;
     return _SavedCredential(
@@ -55,14 +57,16 @@ class _SavedCredential {
   }
 }
 
-class _PendingPdfTransfer {
-  _PendingPdfTransfer({
+class _PendingFileTransfer {
+  _PendingFileTransfer({
     required this.fileName,
     required this.totalChunks,
+    this.mimeType = 'application/octet-stream',
   }) : chunks = List<String?>.filled(totalChunks, null, growable: false);
 
   final String fileName;
   final int totalChunks;
+  final String mimeType;
   final List<String?> chunks;
 
   void setChunk(int index, String data) {
@@ -75,7 +79,7 @@ class _PendingPdfTransfer {
     for (int index = 0; index < chunks.length; index += 1) {
       final String? part = chunks[index];
       if (part == null) {
-        throw StateError('Missing PDF chunk $index/$totalChunks');
+        throw StateError('Missing file chunk $index/$totalChunks');
       }
       buffer.write(part);
     }
@@ -140,11 +144,13 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
   bool _credentialSaveWarningShown = false;
   String _passwordUpdateUsername = '';
   String _passwordUpdateValue = '';
-  final Map<String, _PendingPdfTransfer> _pendingPdfTransfers =
-      <String, _PendingPdfTransfer>{};
+  final Map<String, _PendingFileTransfer> _pendingPdfTransfers =
+      <String, _PendingFileTransfer>{};
+  final Map<String, _PendingFileTransfer> _pendingFileTransfers =
+      <String, _PendingFileTransfer>{};
   String _lastPdfBridgeInjectedUrl = '';
   bool _skipAndroidPublicDownloadPath = false;
-  List<Directory>? _cachedPdfSaveDirectories;
+  List<Directory>? _cachedDownloadSaveDirectories;
 
   @override
   void initState() {
@@ -172,6 +178,12 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
           _handlePdfBridgeMessage(message.message);
         },
       )
+      ..addJavaScriptChannel(
+        _fileChannelName,
+        onMessageReceived: (JavaScriptMessage message) {
+          _handleFileBridgeMessage(message.message);
+        },
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
@@ -191,6 +203,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
               _currentUrl = url;
               _loadingProgress = 0;
               _pendingPdfTransfers.clear();
+              _pendingFileTransfers.clear();
               _lastPdfBridgeInjectedUrl = '';
               if (_isLoginPageUrl(url)) {
                 _credentialPromptShownForCurrentLogin = false;
@@ -323,10 +336,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
   Future<bool> _writeSavedCredentialsRaw(String raw) async {
     var wroteSecure = false;
     try {
-      await _secureStorage.write(
-        key: _credentialsListStorageKey,
-        value: raw,
-      );
+      await _secureStorage.write(key: _credentialsListStorageKey, value: raw);
       wroteSecure = true;
     } catch (_) {
       // Fallback to local file below.
@@ -346,8 +356,9 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
   }
 
   Future<bool> _persistSavedCredentials() async {
-    final List<Map<String, dynamic>> payload =
-        _savedCredentials.map((item) => item.toJson()).toList();
+    final List<Map<String, dynamic>> payload = _savedCredentials
+        .map((item) => item.toJson())
+        .toList();
     return _writeSavedCredentialsRaw(jsonEncode(payload));
   }
 
@@ -494,12 +505,17 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
 
       final String username = (payload['username'] ?? '').toString().trim();
       final String password = (payload['password'] ?? '').toString();
-      final String pickedUsername =
-          username.isNotEmpty ? username : _pendingUsername.trim();
-      final String pickedPassword = password.isNotEmpty ? password : _pendingPassword;
+      final String pickedUsername = username.isNotEmpty
+          ? username
+          : _pendingUsername.trim();
+      final String pickedPassword = password.isNotEmpty
+          ? password
+          : _pendingPassword;
       if (pickedUsername.isEmpty || pickedPassword.isEmpty) return;
 
-      final _SavedCredential? saved = _findSavedCredentialByUsername(pickedUsername);
+      final _SavedCredential? saved = _findSavedCredentialByUsername(
+        pickedUsername,
+      );
       if (saved == null) return;
       if (saved.password == pickedPassword) {
         return;
@@ -589,7 +605,8 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     if (!_isLoginPageUrl(_currentUrl)) return;
     final String usernameJs = jsonEncode(credential.username);
     final String passwordJs = jsonEncode(credential.password);
-    final String js = '''
+    final String js =
+        '''
       (function () {
         try {
           var user = document.getElementById('User') || document.getElementById('user') || document.getElementById('email');
@@ -630,40 +647,45 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     }
     _isShowingCredentialPrompt = true;
 
-    final _SavedCredential? picked = await showModalBottomSheet<_SavedCredential>(
-      context: context,
-      showDragHandle: true,
-      builder: (BuildContext context) {
-        final double maxHeight = MediaQuery.of(context).size.height * 0.6;
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              const ListTile(
-                leading: Icon(Icons.lock_outline),
-                title: Text('Saved Accounts'),
-                subtitle: Text('Select an account to fill username and password'),
+    final _SavedCredential? picked =
+        await showModalBottomSheet<_SavedCredential>(
+          context: context,
+          showDragHandle: true,
+          builder: (BuildContext context) {
+            final double maxHeight = MediaQuery.of(context).size.height * 0.6;
+            return SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  const ListTile(
+                    leading: Icon(Icons.lock_outline),
+                    title: Text('Saved Accounts'),
+                    subtitle: Text(
+                      'Select an account to fill username and password',
+                    ),
+                  ),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: maxHeight),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _savedCredentials.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        final _SavedCredential credential =
+                            _savedCredentials[index];
+                        return ListTile(
+                          leading: const Icon(Icons.person_outline),
+                          title: Text(credential.username),
+                          subtitle: const Text('Tap to use this account'),
+                          onTap: () => Navigator.of(context).pop(credential),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-              ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: maxHeight),
-                child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: _savedCredentials.length,
-                    itemBuilder: (BuildContext context, int index) {
-                      final _SavedCredential credential = _savedCredentials[index];
-                      return ListTile(
-                        leading: const Icon(Icons.person_outline),
-                        title: Text(credential.username),
-                        subtitle: const Text('Tap to use this account'),
-                        onTap: () => Navigator.of(context).pop(credential),
-                      );
-                    }),
-              ),
-            ],
-          ),
+            );
+          },
         );
-      },
-    );
 
     _isShowingCredentialPrompt = false;
     if (picked != null) {
@@ -677,7 +699,8 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     final String preferredPassword = _preferredLoginPassword;
     final String preferredUserJs = jsonEncode(preferredUser);
     final String preferredPasswordJs = jsonEncode(preferredPassword);
-    final String js = '''
+    final String js =
+        '''
       (function () {
         try {
           var preferredUser = $preferredUserJs;
@@ -865,6 +888,39 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     }
   }
 
+  void _handleFileBridgeMessage(String rawMessage) {
+    unawaited(_processFileBridgeMessage(rawMessage));
+  }
+
+  Future<void> _processFileBridgeMessage(String rawMessage) async {
+    try {
+      final dynamic payload = jsonDecode(rawMessage);
+      if (payload is! Map) return;
+      final String type = (payload['type'] ?? '').toString().trim();
+      switch (type) {
+        case 'file-base64':
+          await _handleSingleFilePayload(payload);
+          return;
+        case 'file-start':
+          _handleChunkedFileStart(payload);
+          return;
+        case 'file-chunk':
+          _handleChunkedFileData(payload);
+          return;
+        case 'file-complete':
+          await _handleChunkedFileComplete(payload);
+          return;
+        default:
+          return;
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save file from app view. $error')),
+      );
+    }
+  }
+
   Future<void> _handleSinglePdfPayload(Map payload) async {
     final String encodedData = (payload['data'] ?? '').toString().trim();
     if (encodedData.isEmpty) return;
@@ -874,19 +930,43 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     await _saveAndOpenPdf(fileName, encodedData);
   }
 
+  Future<void> _handleSingleFilePayload(Map payload) async {
+    final String encodedData = (payload['data'] ?? '').toString().trim();
+    if (encodedData.isEmpty) return;
+    final String fileName = _sanitizeDownloadFileName(
+      (payload['filename'] ?? 'download.bin').toString(),
+    );
+    final String mimeType = _normalizeMimeType(payload['mimeType']);
+    await _saveBase64File(fileName, encodedData, mimeType);
+  }
+
   void _handleChunkedPdfStart(Map payload) {
     final String transferId = (payload['transferId'] ?? '').toString().trim();
     final String fileName = _sanitizePdfFileName(
       (payload['filename'] ?? 'Document.pdf').toString(),
     );
-    final int totalChunks = int.tryParse(
-          (payload['totalChunks'] ?? '').toString(),
-        ) ??
-        0;
+    final int totalChunks =
+        int.tryParse((payload['totalChunks'] ?? '').toString()) ?? 0;
     if (transferId.isEmpty || totalChunks <= 0) return;
-    _pendingPdfTransfers[transferId] = _PendingPdfTransfer(
+    _pendingPdfTransfers[transferId] = _PendingFileTransfer(
       fileName: fileName,
       totalChunks: totalChunks,
+      mimeType: 'application/pdf',
+    );
+  }
+
+  void _handleChunkedFileStart(Map payload) {
+    final String transferId = (payload['transferId'] ?? '').toString().trim();
+    final String fileName = _sanitizeDownloadFileName(
+      (payload['filename'] ?? 'download.bin').toString(),
+    );
+    final int totalChunks =
+        int.tryParse((payload['totalChunks'] ?? '').toString()) ?? 0;
+    if (transferId.isEmpty || totalChunks <= 0) return;
+    _pendingFileTransfers[transferId] = _PendingFileTransfer(
+      fileName: fileName,
+      totalChunks: totalChunks,
+      mimeType: _normalizeMimeType(payload['mimeType']),
     );
   }
 
@@ -895,7 +975,17 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     final int index = int.tryParse((payload['index'] ?? '').toString()) ?? -1;
     final String chunk = (payload['data'] ?? '').toString();
     if (transferId.isEmpty || index < 0 || chunk.isEmpty) return;
-    final _PendingPdfTransfer? transfer = _pendingPdfTransfers[transferId];
+    final _PendingFileTransfer? transfer = _pendingPdfTransfers[transferId];
+    if (transfer == null) return;
+    transfer.setChunk(index, chunk);
+  }
+
+  void _handleChunkedFileData(Map payload) {
+    final String transferId = (payload['transferId'] ?? '').toString().trim();
+    final int index = int.tryParse((payload['index'] ?? '').toString()) ?? -1;
+    final String chunk = (payload['data'] ?? '').toString();
+    if (transferId.isEmpty || index < 0 || chunk.isEmpty) return;
+    final _PendingFileTransfer? transfer = _pendingFileTransfers[transferId];
     if (transfer == null) return;
     transfer.setChunk(index, chunk);
   }
@@ -903,10 +993,23 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
   Future<void> _handleChunkedPdfComplete(Map payload) async {
     final String transferId = (payload['transferId'] ?? '').toString().trim();
     if (transferId.isEmpty) return;
-    final _PendingPdfTransfer? transfer = _pendingPdfTransfers.remove(transferId);
+    final _PendingFileTransfer? transfer = _pendingPdfTransfers.remove(
+      transferId,
+    );
     if (transfer == null) return;
     final String encodedData = transfer.assembleBase64();
     await _saveAndOpenPdf(transfer.fileName, encodedData);
+  }
+
+  Future<void> _handleChunkedFileComplete(Map payload) async {
+    final String transferId = (payload['transferId'] ?? '').toString().trim();
+    if (transferId.isEmpty) return;
+    final _PendingFileTransfer? transfer = _pendingFileTransfers.remove(
+      transferId,
+    );
+    if (transfer == null) return;
+    final String encodedData = transfer.assembleBase64();
+    await _saveBase64File(transfer.fileName, encodedData, transfer.mimeType);
   }
 
   String _sanitizePdfFileName(String input) {
@@ -918,9 +1021,22 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     return cleaned.toLowerCase().endsWith('.pdf') ? cleaned : '$cleaned.pdf';
   }
 
+  String _sanitizeDownloadFileName(String input) {
+    final String cleaned = input.trim().replaceAll(
+      RegExp(r'[\\/:*?"<>|]+'),
+      '_',
+    );
+    return cleaned.isEmpty ? 'download.bin' : cleaned;
+  }
+
+  String _normalizeMimeType(dynamic input) {
+    final String mimeType = (input ?? '').toString().trim();
+    return mimeType.isEmpty ? 'application/octet-stream' : mimeType;
+  }
+
   Future<void> _saveAndOpenPdf(String fileName, String encodedData) async {
     final List<int> bytes = base64Decode(base64.normalize(encodedData));
-    final File pdfFile = await _writePdfWithFallback(fileName, bytes);
+    final File pdfFile = await _writeDownloadWithFallback(fileName, bytes);
 
     final dynamic openResult = await OpenFilex.open(
       pdfFile.path,
@@ -940,36 +1056,66 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
         ),
       );
     } else if (opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('PDF saved to ${pdfFile.path}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('PDF saved to ${pdfFile.path}')));
     }
   }
 
-  Future<File> _writePdfWithFallback(String fileName, List<int> bytes) async {
-    final List<Directory> saveDirs = await _resolvePdfSaveDirectories();
+  Future<void> _saveBase64File(
+    String fileName,
+    String encodedData,
+    String mimeType,
+  ) async {
+    final List<int> bytes = base64Decode(base64.normalize(encodedData));
+    final File savedFile = await _writeDownloadWithFallback(fileName, bytes);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '${_describeDownloadType(mimeType)} saved to ${savedFile.path}',
+        ),
+      ),
+    );
+  }
+
+  String _describeDownloadType(String mimeType) {
+    final String lower = mimeType.toLowerCase();
+    if (lower.contains('sql')) return 'SQL backup';
+    if (lower.contains('pdf')) return 'PDF';
+    return 'File';
+  }
+
+  Future<File> _writeDownloadWithFallback(
+    String fileName,
+    List<int> bytes,
+  ) async {
+    final List<Directory> saveDirs = await _resolveDownloadSaveDirectories();
     Object? lastError;
     for (final Directory dir in saveDirs) {
       try {
         if (!await dir.exists()) {
           await dir.create(recursive: true);
         }
-        final File candidate =
-            File('${dir.path}${Platform.pathSeparator}$fileName');
+        final File candidate = File(
+          '${dir.path}${Platform.pathSeparator}$fileName',
+        );
         await candidate.writeAsBytes(bytes, flush: true);
         return candidate;
       } catch (err) {
         lastError = err;
         if (_isAndroidPublicDownloadPermissionIssue(dir, err)) {
           _skipAndroidPublicDownloadPath = true;
-          _cachedPdfSaveDirectories = null;
+          _cachedDownloadSaveDirectories = null;
         }
       }
     }
     if (lastError != null) {
       throw lastError;
     }
-    throw StateError('Failed to save PDF: no writable storage directory found.');
+    throw StateError(
+      'Failed to save file: no writable storage directory found.',
+    );
   }
 
   bool _isAndroidPublicDownloadPermissionIssue(Directory dir, Object err) {
@@ -982,8 +1128,8 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
         errorText.contains('operation not permitted');
   }
 
-  Future<List<Directory>> _resolvePdfSaveDirectories() async {
-    final List<Directory>? cachedDirs = _cachedPdfSaveDirectories;
+  Future<List<Directory>> _resolveDownloadSaveDirectories() async {
+    final List<Directory>? cachedDirs = _cachedDownloadSaveDirectories;
     if (cachedDirs != null && cachedDirs.isNotEmpty) {
       return List<Directory>.from(cachedDirs);
     }
@@ -1019,13 +1165,14 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     if (dirs.isEmpty) {
       addDir(Directory.systemTemp);
     }
-    _cachedPdfSaveDirectories = List<Directory>.from(dirs);
+    _cachedDownloadSaveDirectories = List<Directory>.from(dirs);
     return dirs;
   }
 
   Future<void> _installPdfSaveBridge() async {
     final String channelNameJs = jsonEncode(_pdfChannelName);
-    final String js = '''
+    final String js =
+        '''
       (function () {
         try {
           if (window.__axisPdfBridgeInstallStarted) return;
@@ -1159,7 +1306,9 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
 
   void _onOfflineSavedUserPicked(String? username) {
     if (username == null || username.trim().isEmpty) return;
-    final _SavedCredential? credential = _findSavedCredentialByUsername(username);
+    final _SavedCredential? credential = _findSavedCredentialByUsername(
+      username,
+    );
     if (credential == null) return;
     setState(() {
       _offlineUsernameController.text = credential.username;

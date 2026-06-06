@@ -444,6 +444,68 @@
         );
     }
 
+    function mobileFileBridge() {
+        const bridge = window.AxisFileBridge;
+        return bridge && typeof bridge.postMessage === "function" ? bridge : null;
+    }
+
+    async function sendBlobToMobileFileBridge(blob, fileName, mimeType) {
+        const bridge = mobileFileBridge();
+        if (!bridge) return false;
+
+        const safeFileName = String(fileName || "download.bin").trim() || "download.bin";
+        const safeMimeType = String(mimeType || blob?.type || "application/octet-stream").trim() || "application/octet-stream";
+        const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(String(reader.result || ""));
+            reader.onerror = () => reject(new Error("Failed to read backup file for mobile save."));
+            reader.readAsDataURL(blob);
+        });
+
+        const commaIndex = dataUrl.indexOf(",");
+        const base64 = commaIndex >= 0 ? dataUrl.slice(commaIndex + 1) : dataUrl;
+        if (!base64) {
+            throw new Error("Backup file content is empty.");
+        }
+
+        const postPayload = (payload) => bridge.postMessage(JSON.stringify(payload));
+        const chunkSize = 120000;
+        if (base64.length <= chunkSize) {
+            postPayload({
+                type: "file-base64",
+                filename: safeFileName,
+                mimeType: safeMimeType,
+                data: base64,
+            });
+            return true;
+        }
+
+        const transferId = `file_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+        const totalChunks = Math.ceil(base64.length / chunkSize);
+        postPayload({
+            type: "file-start",
+            transferId,
+            filename: safeFileName,
+            mimeType: safeMimeType,
+            totalChunks,
+        });
+        for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
+            const start = chunkIndex * chunkSize;
+            const end = Math.min(start + chunkSize, base64.length);
+            postPayload({
+                type: "file-chunk",
+                transferId,
+                index: chunkIndex,
+                data: base64.slice(start, end),
+            });
+        }
+        postPayload({
+            type: "file-complete",
+            transferId,
+        });
+        return true;
+    }
+
     async function downloadBackup() {
         const token = localStorage.getItem("token");
         if (!token) {
@@ -471,6 +533,14 @@
         const disposition = res.headers.get("Content-Disposition") || "";
         const fileNameMatch = disposition.match(/filename="([^"]+)"/i);
         const fileName = (fileNameMatch && fileNameMatch[1]) ? fileNameMatch[1] : `${dbName}_backup_${Date.now()}.sql`;
+        const sentToMobile = await sendBlobToMobileFileBridge(blob, fileName, "application/sql").catch((err) => {
+            console.error(err);
+            return false;
+        });
+        if (sentToMobile) {
+            notifySuccess("Backup sent to app storage.");
+            return;
+        }
         const link = document.createElement("a");
         link.href = window.URL.createObjectURL(blob);
         link.download = fileName;
