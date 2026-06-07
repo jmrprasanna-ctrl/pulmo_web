@@ -1130,6 +1130,31 @@ async function fetchCompanyDatabaseMap(mainDbClient) {
   return map;
 }
 
+async function fetchSystemDatabases(adminClient, mainDbClient) {
+  const rows = await adminClient.query(
+    "SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname ASC"
+  );
+  const companyMap = await fetchCompanyDatabaseMap(mainDbClient);
+  const seen = new Set();
+  const databases = [];
+
+  (rows.rows || []).forEach((row) => {
+    const dbName = normalizeDatabaseName(row?.datname);
+    if (!dbName || RESERVED_DATABASES.has(dbName) || seen.has(dbName)) return;
+    seen.add(dbName);
+    const companyName = companyMap.get(dbName) || (dbName === INVENTORY_DB_NAME ? "SYSTEM DEFAULT" : "");
+    const label = companyName ? `${companyName} (${dbName})` : dbName;
+    databases.push({
+      name: dbName,
+      company_name: companyName,
+      label,
+      is_system_default: dbName === INVENTORY_DB_NAME,
+    });
+  });
+
+  return databases.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+}
+
 async function fetchCreatedDatabases(mainDbClient, physicalDatabaseNames = null) {
   await ensureDatabaseRegistryTable(mainDbClient);
   const rs = await mainDbClient.query(
@@ -2153,6 +2178,13 @@ async function syncMappedEmailSetupForDatabase(normalizedMapping) {
 
 exports.getMappedMeta = async (_req, res) => {
   const cfg = getDbConfig();
+  const adminClient = new Client({
+    host: cfg.host,
+    port: cfg.port,
+    user: cfg.user,
+    password: cfg.password,
+    database: "postgres",
+  });
   const mainDbClient = new Client({
     host: cfg.host,
     port: cfg.port,
@@ -2161,6 +2193,7 @@ exports.getMappedMeta = async (_req, res) => {
     database: cfg.database || INVENTORY_DB_NAME,
   });
   try {
+    await adminClient.connect();
     await mainDbClient.connect();
     await ensureDatabaseRegistryTable(mainDbClient);
     await ensureCompanyRegistryTable(mainDbClient);
@@ -2171,11 +2204,7 @@ exports.getMappedMeta = async (_req, res) => {
        FROM users
        ORDER BY username ASC, id ASC`
     );
-    const dbRs = await mainDbClient.query(
-      `SELECT database_name, company_name
-       FROM ${DATABASE_REGISTRY_TABLE}
-       ORDER BY LOWER(database_name) ASC`
-    );
+    const databases = await fetchSystemDatabases(adminClient, mainDbClient);
     const companiesRs = await mainDbClient.query(
       `SELECT id, company_name, company_code, email
        FROM ${COMPANY_REGISTRY_TABLE}
@@ -2189,11 +2218,7 @@ exports.getMappedMeta = async (_req, res) => {
         email: String(row.email || "").trim(),
         company_name: normalizeCompanyName(row.company),
       })),
-      databases: (dbRs.rows || []).map((row) => ({
-        name: normalizeDatabaseName(row.database_name),
-        company_name: normalizeCompanyName(row.company_name),
-        label: `${normalizeCompanyName(row.company_name)} (${normalizeDatabaseName(row.database_name)})`,
-      })).filter((x) => x.name),
+      databases,
       companies: (companiesRs.rows || []).map((row) => ({
         id: Number(row.id || 0),
         company_name: normalizeCompanyName(row.company_name),
@@ -2204,6 +2229,7 @@ exports.getMappedMeta = async (_req, res) => {
   } catch (err) {
     res.status(500).json({ message: err.message || "Failed to load mapped meta data." });
   } finally {
+    await adminClient.end().catch(() => {});
     await mainDbClient.end().catch(() => {});
   }
 };
