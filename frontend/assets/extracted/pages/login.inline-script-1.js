@@ -148,7 +148,7 @@ async function verifyCompanyCode(){
     verifiedCompany = company || null;
     verifiedCompanyCode = code;
     showCompanyPreview(company);
-    setCompanyCodeStatus(company?.company_name ? `Company verified: ${company.company_name}` : "Company verified.", "ok");
+    setCompanyCodeStatus("", "");
     return company;
 }
 
