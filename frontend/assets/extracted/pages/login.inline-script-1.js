@@ -1,5 +1,13 @@
 const axisLoadingOverlay = document.getElementById("axisLoadingOverlay");
 const axisLoadingTitle = document.getElementById("axisLoadingTitle");
+const companyCodeInput = document.getElementById("companyCode");
+const companyCodeStatus = document.getElementById("companyCodeStatus");
+const companyLogoWrap = document.getElementById("companyLogoWrap");
+const companyLogo = document.getElementById("companyLogo");
+const loginCompanyName = document.getElementById("loginCompanyName");
+let verifiedCompany = null;
+let verifiedCompanyCode = "";
+let companyCodeTimer = null;
 
 function getLoginInputElement(){
     return document.getElementById("email")
@@ -19,6 +27,108 @@ function clearCredentialFields(){
     });
 }
 
+function normalizeCompanyCode(value){
+    return String(value || "")
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9_-]+/g, "")
+        .slice(0, 40);
+}
+
+function resolveAssetUrl(value){
+    const raw = String(value || "").trim();
+    if(!raw) return "";
+    if(/^https?:\/\//i.test(raw)) return raw;
+    const apiOrigin = String(window.BASE_URL || "").replace(/\/api\/?$/i, "").replace(/\/+$/, "");
+    const origin = apiOrigin || window.location.origin.replace(/\/+$/, "");
+    return raw.startsWith("/") ? `${origin}${raw}` : `${origin}/${raw}`;
+}
+
+function setCompanyCodeStatus(message, type){
+    if(!companyCodeStatus) return;
+    companyCodeStatus.textContent = String(message || "");
+    companyCodeStatus.classList.toggle("is-ok", type === "ok");
+    companyCodeStatus.classList.toggle("is-error", type === "error");
+}
+
+function resetCompanyPreview(){
+    verifiedCompany = null;
+    verifiedCompanyCode = "";
+    if(companyLogo){
+        companyLogo.removeAttribute("src");
+    }
+    if(companyLogoWrap){
+        companyLogoWrap.classList.add("is-hidden");
+        companyLogoWrap.setAttribute("aria-hidden", "true");
+    }
+    if(loginCompanyName){
+        loginCompanyName.textContent = "AXIS CMS SYSTEM";
+    }
+}
+
+function showCompanyPreview(company){
+    const name = String(company?.company_name || "AXIS CMS SYSTEM").trim() || "AXIS CMS SYSTEM";
+    const logoUrl = resolveAssetUrl(company?.logo_url);
+    if(loginCompanyName){
+        loginCompanyName.textContent = name;
+    }
+    if(companyLogo && companyLogoWrap && logoUrl){
+        companyLogo.src = logoUrl;
+        companyLogo.alt = `${name} Logo`;
+        companyLogoWrap.classList.remove("is-hidden");
+        companyLogoWrap.setAttribute("aria-hidden", "false");
+    }else if(companyLogoWrap){
+        companyLogoWrap.classList.add("is-hidden");
+        companyLogoWrap.setAttribute("aria-hidden", "true");
+    }
+}
+
+async function verifyCompanyCode(){
+    const code = normalizeCompanyCode(companyCodeInput ? companyCodeInput.value : "");
+    if(companyCodeInput && companyCodeInput.value !== code){
+        companyCodeInput.value = code;
+    }
+    if(!code){
+        resetCompanyPreview();
+        setCompanyCodeStatus("", "");
+        return null;
+    }
+    if(verifiedCompany && verifiedCompanyCode === code){
+        return verifiedCompany;
+    }
+
+    setCompanyCodeStatus("Checking company code...", "");
+    const company = await request(`/auth/company-code/${encodeURIComponent(code)}`, "GET");
+    const currentCode = normalizeCompanyCode(companyCodeInput ? companyCodeInput.value : "");
+    if(currentCode !== code){
+        return null;
+    }
+    verifiedCompany = company || null;
+    verifiedCompanyCode = code;
+    showCompanyPreview(company);
+    setCompanyCodeStatus(company?.company_name ? `Company verified: ${company.company_name}` : "Company verified.", "ok");
+    return company;
+}
+
+function scheduleCompanyCodeVerification(){
+    window.clearTimeout(companyCodeTimer);
+    resetCompanyPreview();
+    const code = normalizeCompanyCode(companyCodeInput ? companyCodeInput.value : "");
+    if(!code){
+        setCompanyCodeStatus("", "");
+        return;
+    }
+    if(companyCodeInput && companyCodeInput.value !== code){
+        companyCodeInput.value = code;
+    }
+    setCompanyCodeStatus("Checking company code...", "");
+    companyCodeTimer = window.setTimeout(() => {
+        verifyCompanyCode().catch((err) => {
+            resetCompanyPreview();
+            setCompanyCodeStatus(err.message || "Invalid company code.", "error");
+        });
+    }, 420);
+}
 
 function setLoadingOverlay(visible, message){
     if(!axisLoadingOverlay) return;
@@ -31,15 +141,20 @@ function setLoadingOverlay(visible, message){
 
 async function login(){
     const loginInput = getLoginInputElement();
+    const companyCode = normalizeCompanyCode(companyCodeInput ? companyCodeInput.value : "");
     const email = loginInput ? String(loginInput.value || "").trim() : "";
     const password = String((document.getElementById("password") || {}).value || "");
     const loginBtn = document.getElementById("loginBtn");
 
-    if(!email || !password){ alert("Please fill all fields"); return; }
+    if(!companyCode || !email || !password){ alert("Please fill all fields"); return; }
 
     try{
         if(loginBtn) loginBtn.disabled = true;
-        const res = await request("/auth/login","POST",{email,password});
+        const company = await verifyCompanyCode();
+        if(!company){
+            throw new Error("Please verify company code.");
+        }
+        const res = await request("/auth/login","POST",{company_code: companyCode, email, password});
         localStorage.setItem("token",res.token);
         localStorage.setItem("role",res.user.role);
         if (res.user && res.user.database_name) {
@@ -108,7 +223,10 @@ function togglePassword(){
 
 const loginBtn = document.getElementById("loginBtn");
 if(loginBtn){
-    loginBtn.addEventListener("click", login);
+    loginBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        login();
+    });
 }
 const loginForm = document.getElementById("loginForm");
 if(loginForm){
@@ -128,7 +246,24 @@ const passwordToggle = document.getElementById("passwordToggle");
 if(passwordToggle){
     passwordToggle.addEventListener("click", togglePassword);
 }
-["email", "User", "user", "password"].forEach((id) => {
+if(companyCodeInput){
+    companyCodeInput.addEventListener("input", scheduleCompanyCodeVerification);
+    companyCodeInput.addEventListener("blur", () => {
+        verifyCompanyCode().catch((err) => {
+            resetCompanyPreview();
+            setCompanyCodeStatus(err.message || "Invalid company code.", "error");
+        });
+    });
+}
+if(companyLogo){
+    companyLogo.addEventListener("error", () => {
+        if(companyLogoWrap){
+            companyLogoWrap.classList.add("is-hidden");
+            companyLogoWrap.setAttribute("aria-hidden", "true");
+        }
+    });
+}
+["companyCode", "email", "User", "user", "password"].forEach((id) => {
     const el = document.getElementById(id);
     if(!el) return;
     el.addEventListener("keydown", (e) => {
@@ -153,6 +288,11 @@ window.addEventListener("DOMContentLoaded", () => {
     if(passEl){
         passEl.setAttribute("autocomplete", "off");
     }
+    if(companyCodeInput){
+        companyCodeInput.setAttribute("autocomplete", "off");
+        companyCodeInput.value = "";
+    }
+    resetCompanyPreview();
     clearCredentialFields();
     window.setTimeout(clearCredentialFields, 120);
     window.setTimeout(clearCredentialFields, 320);

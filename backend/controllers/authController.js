@@ -205,6 +205,21 @@ function normalizeCompanyName(value) {
   return String(value || "").trim().replace(/\s+/g, " ");
 }
 
+function normalizeCompanyCode(value) {
+  const normalized = String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_-]+/g, "");
+  return normalized ? normalized.slice(0, 40) : "";
+}
+
+function logoUrlFromPath(logoPathRaw) {
+  const logoPath = String(logoPathRaw || "").trim();
+  if (!logoPath) return null;
+  const clean = logoPath.replace(/\\/g, "/").replace(/^\/+/, "");
+  return clean ? `/${clean}` : null;
+}
+
 function buildPasswordResetSubject(companyNameRaw) {
   const companyName = normalizeCompanyName(companyNameRaw) || "PULMO TECHNOLOGIES";
   return `Password Reset - ${companyName}`;
@@ -232,8 +247,52 @@ async function loadMappedCompanyNamesByDatabase(client, userId) {
   return out;
 }
 
+exports.getCompanyByCode = async (req, res) => {
+  const companyCode = normalizeCompanyCode(
+    req.params?.companyCode || req.query?.company_code || req.body?.company_code
+  );
+  if (!companyCode) {
+    return res.status(400).json({ message: "Company code is required." });
+  }
+
+  const client = getAuthDbClient();
+  try {
+    await client.connect();
+    const rs = await client.query(
+      `SELECT company_name, company_code, logo_path
+       FROM company_profiles
+       WHERE UPPER(COALESCE(company_code, '')) = $1
+       LIMIT 1`,
+      [companyCode]
+    );
+    if (!rs.rowCount) {
+      return res.status(404).json({ message: "Invalid company code." });
+    }
+    const row = rs.rows[0] || {};
+    return res.json({
+      company_name: normalizeCompanyName(row.company_name),
+      company_code: normalizeCompanyCode(row.company_code),
+      logo_url: logoUrlFromPath(row.logo_path),
+    });
+  } catch (err) {
+    const code = String(err?.code || "");
+    if (code === "42P01") {
+      return res.status(404).json({ message: "Invalid company code." });
+    }
+    console.error(err);
+    return res.status(500).json({ message: "Failed to check company code." });
+  } finally {
+    await client.end().catch(() => {});
+  }
+};
+
 exports.login = async (req, res) => {
   const { email, password } = req.body;
+  const requestedCompanyCode = normalizeCompanyCode(req.body?.company_code || req.body?.companyCode);
+
+  if (!requestedCompanyCode) {
+    return res.status(400).json({ message: "Company code is required." });
+  }
 
   const client = getAuthDbClient();
   try {
@@ -281,10 +340,14 @@ exports.login = async (req, res) => {
        FROM user_mappings um
        JOIN company_profiles cp ON cp.id = um.company_profile_id
        WHERE um.user_id = $1
+         AND UPPER(COALESCE(cp.company_code, '')) = $2
        ORDER BY um."updatedAt" DESC NULLS LAST, um.id DESC
        LIMIT 1`,
-      [user.id]
+      [user.id, requestedCompanyCode]
     );
+    if (!mappingRs.rowCount) {
+      return res.status(403).json({ message: "User is not mapped to this company code." });
+    }
     if (mappingRs.rowCount) {
       const mappedDb = db.normalizeDatabaseName(mappingRs.rows[0]?.database_name || "");
       if (mappedDb) {
@@ -294,11 +357,7 @@ exports.login = async (req, res) => {
       mappedCompanyName = String(mappingRs.rows[0]?.company_name || "").trim() || null;
       mappedCompanyCode = String(mappingRs.rows[0]?.company_code || "").trim().toUpperCase() || null;
       mappedCompanyEmail = String(mappingRs.rows[0]?.mapped_email || "").trim().toLowerCase() || null;
-      const logoPath = String(mappingRs.rows[0]?.logo_path || "").trim();
-      if (logoPath) {
-        const clean = logoPath.replace(/\\/g, "/").replace(/^\/+/, "");
-        mappedCompanyLogoUrl = `/${clean}`;
-      }
+      mappedCompanyLogoUrl = logoUrlFromPath(mappingRs.rows[0]?.logo_path);
     }
 
     if (!databaseName && String(user.role || "").toLowerCase() === "user") {
