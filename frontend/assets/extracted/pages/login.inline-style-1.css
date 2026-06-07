@@ -127,16 +127,21 @@ body{
     align-items:center;
     justify-content:center;
     margin:8px auto 10px;
+    opacity:1;
+    visibility:visible;
+    transition:opacity .2s ease, visibility .2s ease;
 }
 
 .company-logo-wrap.is-hidden{
-    display:none;
+    opacity:0;
+    visibility:hidden;
 }
 
 .company-logo-wrap img{
     width:128px;
     height:128px;
     object-fit:contain;
+    display:block;
 }
 
 .login-container h2{
