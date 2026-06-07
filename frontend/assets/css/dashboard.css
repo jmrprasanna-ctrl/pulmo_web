@@ -842,7 +842,7 @@ body {
   #todoBtn .badge-count {
     top: auto;
     right: auto;
-    bottom: -8px;
+    bottom: -12px;
     left: 50%;
     transform: translateX(-50%);
   }
