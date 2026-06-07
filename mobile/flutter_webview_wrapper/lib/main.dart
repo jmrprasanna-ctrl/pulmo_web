@@ -97,7 +97,7 @@ class PulmoWebMobileApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AXIS CMS PULMO',
+      title: 'AXIS CMS SYSTEM',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0F6ABF)),
@@ -1409,7 +1409,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text(
-            'AXIS CMS PULMO',
+            'AXIS CMS SYSTEM',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
