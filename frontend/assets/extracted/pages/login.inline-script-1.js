@@ -19,6 +19,7 @@ let companyLogoCandidateIndex = 0;
 let companyLogoDisplayName = "Company";
 let savedCompanyCodes = [];
 let companyCodeDropdownOpen = false;
+let companyCodeDropdownForceAll = false;
 
 function getLoginInputElement(){
     return document.getElementById("email")
@@ -85,9 +86,9 @@ function getStoredLastCompanyCode(){
     return normalizeCompanyCode(localStorage.getItem("mappedCompanyCode") || "");
 }
 
-function getVisibleSavedCompanyCodes(){
+function getVisibleSavedCompanyCodes(forceAll){
     const currentValue = normalizeCompanyCode(companyCodeInput ? companyCodeInput.value : "");
-    if(!currentValue){
+    if(forceAll || !currentValue || savedCompanyCodes.includes(currentValue)){
         return savedCompanyCodes.slice();
     }
     const startsWithMatches = savedCompanyCodes.filter((code) => code.startsWith(currentValue));
@@ -96,7 +97,7 @@ function getVisibleSavedCompanyCodes(){
 }
 
 function setCompanyCodeDropdownOpen(open){
-    companyCodeDropdownOpen = !!open && !!savedCompanyCodeMenu && getVisibleSavedCompanyCodes().length > 0;
+    companyCodeDropdownOpen = !!open && !!savedCompanyCodeMenu && getVisibleSavedCompanyCodes(companyCodeDropdownForceAll).length > 0;
     if(savedCompanyCodeMenu){
         savedCompanyCodeMenu.classList.toggle("is-hidden", !companyCodeDropdownOpen);
         savedCompanyCodeMenu.setAttribute("aria-hidden", companyCodeDropdownOpen ? "false" : "true");
@@ -109,10 +110,10 @@ function setCompanyCodeDropdownOpen(open){
     }
 }
 
-function renderSavedCompanyCodeOptions(selectedCode){
+function renderSavedCompanyCodeOptions(selectedCode, forceAll){
     if(!savedCompanyCodeMenu) return;
     const normalizedSelectedCode = normalizeCompanyCode(selectedCode);
-    const visibleCodes = getVisibleSavedCompanyCodes();
+    const visibleCodes = getVisibleSavedCompanyCodes(!!forceAll);
     savedCompanyCodeMenu.innerHTML = "";
     visibleCodes.forEach((code) => {
         const button = document.createElement("button");
@@ -136,7 +137,7 @@ function renderSavedCompanyCodeOptions(selectedCode){
         savedCompanyCodeMenu.appendChild(button);
     });
     if(companyCodeToggle){
-        companyCodeToggle.classList.toggle("is-hidden", savedCompanyCodes.length < 2);
+        companyCodeToggle.classList.toggle("is-hidden", savedCompanyCodes.length < 1);
     }
     if(!visibleCodes.length){
         setCompanyCodeDropdownOpen(false);
@@ -145,12 +146,14 @@ function renderSavedCompanyCodeOptions(selectedCode){
     }
 }
 
-function showCompanyCodeDropdown(){
-    renderSavedCompanyCodeOptions(companyCodeInput ? companyCodeInput.value : "");
+function showCompanyCodeDropdown(forceAll){
+    companyCodeDropdownForceAll = !!forceAll;
+    renderSavedCompanyCodeOptions(companyCodeInput ? companyCodeInput.value : "", companyCodeDropdownForceAll);
     setCompanyCodeDropdownOpen(true);
 }
 
 function hideCompanyCodeDropdown(){
+    companyCodeDropdownForceAll = false;
     setCompanyCodeDropdownOpen(false);
 }
 
@@ -170,7 +173,7 @@ function persistSavedCompanyCodes(nextCodes, lastCode){
             localStorage.removeItem(LAST_COMPANY_CODE_KEY);
         }
     }catch(_){}
-    renderSavedCompanyCodeOptions(normalizedLastCode);
+    renderSavedCompanyCodeOptions(normalizedLastCode, companyCodeDropdownForceAll);
 }
 
 function rememberSavedCompanyCode(code){
@@ -187,14 +190,14 @@ function setCompanyCodeValue(code, rememberSelection){
     if(rememberSelection && savedCompanyCodes.includes(normalizedCode)){
         persistSavedCompanyCodes(savedCompanyCodes, normalizedCode);
     }else{
-        renderSavedCompanyCodeOptions(normalizedCode);
+        renderSavedCompanyCodeOptions(normalizedCode, companyCodeDropdownForceAll);
     }
 }
 
 function initializeSavedCompanyCodes(){
     savedCompanyCodes = readSavedCompanyCodes();
     const lastCode = getStoredLastCompanyCode();
-    renderSavedCompanyCodeOptions(lastCode);
+    renderSavedCompanyCodeOptions(lastCode, true);
     const initialCode = lastCode || (savedCompanyCodes.length === 1 ? savedCompanyCodes[0] : "");
     if(initialCode){
         setCompanyCodeValue(initialCode, false);
@@ -319,11 +322,12 @@ function scheduleCompanyCodeVerification(){
     window.clearTimeout(companyCodeTimer);
     resetCompanyPreview();
     const code = normalizeCompanyCode(companyCodeInput ? companyCodeInput.value : "");
-    renderSavedCompanyCodeOptions(code);
+    companyCodeDropdownForceAll = false;
+    renderSavedCompanyCodeOptions(code, false);
     if(!code){
         setCompanyCodeStatus("", "");
-        if(document.activeElement === companyCodeInput && savedCompanyCodes.length > 1){
-            showCompanyCodeDropdown();
+        if(document.activeElement === companyCodeInput && savedCompanyCodes.length > 0){
+            showCompanyCodeDropdown(true);
         }else{
             hideCompanyCodeDropdown();
         }
@@ -332,8 +336,8 @@ function scheduleCompanyCodeVerification(){
     if(companyCodeInput && companyCodeInput.value !== code){
         companyCodeInput.value = code;
     }
-    if(document.activeElement === companyCodeInput && savedCompanyCodes.length > 1){
-        showCompanyCodeDropdown();
+    if(document.activeElement === companyCodeInput && savedCompanyCodes.length > 0){
+        showCompanyCodeDropdown(false);
     }
     setCompanyCodeStatus("Checking company code...", "");
     companyCodeTimer = window.setTimeout(() => {
@@ -474,8 +478,8 @@ if(companyCodeInput){
         scheduleCompanyCodeVerification();
     });
     companyCodeInput.addEventListener("focus", () => {
-        if(savedCompanyCodes.length > 1){
-            showCompanyCodeDropdown();
+        if(savedCompanyCodes.length > 0){
+            showCompanyCodeDropdown(true);
         }
     });
     companyCodeInput.addEventListener("blur", () => {
@@ -499,7 +503,7 @@ if(companyCodeToggle){
         if(companyCodeDropdownOpen){
             hideCompanyCodeDropdown();
         }else{
-            showCompanyCodeDropdown();
+            showCompanyCodeDropdown(true);
         }
     });
 }
