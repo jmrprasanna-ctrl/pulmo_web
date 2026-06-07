@@ -1139,7 +1139,7 @@ async function fetchCreatedDatabases(mainDbClient, physicalDatabaseNames = null)
      ORDER BY "createdAt" DESC NULLS LAST, id DESC`,
     [INVENTORY_DB_NAME]
   );
-  return (rs.rows || [])
+  const createdRows = (rs.rows || [])
     .map((row) => {
       const name = normalizeDatabaseName(row?.database_name);
       if (!name || name === INVENTORY_DB_NAME) return null;
@@ -1153,6 +1153,18 @@ async function fetchCreatedDatabases(mainDbClient, physicalDatabaseNames = null)
       };
     })
     .filter(Boolean);
+  const systemDefaultRows = physicalDatabaseNames instanceof Set && !physicalDatabaseNames.has(INVENTORY_DB_NAME)
+    ? []
+    : [{
+      name: INVENTORY_DB_NAME,
+      company_name: "SYSTEM DEFAULT",
+      created_by: null,
+      created_at: null,
+      updated_at: null,
+      is_system_default: true,
+      can_delete: false,
+    }];
+  return [...systemDefaultRows, ...createdRows];
 }
 
 async function getUserFromDatabase(databaseName, userId) {
