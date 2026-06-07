@@ -5,8 +5,7 @@ const companyCodeStatus = document.getElementById("companyCodeStatus");
 const companyLogoWrap = document.getElementById("companyLogoWrap");
 const companyLogo = document.getElementById("companyLogo");
 const loginCompanyName = document.getElementById("loginCompanyName");
-const savedCompanyCodeWrap = document.getElementById("savedCompanyCodeWrap");
-const savedCompanyCodeSelect = document.getElementById("savedCompanyCodeSelect");
+const savedCompanyCodeList = document.getElementById("savedCompanyCodeList");
 const SAVED_COMPANY_CODES_KEY = "axisSavedCompanyCodesV1";
 const LAST_COMPANY_CODE_KEY = "axisLastSelectedCompanyCodeV1";
 const MAX_SAVED_COMPANY_CODES = 10;
@@ -83,30 +82,21 @@ function getStoredLastCompanyCode(){
     return normalizeCompanyCode(localStorage.getItem("mappedCompanyCode") || "");
 }
 
-function syncSavedCompanyCodeSelection(code){
-    if(!savedCompanyCodeSelect) return;
-    const normalizedCode = normalizeCompanyCode(code);
-    savedCompanyCodeSelect.value = savedCompanyCodes.includes(normalizedCode) ? normalizedCode : "";
-}
-
 function renderSavedCompanyCodeOptions(selectedCode){
-    if(!savedCompanyCodeWrap || !savedCompanyCodeSelect) return;
-    const normalizedSelectedCode = normalizeCompanyCode(selectedCode);
-    savedCompanyCodeSelect.innerHTML = "";
-    const placeholderOption = document.createElement("option");
-    placeholderOption.value = "";
-    placeholderOption.textContent = "Recent company codes";
-    savedCompanyCodeSelect.appendChild(placeholderOption);
+    if(!savedCompanyCodeList) return;
+    savedCompanyCodeList.innerHTML = "";
     savedCompanyCodes.forEach((code) => {
         const option = document.createElement("option");
         option.value = code;
-        option.textContent = code;
-        savedCompanyCodeSelect.appendChild(option);
+        savedCompanyCodeList.appendChild(option);
     });
-    const shouldShow = savedCompanyCodes.length > 1;
-    savedCompanyCodeWrap.hidden = !shouldShow;
-    savedCompanyCodeWrap.setAttribute("aria-hidden", shouldShow ? "false" : "true");
-    syncSavedCompanyCodeSelection(normalizedSelectedCode);
+    if(companyCodeInput){
+        if(savedCompanyCodes.length){
+            companyCodeInput.setAttribute("list", "savedCompanyCodeList");
+        }else{
+            companyCodeInput.removeAttribute("list");
+        }
+    }
 }
 
 function persistSavedCompanyCodes(nextCodes, lastCode){
@@ -139,7 +129,6 @@ function setCompanyCodeValue(code, rememberSelection){
     const normalizedCode = normalizeCompanyCode(code);
     if(!companyCodeInput) return;
     companyCodeInput.value = normalizedCode;
-    syncSavedCompanyCodeSelection(normalizedCode);
     if(rememberSelection && savedCompanyCodes.includes(normalizedCode)){
         persistSavedCompanyCodes(savedCompanyCodes, normalizedCode);
     }
@@ -273,7 +262,6 @@ function scheduleCompanyCodeVerification(){
     window.clearTimeout(companyCodeTimer);
     resetCompanyPreview();
     const code = normalizeCompanyCode(companyCodeInput ? companyCodeInput.value : "");
-    syncSavedCompanyCodeSelection(code);
     if(!code){
         setCompanyCodeStatus("", "");
         return;
@@ -409,21 +397,21 @@ if(passwordToggle){
 }
 if(companyCodeInput){
     companyCodeInput.addEventListener("input", scheduleCompanyCodeVerification);
+    companyCodeInput.addEventListener("change", () => {
+        const normalizedCode = normalizeCompanyCode(companyCodeInput.value);
+        if(companyCodeInput.value !== normalizedCode){
+            companyCodeInput.value = normalizedCode;
+        }
+        if(savedCompanyCodes.includes(normalizedCode)){
+            persistSavedCompanyCodes(savedCompanyCodes, normalizedCode);
+        }
+        scheduleCompanyCodeVerification();
+    });
     companyCodeInput.addEventListener("blur", () => {
         verifyCompanyCode().catch((err) => {
             resetCompanyPreview();
             setCompanyCodeStatus(err.message || "Invalid company code.", "error");
         });
-    });
-}
-if(savedCompanyCodeSelect){
-    savedCompanyCodeSelect.addEventListener("change", () => {
-        const selectedCode = normalizeCompanyCode(savedCompanyCodeSelect.value);
-        if(!selectedCode){
-            return;
-        }
-        setCompanyCodeValue(selectedCode, true);
-        scheduleCompanyCodeVerification();
     });
 }
 if(companyLogo){
