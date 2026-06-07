@@ -53,10 +53,6 @@ function normalizeUserDepartment(value) {
   return "";
 }
 
-function runUserDirectoryDb(task) {
-  return db.withDatabase(USER_DIRECTORY_DB, task);
-}
-
 function normalizeDatabaseName(value) {
   const normalized = db.normalizeDatabaseName(value);
   return normalized || "inventory";
@@ -64,6 +60,10 @@ function normalizeDatabaseName(value) {
 
 function getRequestDatabaseName(req) {
   return normalizeDatabaseName(req?.databaseName || req?.user?.database_name || req?.headers?.["x-database-name"]);
+}
+
+function runRequestUserDatabase(req, task) {
+  return db.withDatabase(getRequestDatabaseName(req), task);
 }
 
 async function findDepartmentTemplateUser(department, transaction) {
@@ -331,7 +331,8 @@ async function deleteFromUserLinkedTables(userId, transaction) {
 }
 
 exports.getUsers = async (req, res) => {
-  return runUserDirectoryDb(async () => {
+  const activeDatabaseName = getRequestDatabaseName(req);
+  return runRequestUserDatabase(req, async () => {
     try {
       await ensureUserSuperColumn();
       const users = await User.findAll({
@@ -344,7 +345,10 @@ exports.getUsers = async (req, res) => {
         if (!isTargetProtectedSuperAdmin(u, requesterId, requesterIsSuper)) return true;
         return false;
       });
-      res.json(filtered);
+      res.json(filtered.map((user) => ({
+        ...(user && typeof user.toJSON === "function" ? user.toJSON() : user),
+        database_name: activeDatabaseName,
+      })));
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "Server error" });
@@ -354,7 +358,8 @@ exports.getUsers = async (req, res) => {
 
 exports.getUserById = async (req, res) => {
   const { id } = req.params;
-  return runUserDirectoryDb(async () => {
+  const activeDatabaseName = getRequestDatabaseName(req);
+  return runRequestUserDatabase(req, async () => {
     try {
       await ensureUserSuperColumn();
       const user = await User.findByPk(id, {
@@ -368,7 +373,10 @@ exports.getUserById = async (req, res) => {
       if (isTargetProtectedSuperAdmin(user, requesterId, requesterIsSuper)) {
         return res.status(403).json({ message: "Forbidden: Super admin user is protected." });
       }
-      res.json(user);
+      res.json({
+        ...(user && typeof user.toJSON === "function" ? user.toJSON() : user),
+        database_name: activeDatabaseName,
+      });
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "Server error" });
@@ -385,7 +393,8 @@ exports.addUser = async (req, res) => {
   const password = String(req.body?.password || "");
   const role = String(req.body?.role || "").trim().toLowerCase();
 
-  return runUserDirectoryDb(async () => {
+  const activeDatabaseName = getRequestDatabaseName(req);
+  return runRequestUserDatabase(req, async () => {
     try {
       if (!username || !company || !telephone || !email || !password || !role) {
         return res.status(400).json({ message: "Missing required fields." });
@@ -431,6 +440,7 @@ exports.addUser = async (req, res) => {
         email: user.email,
         role: user.role,
         department: user.department,
+        database_name: activeDatabaseName,
         access_template: templateAccessResult,
       });
     } catch (err) {
@@ -451,7 +461,8 @@ exports.updateUser = async (req, res) => {
   const password = typeof req.body?.password === "undefined" ? "" : String(req.body.password || "");
   const role = typeof req.body?.role === "undefined" ? undefined : String(req.body.role || "").trim().toLowerCase();
 
-  return runUserDirectoryDb(async () => {
+  const activeDatabaseName = getRequestDatabaseName(req);
+  return runRequestUserDatabase(req, async () => {
     try {
       await ensureUserSuperColumn();
       const user = await User.findByPk(id);
@@ -506,7 +517,7 @@ exports.updateUser = async (req, res) => {
         telephone: persisted.telephone,
         email: persisted.email,
         role: persisted.role,
-        database_name: USER_DIRECTORY_DB,
+        database_name: activeDatabaseName,
       });
     } catch (err) {
       console.error(err);
@@ -763,7 +774,7 @@ exports.deleteUser = async (req, res) => {
     return res.status(400).json({ message: "Invalid user id" });
   }
 
-  return runUserDirectoryDb(async () => {
+  return runRequestUserDatabase(req, async () => {
     try {
       await ensureUserSuperColumn();
       const user = await User.findByPk(userId);
