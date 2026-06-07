@@ -23,6 +23,7 @@ const {
   deleteCompany,
   getMappedMeta,
   listMappedEntries,
+  deleteMappedEntry,
   getMappedByUser,
   verifyMapping,
   saveMapping,
@@ -72,6 +73,7 @@ router.post("/companies/create", createCompany);
 router.delete("/companies/:companyId", deleteCompany);
 router.get("/mapped/meta", getMappedMeta);
 router.get("/mapped/entries", listMappedEntries);
+router.delete("/mapped/entries/:entryId", deleteMappedEntry);
 router.get("/mapped/:userId", getMappedByUser);
 router.post("/mapped/verify", verifyMapping);
 router.post("/mapped/save", saveMapping);

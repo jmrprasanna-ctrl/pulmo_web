@@ -17,6 +17,8 @@
         .mapped-table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden}
         .mapped-table th,.mapped-table td{padding:10px 12px;border-bottom:1px solid #e3edf7;text-align:left;white-space:nowrap}
         .mapped-table th{background:#f3f7fc;color:#24384e;font-weight:700}
+        .mapped-table .actions{text-align:center}
+        .mapped-delete-btn svg{width:18px;height:18px}
         .mapped-status{display:inline-flex;align-items:center;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700}
         .mapped-status.ok{background:#e8f7ef;color:#167442}
         .mapped-status.bad{background:#fff0f0;color:#b42318}

@@ -224,7 +224,7 @@ const ACCESS_MODULE_OPTIONS = [
       { path: "/users/user-access.html", label: "User Access", actions: ["view", "edit"] },
       { path: "/users/db-create.html", label: "DB Create", actions: ["view", "add", "delete"] },
       { path: "/users/company-create.html", label: "Company Create", actions: ["view", "add", "delete"] },
-      { path: "/users/mapped.html", label: "Mapped", actions: ["view", "add"] },
+      { path: "/users/mapped.html", label: "Mapped", actions: ["view", "add", "delete"] },
       { path: "/users/inv-map.html", label: "Inv Map", actions: ["view", "add", "delete"] },
       { path: "/users/invoice-section.html", label: "Invoice Section", actions: ["view", "edit"] },
       { path: "/users/user-preference.html", label: "User Preference", actions: ["view", "edit"] },
@@ -2439,6 +2439,44 @@ exports.listMappedEntries = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: err.message || "Failed to load mapped entries." });
+  } finally {
+    await mainDbClient.end().catch(() => {});
+  }
+};
+
+exports.deleteMappedEntry = async (req, res) => {
+  const canDelete = await hasMappedActionPermission(req, "delete");
+  if (!canDelete) {
+    return res.status(403).json({ message: "Forbidden: Missing Mapped delete permission." });
+  }
+
+  const entryId = Number(req.params.entryId || 0);
+  if (!Number.isFinite(entryId) || entryId <= 0) {
+    return res.status(400).json({ message: "Invalid mapped entry id." });
+  }
+
+  const cfg = getDbConfig();
+  const mainDbClient = new Client({
+    host: cfg.host,
+    port: cfg.port,
+    user: cfg.user,
+    password: cfg.password,
+    database: cfg.database || INVENTORY_DB_NAME,
+  });
+
+  try {
+    await mainDbClient.connect();
+    await ensureUserMappingTable(mainDbClient);
+    const result = await mainDbClient.query(
+      "DELETE FROM user_mappings WHERE id = $1 RETURNING id",
+      [entryId]
+    );
+    if (!result.rowCount) {
+      return res.status(404).json({ message: "Mapped entry not found." });
+    }
+    res.json({ message: "Mapped entry deleted successfully." });
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Failed to delete mapped entry." });
   } finally {
     await mainDbClient.end().catch(() => {});
   }
