@@ -260,6 +260,46 @@ function toCompanyFolderSlug(value) {
     .slice(0, 80);
 }
 
+function existingFilePath(candidates = []) {
+  for (const candidate of Array.isArray(candidates) ? candidates : []) {
+    const resolved = path.resolve(String(candidate || ""));
+    if (!resolved) continue;
+    try {
+      const stat = fs.statSync(resolved);
+      if (stat.isFile()) {
+        return resolved;
+      }
+    } catch (_err) {
+    }
+  }
+  return "";
+}
+
+function resolveStoredLogoFilePath(logoPathRaw) {
+  const logoPath = String(logoPathRaw || "").trim();
+  if (!logoPath) return "";
+  const normalized = logoPath.replace(/\\/g, "/");
+  const trimmed = normalized.replace(/^\/+/, "");
+  const candidates = [];
+
+  if (path.isAbsolute(logoPath)) {
+    candidates.push(logoPath);
+  }
+  if (trimmed.toLowerCase().startsWith("storage/")) {
+    candidates.push(path.resolve(__dirname, "..", trimmed));
+  }
+  if (trimmed.toLowerCase().startsWith("companies/")) {
+    candidates.push(path.join(STORAGE_ROOT, trimmed));
+  }
+
+  const storageIdx = normalized.toLowerCase().indexOf("/storage/");
+  if (storageIdx >= 0) {
+    candidates.push(path.join(STORAGE_ROOT, normalized.slice(storageIdx + "/storage/".length)));
+  }
+
+  return existingFilePath(candidates);
+}
+
 function findCompanyFolderName(rowLike = {}) {
   const explicitFolderName = String(rowLike.folder_name || "").trim();
   if (explicitFolderName) {
@@ -280,7 +320,78 @@ function findCompanyFolderName(rowLike = {}) {
     }
   }
 
+  const companyCode = String(rowLike.company_code || "").trim().toLowerCase();
+  if (companyCode) {
+    const matchingByCode = fs.readdirSync(COMPANY_STORAGE_ROOT, { withFileTypes: true }).find((entry) => {
+      if (!entry.isDirectory()) return false;
+      const name = String(entry.name || "").trim().toLowerCase();
+      return name === companyCode || name.includes(companyCode);
+    });
+    if (matchingByCode) {
+      return matchingByCode.name;
+    }
+  }
+
   return "";
+}
+
+function resolveCompanyLogoFilePath(rowLike = {}) {
+  const fromStoredPath = resolveStoredLogoFilePath(rowLike.logo_path);
+  if (fromStoredPath) {
+    return fromStoredPath;
+  }
+
+  const folderName = findCompanyFolderName(rowLike);
+  const logoFileName = String(rowLike.logo_file_name || "").trim();
+  if (folderName) {
+    const folderPath = path.join(COMPANY_STORAGE_ROOT, folderName);
+    if (logoFileName) {
+      const exactFile = existingFilePath([path.join(folderPath, logoFileName)]);
+      if (exactFile) {
+        return exactFile;
+      }
+    }
+    if (fs.existsSync(folderPath)) {
+      const discoveredLogo = fs.readdirSync(folderPath).find((name) => /^logo\./i.test(String(name || "")));
+      if (discoveredLogo) {
+        return path.join(folderPath, discoveredLogo);
+      }
+    }
+  }
+
+  return "";
+}
+
+async function loadCompanyProfileRowByCode(client, companyCode) {
+  const normalizedCode = normalizeCompanyCode(companyCode);
+  if (!normalizedCode) return null;
+  try {
+    const rs = await client.query(
+      `SELECT company_name, company_code, logo_path, folder_name, logo_file_name
+       FROM company_profiles
+       WHERE UPPER(COALESCE(company_code, '')) = $1
+       LIMIT 1`,
+      [normalizedCode]
+    );
+    return rs.rowCount ? (rs.rows[0] || {}) : null;
+  } catch (err) {
+    if (String(err?.code || "") === "42703") {
+      const legacyRs = await client.query(
+        `SELECT company_name, company_code, logo_path
+         FROM company_profiles
+         WHERE UPPER(COALESCE(company_code, '')) = $1
+         LIMIT 1`,
+        [normalizedCode]
+      );
+      if (!legacyRs.rowCount) return null;
+      return {
+        ...(legacyRs.rows[0] || {}),
+        folder_name: "",
+        logo_file_name: "",
+      };
+    }
+    throw err;
+  }
 }
 
 function buildCompanyLogoCandidates(rowLike = {}) {
@@ -322,26 +433,52 @@ async function loadCompanyProfileByCode(client, companyCode) {
   const normalizedCode = normalizeCompanyCode(companyCode);
   if (!normalizedCode) return null;
   try {
-    const rs = await client.query(
-      `SELECT company_name, company_code, logo_path, folder_name, logo_file_name
-       FROM company_profiles
-       WHERE UPPER(COALESCE(company_code, '')) = $1
-       LIMIT 1`,
-      [normalizedCode]
-    );
-    if (!rs.rowCount) return null;
-    const row = rs.rows[0] || {};
+    const row = await loadCompanyProfileRowByCode(client, normalizedCode);
+    if (!row) return null;
+    const logoEndpoint = resolveCompanyLogoFilePath(row)
+      ? `/api/auth/company-code/${encodeURIComponent(normalizedCode)}/logo`
+      : null;
     return {
       company_name: normalizeCompanyName(row.company_name),
       company_code: normalizeCompanyCode(row.company_code),
-      logo_url: buildCompanyLogoUrl(row),
-      logo_urls: buildCompanyLogoCandidates(row),
+      logo_url: logoEndpoint || buildCompanyLogoUrl(row),
+      logo_urls: uniqueStrings([logoEndpoint, ...buildCompanyLogoCandidates(row)]),
     };
   } catch (err) {
     if (String(err?.code || "") === "42P01") return null;
     throw err;
   }
 }
+
+exports.getCompanyLogoByCode = async (req, res) => {
+  const companyCode = normalizeCompanyCode(
+    req.params?.companyCode || req.query?.company_code || req.body?.company_code
+  );
+  if (!companyCode) {
+    return res.status(400).end();
+  }
+
+  const client = getAuthDbClient();
+  try {
+    await client.connect();
+    const row = await loadCompanyProfileRowByCode(client, companyCode);
+    if (!row) {
+      return res.status(404).end();
+    }
+    const filePath = resolveCompanyLogoFilePath(row);
+    if (!filePath) {
+      return res.status(404).end();
+    }
+    return res.sendFile(filePath);
+  } catch (err) {
+    if (String(err?.code || "") === "42P01") {
+      return res.status(404).end();
+    }
+    return res.status(500).end();
+  } finally {
+    await client.end().catch(() => {});
+  }
+};
 
 function buildPasswordResetSubject(companyNameRaw) {
   const companyName = normalizeCompanyName(companyNameRaw) || "PULMO TECHNOLOGIES";
@@ -445,7 +582,7 @@ exports.login = async (req, res) => {
 
     const mappingRs = await client.query(
       `SELECT um.database_name, cp.company_name, cp.company_code, COALESCE(NULLIF(TRIM(um.mapped_email), ''), cp.email) AS mapped_email,
-              cp.logo_path, cp.folder_name, cp.logo_file_name
+              cp.logo_path
        FROM user_mappings um
        JOIN company_profiles cp ON cp.id = um.company_profile_id
        WHERE um.user_id = $1
@@ -463,7 +600,9 @@ exports.login = async (req, res) => {
       mappedCompanyName = String(mappingRs.rows[0]?.company_name || "").trim() || null;
       mappedCompanyCode = String(mappingRs.rows[0]?.company_code || "").trim().toUpperCase() || null;
       mappedCompanyEmail = String(mappingRs.rows[0]?.mapped_email || "").trim().toLowerCase() || null;
-      mappedCompanyLogoUrl = buildCompanyLogoUrl(mappingRs.rows[0] || {});
+      mappedCompanyLogoUrl = mappedCompanyCode
+        ? `/api/auth/company-code/${encodeURIComponent(mappedCompanyCode)}/logo`
+        : buildCompanyLogoUrl(mappingRs.rows[0] || {});
     } else {
       return res.status(403).json({ message: "User is not mapped to this company code." });
     }
