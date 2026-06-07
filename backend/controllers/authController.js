@@ -1,3 +1,5 @@
+const fs = require("fs");
+const path = require("path");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { Client } = require("pg");
@@ -10,6 +12,8 @@ const { sendEmail } = require("../services/emailService");
 const isBcryptHash = (value = "") => /^\$2[aby]\$\d{2}\$/.test(value);
 const AUTH_DB_NAME = String(process.env.DB_NAME || "inventory").trim() || "inventory";
 const INVENTORY_DB_NAME = db.normalizeDatabaseName(AUTH_DB_NAME) || "inventory";
+const STORAGE_ROOT = path.resolve(__dirname, "..", "storage");
+const COMPANY_STORAGE_ROOT = path.join(STORAGE_ROOT, "companies");
 
 function getAuthDbClient() {
   return new Client({
@@ -216,8 +220,50 @@ function normalizeCompanyCode(value) {
 function logoUrlFromPath(logoPathRaw) {
   const logoPath = String(logoPathRaw || "").trim();
   if (!logoPath) return null;
-  const clean = logoPath.replace(/\\/g, "/").replace(/^\/+/, "");
-  return clean ? `/${clean}` : null;
+  if (/^https?:\/\//i.test(logoPath)) {
+    return logoPath;
+  }
+  const clean = logoPath.replace(/\\/g, "/");
+  const storageIdx = clean.toLowerCase().indexOf("/storage/");
+  if (storageIdx >= 0) {
+    return clean.slice(storageIdx);
+  }
+  const normalized = clean.replace(/^\/+/, "");
+  if (!normalized) return null;
+  if (normalized.toLowerCase().startsWith("storage/")) {
+    return `/${normalized}`;
+  }
+  if (normalized.toLowerCase().startsWith("companies/")) {
+    return `/storage/${normalized}`;
+  }
+  return `/${normalized}`;
+}
+
+function buildCompanyLogoUrl(rowLike = {}) {
+  const directUrl = logoUrlFromPath(rowLike.logo_path);
+  if (directUrl) return directUrl;
+
+  const folderName = String(rowLike.folder_name || "").trim();
+  const logoFileName = String(rowLike.logo_file_name || "").trim();
+  if (folderName && logoFileName) {
+    return `/storage/companies/${folderName}/${logoFileName}`;
+  }
+
+  const companyCode = String(rowLike.company_code || "").trim().toUpperCase();
+  if (companyCode && fs.existsSync(COMPANY_STORAGE_ROOT)) {
+    const matchingDir = fs.readdirSync(COMPANY_STORAGE_ROOT, { withFileTypes: true }).find((entry) => {
+      if (!entry.isDirectory()) return false;
+      return entry.name.toLowerCase().includes(companyCode.toLowerCase());
+    });
+    if (matchingDir) {
+      const dirPath = path.join(COMPANY_STORAGE_ROOT, matchingDir.name);
+      const logoFile = fs.readdirSync(dirPath).find((name) => /^logo\./i.test(String(name || "")));
+      if (logoFile) {
+        return `/storage/companies/${matchingDir.name}/${logoFile}`;
+      }
+    }
+  }
+  return null;
 }
 
 async function loadCompanyProfileByCode(client, companyCode) {
@@ -225,7 +271,7 @@ async function loadCompanyProfileByCode(client, companyCode) {
   if (!normalizedCode) return null;
   try {
     const rs = await client.query(
-      `SELECT company_name, company_code, logo_path
+      `SELECT company_name, company_code, logo_path, folder_name, logo_file_name
        FROM company_profiles
        WHERE UPPER(COALESCE(company_code, '')) = $1
        LIMIT 1`,
@@ -236,7 +282,7 @@ async function loadCompanyProfileByCode(client, companyCode) {
     return {
       company_name: normalizeCompanyName(row.company_name),
       company_code: normalizeCompanyCode(row.company_code),
-      logo_url: logoUrlFromPath(row.logo_path),
+      logo_url: buildCompanyLogoUrl(row),
     };
   } catch (err) {
     if (String(err?.code || "") === "42P01") return null;
@@ -345,7 +391,8 @@ exports.login = async (req, res) => {
     let mappedCompanyLogoUrl = null;
 
     const mappingRs = await client.query(
-      `SELECT um.database_name, cp.company_name, cp.company_code, COALESCE(NULLIF(TRIM(um.mapped_email), ''), cp.email) AS mapped_email, cp.logo_path
+      `SELECT um.database_name, cp.company_name, cp.company_code, COALESCE(NULLIF(TRIM(um.mapped_email), ''), cp.email) AS mapped_email,
+              cp.logo_path, cp.folder_name, cp.logo_file_name
        FROM user_mappings um
        JOIN company_profiles cp ON cp.id = um.company_profile_id
        WHERE um.user_id = $1
@@ -363,7 +410,7 @@ exports.login = async (req, res) => {
       mappedCompanyName = String(mappingRs.rows[0]?.company_name || "").trim() || null;
       mappedCompanyCode = String(mappingRs.rows[0]?.company_code || "").trim().toUpperCase() || null;
       mappedCompanyEmail = String(mappingRs.rows[0]?.mapped_email || "").trim().toLowerCase() || null;
-      mappedCompanyLogoUrl = logoUrlFromPath(mappingRs.rows[0]?.logo_path);
+      mappedCompanyLogoUrl = buildCompanyLogoUrl(mappingRs.rows[0] || {});
     } else {
       return res.status(403).json({ message: "User is not mapped to this company code." });
     }
