@@ -168,10 +168,6 @@ body{
     text-align:left;
 }
 
-.saved-company-code-wrap[hidden]{
-    display:none !important;
-}
-
 .company-code-status{
     min-height:18px;
     margin:6px 2px 0;
@@ -207,15 +203,81 @@ body{
     color:#222;
 }
 
-.login-container select{
-    width:100%;
-    height:52px;
+.company-code-wrap{
+    position:relative;
+}
+
+.company-code-wrap input{
+    padding-right:52px;
+}
+
+.company-code-toggle{
+    position:absolute;
+    right:10px;
+    top:50%;
+    transform:translateY(-50%);
+    width:34px;
+    height:34px;
+    border:none;
+    border-radius:8px;
+    background:transparent;
+    color:#7f8c98;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    z-index:2;
+}
+
+.company-code-toggle.is-hidden{
+    display:none;
+}
+
+.company-code-toggle:hover{
+    background:#eef3f8;
+    color:#4f7ea9;
+}
+
+.company-code-toggle:focus{
+    outline:none;
+    box-shadow:0 0 0 3px rgba(79,126,169,0.2);
+}
+
+.company-code-menu{
+    position:absolute;
+    left:0;
+    right:0;
+    top:calc(100% + 6px);
+    padding:6px;
     border:1px solid #d0d0d0;
     border-radius:12px;
-    background:#fdfdfd;
-    padding:0 16px;
-    font-size:16px;
-    color:#222;
+    background:#fff;
+    box-shadow:0 14px 28px rgba(30, 61, 92, 0.12);
+    max-height:200px;
+    overflow-y:auto;
+    z-index:12;
+}
+
+.company-code-menu.is-hidden{
+    display:none;
+}
+
+.company-code-option{
+    width:100%;
+    border:none;
+    background:transparent;
+    color:#22374a;
+    text-align:left;
+    font-size:15px;
+    padding:12px 14px;
+    border-radius:10px;
+    cursor:pointer;
+}
+
+.company-code-option:hover,
+.company-code-option.is-active{
+    background:#eef5fb;
+    color:#1c4c76;
 }
 
 .password-wrap{
@@ -253,8 +315,7 @@ body{
     box-shadow:0 0 0 3px rgba(79,126,169,0.2);
 }
 
-.login-container input:focus,
-.login-container select:focus{
+.login-container input:focus{
     outline:none;
     border-color:#4f7ea9;
     box-shadow:0 0 0 3px rgba(79,126,169,0.2);
@@ -369,11 +430,15 @@ body{
     }
 
     .login-container input,
-    .login-container select,
     .login-btn{
         height:44px;
         font-size:15px;
         border-radius:10px;
+    }
+
+    .company-code-option{
+        font-size:14px;
+        padding:10px 12px;
     }
 
     .login-btn{

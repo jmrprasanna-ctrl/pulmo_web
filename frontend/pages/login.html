@@ -9,7 +9,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PULMO TECHNOLOGIES - Login</title>
-<link rel="stylesheet" href="../assets/extracted/pages/login.inline-style-1.css?v=20260608p03">
+<link rel="stylesheet" href="../assets/extracted/pages/login.inline-style-1.css?v=20260608p04">
 </head>
 <body>
 
@@ -35,19 +35,35 @@
     <form id="loginForm" method="post" autocomplete="off" novalidate>
         <div class="field">
             <label for="companyCode">Company Code</label>
-            <input
-                type="text"
-                id="companyCode"
-                name="company_code"
-                placeholder="Company Code"
-                list="savedCompanyCodeList"
-                autocomplete="off"
-                autocapitalize="none"
-                autocorrect="off"
-                spellcheck="false"
-                required
-            >
-            <datalist id="savedCompanyCodeList"></datalist>
+            <div class="company-code-wrap" id="companyCodeWrap">
+                <input
+                    type="text"
+                    id="companyCode"
+                    name="company_code"
+                    placeholder="Company Code"
+                    autocomplete="off"
+                    autocapitalize="none"
+                    autocorrect="off"
+                    spellcheck="false"
+                    aria-autocomplete="list"
+                    aria-expanded="false"
+                    aria-controls="savedCompanyCodeMenu"
+                    required
+                >
+                <button
+                    type="button"
+                    class="company-code-toggle is-hidden"
+                    id="companyCodeToggle"
+                    aria-label="Show saved company codes"
+                    aria-expanded="false"
+                    aria-controls="savedCompanyCodeMenu"
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <div class="company-code-menu is-hidden" id="savedCompanyCodeMenu" role="listbox" aria-hidden="true"></div>
+            </div>
         </div>
         <div class="field">
             <label for="email">Email</label>
@@ -94,7 +110,7 @@
 </div>
 
 <script src="../assets/js/api.js?v=20260522p01"></script>
-<script src="../assets/extracted/pages/login.inline-script-1.js?v=20260608p02"></script>
+<script src="../assets/extracted/pages/login.inline-script-1.js?v=20260608p03"></script>
 
 </body>
 </html>
