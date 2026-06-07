@@ -3228,11 +3228,15 @@ exports.getMyAccess = async (req, res) => {
   }
   const hasAccessConfig = hasStoredConfig || allowedPages.length > 0 || allowedActions.length > 0;
   const mappedProfile = await findMappedUserProfile(userId);
+  const resolvedCurrentDatabase =
+    normalizeDatabaseName(req.databaseName || req.user?.database_name) ||
+    normalizeDatabaseName(mappedProfile?.database_name) ||
+    normalizeDatabaseName(row?.database_name);
 
   res.json({
     allowed_pages: allowedPages,
     allowed_actions: allowedActions,
-    database_name: normalizeDatabaseName(mappedProfile?.database_name) || normalizeDatabaseName(row?.database_name),
+    database_name: resolvedCurrentDatabase,
     user_database: userDatabase,
     has_access_config: hasAccessConfig,
   });

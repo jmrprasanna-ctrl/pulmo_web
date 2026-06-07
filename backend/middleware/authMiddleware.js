@@ -93,10 +93,10 @@ async function resolveUserDatabaseInfoUncached(userId) {
 
       const row = Array.isArray(rows) ? rows[0] : null;
       const mappedDb = db.normalizeDatabaseName(row?.mapped_database_name || "");
-      const assignedDb = db.normalizeDatabaseName(row?.assigned_database_name || "") || mappedDb || DEFAULT_DB;
+      const assignedDb = db.normalizeDatabaseName(row?.assigned_database_name || "") || mappedDb || null;
       return {
         mappedDb: mappedDb || null,
-        assignedDb: assignedDb || DEFAULT_DB,
+        assignedDb: assignedDb || null,
       };
     });
   } catch (_err) {
@@ -272,6 +272,8 @@ const authMiddleware = async (req, res, next) => {
     let targetDb = DEFAULT_DB;
     const role = String(decoded?.role || "").toLowerCase();
     const userId = Number(decoded?.id || decoded?.userId || 0);
+    const authScope = String(decoded?.auth_scope || decoded?.authScope || "").trim().toLowerCase();
+    const directoryUserId = Number(decoded?.directory_user_id || decoded?.directoryUserId || 0);
 
     const tokenDb = db.normalizeDatabaseName(decoded?.database_name || "");
     if (tokenDb) {
@@ -282,8 +284,12 @@ const authMiddleware = async (req, res, next) => {
       }
     }
 
-    if (Number.isFinite(userId) && userId > 0) {
-      const resolvedDbInfo = await resolveUserDatabaseInfo(userId);
+    const lookupUserId = authScope === "database_local"
+      ? (Number.isFinite(directoryUserId) && directoryUserId > 0 ? directoryUserId : 0)
+      : ((Number.isFinite(directoryUserId) && directoryUserId > 0 ? directoryUserId : userId));
+
+    if (Number.isFinite(lookupUserId) && lookupUserId > 0) {
+      const resolvedDbInfo = await resolveUserDatabaseInfo(lookupUserId);
 
       if (role === "user") {
         const assignedDb = resolvedDbInfo.assignedDb || resolvedDbInfo.mappedDb || tokenDb || DEFAULT_DB;

@@ -429,6 +429,130 @@ function buildCompanyLogoUrl(rowLike = {}) {
   return candidates[0] || null;
 }
 
+async function loadCompanyDatabaseRowByCode(client, companyCode) {
+  const normalizedCode = normalizeCompanyCode(companyCode);
+  if (!normalizedCode) return null;
+  try {
+    const rs = await client.query(
+      `SELECT um.database_name,
+              COALESCE(NULLIF(TRIM(um.mapped_email), ''), cp.email) AS mapped_email,
+              cp.company_name,
+              cp.company_code,
+              cp.logo_path,
+              cp.folder_name,
+              cp.logo_file_name
+         FROM user_mappings um
+         JOIN company_profiles cp ON cp.id = um.company_profile_id
+        WHERE UPPER(COALESCE(cp.company_code, '')) = $1
+          AND um.database_name IS NOT NULL
+          AND TRIM(um.database_name) <> ''
+        ORDER BY COALESCE(um.is_verified, FALSE) DESC,
+                 um."updatedAt" DESC NULLS LAST,
+                 um.id DESC
+        LIMIT 1`,
+      [normalizedCode]
+    );
+    return rs.rowCount ? (rs.rows[0] || null) : null;
+  } catch (err) {
+    if (String(err?.code || "") !== "42703") {
+      throw err;
+    }
+    const legacyRs = await client.query(
+      `SELECT um.database_name,
+              COALESCE(NULLIF(TRIM(um.mapped_email), ''), cp.email) AS mapped_email,
+              cp.company_name,
+              cp.company_code,
+              cp.logo_path
+         FROM user_mappings um
+         JOIN company_profiles cp ON cp.id = um.company_profile_id
+        WHERE UPPER(COALESCE(cp.company_code, '')) = $1
+          AND um.database_name IS NOT NULL
+          AND TRIM(um.database_name) <> ''
+        ORDER BY COALESCE(um.is_verified, FALSE) DESC,
+                 um."updatedAt" DESC NULLS LAST,
+                 um.id DESC
+        LIMIT 1`,
+      [normalizedCode]
+    );
+    if (!legacyRs.rowCount) return null;
+    return {
+      ...(legacyRs.rows[0] || {}),
+      folder_name: "",
+      logo_file_name: "",
+    };
+  }
+}
+
+async function findLoginUserInDatabase(databaseName, loginValue) {
+  const normalizedDb = normalizeDbName(databaseName);
+  const normalizedLoginValue = String(loginValue || "").trim();
+  if (!normalizedDb || !normalizedLoginValue) return null;
+
+  try {
+    await db.registerDatabase(normalizedDb);
+    return await db.withDatabase(normalizedDb, async () => {
+      return User.findOne({
+        where: {
+          [Op.or]: [
+            { email: normalizedLoginValue },
+            { username: normalizedLoginValue },
+          ],
+        },
+        attributes: ["id", "username", "email", "role", "password", "password_plain", "company"],
+      });
+    });
+  } catch (_err) {
+    return null;
+  }
+}
+
+async function verifyLoginPassword(user, password) {
+  if (!user) return false;
+
+  let isMatch = false;
+  if (isBcryptHash(user.password)) {
+    isMatch = await bcrypt.compare(password, user.password);
+    if (isMatch && String(user.password_plain || "").trim() !== String(password || "").trim()) {
+      user.password_plain = String(password || "").trim();
+      await user.save();
+    }
+  } else {
+    isMatch = password === user.password;
+    if (isMatch) {
+      user.password = await bcrypt.hash(password, 10);
+      user.password_plain = String(password || "").trim();
+      await user.save();
+    }
+  }
+
+  return isMatch;
+}
+
+async function insertLoginLog(databaseName, user, ipAddress, userAgent) {
+  const normalizedDb = normalizeDbName(databaseName);
+  if (!normalizedDb || !user?.id) return;
+
+  try {
+    await db.registerDatabase(normalizedDb);
+    await db.withDatabase(normalizedDb, async () => {
+      await db.query(
+        `INSERT INTO user_login_logs (user_id, username, role, login_time, ip_address, user_agent, "createdAt", "updatedAt")
+         VALUES ($1, $2, $3, NOW(), $4, $5, NOW(), NOW())`,
+        {
+          bind: [
+            Number(user.id || 0),
+            String(user.username || "").trim(),
+            String(user.role || "").trim(),
+            ipAddress || null,
+            userAgent || null,
+          ],
+        }
+      );
+    });
+  } catch (_err) {
+  }
+}
+
 async function loadCompanyProfileByCode(client, companyCode) {
   const normalizedCode = normalizeCompanyCode(companyCode);
   if (!normalizedCode) return null;
@@ -534,80 +658,96 @@ exports.getCompanyByCode = async (req, res) => {
 exports.login = async (req, res) => {
   const { email, password } = req.body;
   const requestedCompanyCode = normalizeCompanyCode(req.body?.company_code || req.body?.companyCode);
+  const loginValue = String(email || "").trim();
 
   if (!requestedCompanyCode) {
     return res.status(400).json({ message: "Company code is required." });
+  }
+  if (!loginValue || !String(password || "")) {
+    return res.status(400).json({ message: "Email/username and password are required." });
   }
 
   const client = getAuthDbClient();
   try {
     await client.connect();
-    const userRs = await client.query(
-      `SELECT id, username, email, role, password, password_plain, company
-       FROM users
-       WHERE email = $1 OR username = $1
-       LIMIT 1`,
-      [String(email || "").trim()]
-    );
-    const user = userRs.rows[0];
-    if (!user) {
-      return res.status(400).json({ message: "User not found" });
+    const companyDbRow = await loadCompanyDatabaseRowByCode(client, requestedCompanyCode);
+    if (!companyDbRow) {
+      return res.status(403).json({ message: "This company code is not linked to a database." });
     }
 
-    let isMatch = false;
+    let databaseName = normalizeDbName(companyDbRow?.database_name || "");
+    if (!databaseName) {
+      return res.status(403).json({ message: "This company code is not linked to a database." });
+    }
+    await db.registerDatabase(databaseName).catch(() => {});
 
-    if (isBcryptHash(user.password)) {
-      isMatch = await bcrypt.compare(password, user.password);
-      if (isMatch && String(user.password_plain || "").trim() !== String(password || "").trim()) {
-        await client.query("UPDATE users SET password_plain = $1, \"updatedAt\" = NOW() WHERE id = $2", [password, user.id]);
-      }
-    } else {
-                                                                         
-      isMatch = password === user.password;
-      if (isMatch) {
-        const hashed = await bcrypt.hash(password, 10);
-        await client.query("UPDATE users SET password = $1, password_plain = $2, \"updatedAt\" = NOW() WHERE id = $3", [hashed, password, user.id]);
-      }
+    let mappedCompanyName = String(companyDbRow?.company_name || "").trim() || null;
+    let mappedCompanyCode = String(companyDbRow?.company_code || "").trim().toUpperCase() || requestedCompanyCode;
+    let mappedCompanyEmail = String(companyDbRow?.mapped_email || "").trim().toLowerCase() || null;
+    let mappedCompanyLogoUrl = mappedCompanyCode
+      ? `/api/auth/company-code/${encodeURIComponent(mappedCompanyCode)}/logo`
+      : buildCompanyLogoUrl(companyDbRow || {});
+
+    const mappedDbUser = await findLoginUserInDatabase(databaseName, loginValue);
+    const mappedDbPasswordMatch = mappedDbUser ? await verifyLoginPassword(mappedDbUser, password) : false;
+
+    const directoryUser = await findLoginUserInDatabase(INVENTORY_DB_NAME, loginValue);
+    let directoryMappingRow = null;
+    if (directoryUser) {
+      const mappingRs = await client.query(
+        `SELECT um.database_name, cp.company_name, cp.company_code, COALESCE(NULLIF(TRIM(um.mapped_email), ''), cp.email) AS mapped_email,
+                cp.logo_path, cp.folder_name, cp.logo_file_name
+         FROM user_mappings um
+         JOIN company_profiles cp ON cp.id = um.company_profile_id
+         WHERE um.user_id = $1
+           AND UPPER(COALESCE(cp.company_code, '')) = $2
+         ORDER BY um."updatedAt" DESC NULLS LAST, um.id DESC
+         LIMIT 1`,
+        [directoryUser.id, requestedCompanyCode]
+      );
+      directoryMappingRow = mappingRs.rowCount ? (mappingRs.rows[0] || null) : null;
     }
 
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid password" });
-    }
+    const directoryPasswordMatch =
+      directoryUser && directoryMappingRow
+        ? await verifyLoginPassword(directoryUser, password)
+        : false;
 
-    let databaseName = null;
-    let mappedCompanyName = null;
-    let mappedCompanyCode = null;
-    let mappedCompanyEmail = null;
-    let mappedCompanyLogoUrl = null;
+    let user = null;
+    let authScope = "database_local";
+    let loginLogDatabaseName = databaseName;
+    let directoryUserId = null;
 
-    const mappingRs = await client.query(
-      `SELECT um.database_name, cp.company_name, cp.company_code, COALESCE(NULLIF(TRIM(um.mapped_email), ''), cp.email) AS mapped_email,
-              cp.logo_path
-       FROM user_mappings um
-       JOIN company_profiles cp ON cp.id = um.company_profile_id
-       WHERE um.user_id = $1
-         AND UPPER(COALESCE(cp.company_code, '')) = $2
-       ORDER BY um."updatedAt" DESC NULLS LAST, um.id DESC
-       LIMIT 1`,
-      [user.id, requestedCompanyCode]
-    );
-    if (mappingRs.rowCount) {
-      const mappedDb = db.normalizeDatabaseName(mappingRs.rows[0]?.database_name || "");
+    if (mappedDbPasswordMatch) {
+      user = mappedDbUser;
+      authScope = "database_local";
+      loginLogDatabaseName = databaseName;
+    } else if (directoryPasswordMatch) {
+      user = directoryUser;
+      authScope = "directory";
+      directoryUserId = Number(directoryUser.id || 0) || null;
+      loginLogDatabaseName = INVENTORY_DB_NAME;
+
+      const mappedDb = db.normalizeDatabaseName(directoryMappingRow?.database_name || "");
       if (mappedDb) {
         await db.registerDatabase(mappedDb).catch(() => {});
         databaseName = mappedDb;
       }
-      mappedCompanyName = String(mappingRs.rows[0]?.company_name || "").trim() || null;
-      mappedCompanyCode = String(mappingRs.rows[0]?.company_code || "").trim().toUpperCase() || null;
-      mappedCompanyEmail = String(mappingRs.rows[0]?.mapped_email || "").trim().toLowerCase() || null;
+      mappedCompanyName = String(directoryMappingRow?.company_name || mappedCompanyName || "").trim() || null;
+      mappedCompanyCode = String(directoryMappingRow?.company_code || mappedCompanyCode || "").trim().toUpperCase() || requestedCompanyCode;
+      mappedCompanyEmail = String(directoryMappingRow?.mapped_email || mappedCompanyEmail || "").trim().toLowerCase() || null;
       mappedCompanyLogoUrl = mappedCompanyCode
         ? `/api/auth/company-code/${encodeURIComponent(mappedCompanyCode)}/logo`
-        : buildCompanyLogoUrl(mappingRs.rows[0] || {});
-    } else {
+        : buildCompanyLogoUrl(directoryMappingRow || companyDbRow || {});
+    } else if (mappedDbUser || (directoryUser && directoryMappingRow)) {
+      return res.status(400).json({ message: "Invalid password" });
+    } else if (directoryUser && !directoryMappingRow) {
       return res.status(403).json({ message: "User is not mapped to this company code." });
+    } else {
+      return res.status(400).json({ message: "User not found" });
     }
 
-    if (!databaseName && String(user.role || "").toLowerCase() === "user") {
+    if (!databaseName && String(user?.role || "").toLowerCase() === "user" && directoryUserId) {
       const accessRs = await client.query(
         `SELECT database_name
          FROM user_accesses
@@ -615,7 +755,7 @@ exports.login = async (req, res) => {
            AND LOWER(COALESCE(user_database, 'inventory')) = 'inventory'
          ORDER BY "updatedAt" DESC NULLS LAST, "createdAt" DESC NULLS LAST, id DESC
          LIMIT 1`,
-        [user.id]
+        [directoryUserId]
       );
       const normalized = db.normalizeDatabaseName(accessRs.rows[0]?.database_name || "");
       if (normalized) {
@@ -624,8 +764,18 @@ exports.login = async (req, res) => {
       }
     }
 
+    const tokenPayload = {
+      id: Number(user.id || 0),
+      role: user.role,
+      database_name: databaseName,
+      auth_scope: authScope,
+    };
+    if (directoryUserId) {
+      tokenPayload.directory_user_id = directoryUserId;
+    }
+
     const token = jwt.sign(
-      { id: user.id, role: user.role, database_name: databaseName },
+      tokenPayload,
       process.env.JWT_SECRET || "supersecretjwtkey",
       { expiresIn: process.env.JWT_EXPIRES_IN || "8h" }
     );
@@ -633,11 +783,7 @@ exports.login = async (req, res) => {
     const forwarded = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
     const ipAddress = forwarded || req.socket?.remoteAddress || req.ip || null;
     const userAgent = String(req.headers["user-agent"] || "").trim() || null;
-    await client.query(
-      `INSERT INTO user_login_logs (user_id, username, role, login_time, ip_address, user_agent, "createdAt", "updatedAt")
-       VALUES ($1, $2, $3, NOW(), $4, $5, NOW(), NOW())`,
-      [user.id, user.username, user.role, ipAddress, userAgent]
-    );
+    await insertLoginLog(loginLogDatabaseName, user, ipAddress, userAgent);
 
     res.json({
       token,
