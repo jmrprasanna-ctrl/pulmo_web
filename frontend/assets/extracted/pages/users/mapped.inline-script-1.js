@@ -10,6 +10,7 @@ const userSelectEl = document.getElementById("userSelect");
         const verifyStatusEl = document.getElementById("verifyStatus");
         const verifyBtnEl = document.getElementById("verifyBtn");
         const mappedBtnEl = document.getElementById("mappedBtn");
+        const mappedEntriesTableBodyEl = document.getElementById("mappedEntriesTableBody");
 
         const MAPPED_PATH = "/users/mapped.html";
         let canAddMapped = false;
@@ -29,6 +30,21 @@ const userSelectEl = document.getElementById("userSelect");
 
         function findCompany(companyId){
             return companies.find((c) => Number(c.id) === Number(companyId)) || null;
+        }
+
+        function escapeHtml(value){
+            return String(value || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function statusBadge(isVerified){
+            return isVerified
+                ? `<span class="mapped-status ok">Verified</span>`
+                : `<span class="mapped-status bad">Not Verified</span>`;
         }
 
         function updateNameViews(){
@@ -90,6 +106,35 @@ const userSelectEl = document.getElementById("userSelect");
                 opt.textContent = `${String(c.company_name || "")}${code ? ` [${code}]` : ""}${email ? ` (${email})` : ""}`;
                 companySelectEl.appendChild(opt);
             });
+        }
+
+        async function loadMappedEntries(){
+            if(!mappedEntriesTableBodyEl) return;
+            mappedEntriesTableBodyEl.innerHTML = `<tr><td colspan="5">Loading...</td></tr>`;
+            try{
+                const res = await request("/users/mapped/entries", "GET");
+                const entries = Array.isArray(res.entries) ? res.entries : [];
+                if(!entries.length){
+                    mappedEntriesTableBodyEl.innerHTML = `<tr><td colspan="5">No mapped users found.</td></tr>`;
+                    return;
+                }
+                mappedEntriesTableBodyEl.innerHTML = "";
+                entries.forEach((entry) => {
+                    const tr = document.createElement("tr");
+                    const userText = `${entry.username || "User"}${entry.user_email ? ` (${entry.user_email})` : ""}`;
+                    const companyText = `${entry.company_name || "-"}${entry.company_code ? ` [${entry.company_code}]` : ""}`;
+                    tr.innerHTML = `
+                        <td>${escapeHtml(userText)}</td>
+                        <td>${escapeHtml(entry.database_name || "-")}</td>
+                        <td>${escapeHtml(companyText)}</td>
+                        <td>${escapeHtml(entry.mapped_email || entry.company_email || "-")}</td>
+                        <td>${statusBadge(!!entry.is_verified)}</td>
+                    `;
+                    mappedEntriesTableBodyEl.appendChild(tr);
+                });
+            }catch(err){
+                mappedEntriesTableBodyEl.innerHTML = `<tr><td colspan="5">${escapeHtml(err.message || "Failed to load mapped users")}</td></tr>`;
+            }
         }
 
         async function loadUserMapping(){
@@ -169,6 +214,7 @@ const userSelectEl = document.getElementById("userSelect");
             try{
                 const res = await request("/users/mapped/save", "POST", payload);
                 showMessageBox(res.message || "Mapped successfully");
+                await loadMappedEntries();
             }catch(err){
                 alert(err.message || "Failed to save mapping");
             }
@@ -213,5 +259,6 @@ const userSelectEl = document.getElementById("userSelect");
             }
             await applyPermissionState();
             await loadMeta();
+            await loadMappedEntries();
             updateNameViews();
         })();

@@ -11,7 +11,7 @@
     <title>Mapped - PULMO TECHNOLOGIES</title>
     <link rel="stylesheet" href="../../assets/css/style.css">
     <link rel="stylesheet" href="../../assets/css/dashboard.css">
-    <link rel="stylesheet" href="../../assets/extracted/pages/users/mapped.inline-style-1.css">
+    <link rel="stylesheet" href="../../assets/extracted/pages/users/mapped.inline-style-1.css?v=20260607a">
 </head>
 <body>
     <div class="sidebar">
@@ -85,10 +85,28 @@
                     </svg>
                 </button>
             </div>
+
+            <div class="mapped-table-wrap">
+                <label>Mapped Users</label>
+                <table class="mapped-table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Database</th>
+                            <th>Company</th>
+                            <th>Email</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mappedEntriesTableBody">
+                        <tr><td colspan="5">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <script src="../../assets/js/api.js"></script>
-    <script src="../../assets/extracted/pages/users/mapped.inline-script-1.js"></script>
+    <script src="../../assets/extracted/pages/users/mapped.inline-script-1.js?v=20260607a"></script>
 </body>
 </html>

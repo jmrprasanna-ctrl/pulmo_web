@@ -13,6 +13,13 @@
         .mapped-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
         .mapped-info{background:#f7fbff;border:1px solid #d8e8f8;border-radius:10px;padding:10px 12px;margin-top:12px}
         .mapped-row{display:grid;grid-template-columns:220px 1fr;gap:10px;padding:4px 0}
+        .mapped-table-wrap{margin-top:18px;overflow:auto}
+        .mapped-table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden}
+        .mapped-table th,.mapped-table td{padding:10px 12px;border-bottom:1px solid #e3edf7;text-align:left;white-space:nowrap}
+        .mapped-table th{background:#f3f7fc;color:#24384e;font-weight:700}
+        .mapped-status{display:inline-flex;align-items:center;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700}
+        .mapped-status.ok{background:#e8f7ef;color:#167442}
+        .mapped-status.bad{background:#fff0f0;color:#b42318}
         @media (max-width: 900px){
             .mapped-grid{grid-template-columns:1fr}
             .mapped-row{grid-template-columns:1fr}

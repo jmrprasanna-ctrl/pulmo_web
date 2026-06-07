@@ -2083,17 +2083,6 @@ async function getMappingPieces(mainDbClient, userId, databaseName, companyId, m
     throw new Error("User not found.");
   }
 
-  const dbRs = await mainDbClient.query(
-    `SELECT database_name, company_name
-     FROM ${DATABASE_REGISTRY_TABLE}
-     WHERE LOWER(database_name) = LOWER($1)
-     LIMIT 1`,
-    [databaseName]
-  );
-  if (!dbRs.rowCount) {
-    throw new Error("Database mapping entry not found.");
-  }
-
   const companyRs = await mainDbClient.query(
     `SELECT id, company_name, company_code, email, logo_path
      FROM ${COMPANY_REGISTRY_TABLE}
@@ -2105,9 +2094,23 @@ async function getMappingPieces(mainDbClient, userId, databaseName, companyId, m
     throw new Error("Company not found.");
   }
 
+  const dbRs = await mainDbClient.query(
+    `SELECT database_name, company_name
+     FROM ${DATABASE_REGISTRY_TABLE}
+     WHERE LOWER(database_name) = LOWER($1)
+     LIMIT 1`,
+    [databaseName]
+  );
+  if (!dbRs.rowCount && databaseName !== INVENTORY_DB_NAME) {
+    throw new Error("Database mapping entry not found.");
+  }
+
   const userRow = userRs.rows[0];
-  const dbRow = dbRs.rows[0];
   const companyRow = companyRs.rows[0];
+  const dbRow = dbRs.rows[0] || {
+    database_name: INVENTORY_DB_NAME,
+    company_name: companyRow.company_name,
+  };
   const companyEmail = normalizeEmail(companyRow.email);
   const mappedEmail = normalizeEmail(mappedEmailRaw);
   const emailVerified = !!mappedEmail && !!companyEmail && mappedEmail === companyEmail;
@@ -2382,6 +2385,60 @@ exports.saveMapping = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: err.message || "Failed to save mapping." });
+  } finally {
+    await mainDbClient.end().catch(() => {});
+  }
+};
+
+exports.listMappedEntries = async (req, res) => {
+  const canView = await hasMappedActionPermission(req, "view");
+  if (!canView) {
+    return res.status(403).json({ message: "Forbidden: Missing Mapped view permission." });
+  }
+
+  const cfg = getDbConfig();
+  const mainDbClient = new Client({
+    host: cfg.host,
+    port: cfg.port,
+    user: cfg.user,
+    password: cfg.password,
+    database: cfg.database || INVENTORY_DB_NAME,
+  });
+
+  try {
+    await mainDbClient.connect();
+    await ensureUserMappingTable(mainDbClient);
+    await ensureCompanyRegistryTable(mainDbClient);
+    const rs = await mainDbClient.query(
+      `SELECT um.id, um.user_id, um.database_name, um.mapped_email, um.is_verified, um."updatedAt",
+              u.username, u.email AS user_email, u.company AS user_company,
+              cp.company_name, cp.company_code, cp.email AS company_email
+       FROM user_mappings um
+       LEFT JOIN users u ON u.id = um.user_id
+       LEFT JOIN ${COMPANY_REGISTRY_TABLE} cp ON cp.id = um.company_profile_id
+       ORDER BY LOWER(COALESCE(um.database_name, '')) ASC,
+                LOWER(COALESCE(u.username, u.email, '')) ASC,
+                um.id ASC`
+    );
+
+    res.json({
+      entries: (rs.rows || []).map((row) => ({
+        id: Number(row.id || 0),
+        user_id: Number(row.user_id || 0),
+        username: String(row.username || "").trim(),
+        user_email: normalizeEmail(row.user_email),
+        user_company: normalizeCompanyName(row.user_company),
+        database_name: normalizeDatabaseName(row.database_name),
+        company_name: normalizeCompanyName(row.company_name),
+        company_code: normalizeCompanyCode(row.company_code),
+        company_email: normalizeEmail(row.company_email),
+        mapped_email: normalizeEmail(row.mapped_email),
+        is_verified: Boolean(row.is_verified),
+        updated_at: row.updatedAt || null,
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Failed to load mapped entries." });
   } finally {
     await mainDbClient.end().catch(() => {});
   }
