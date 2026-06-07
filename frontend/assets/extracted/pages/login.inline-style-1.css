@@ -313,6 +313,11 @@ body{
 }
 
 @media (max-width:640px){
+    body{
+        padding:14px;
+        padding-bottom:56px;
+    }
+
     .axis-loader-card{
         max-width: 94vw;
         padding: 6px 10px;
@@ -328,35 +333,56 @@ body{
     }
 
     .login-container{
-        max-width:95vw;
-        padding:24px 20px 22px;
+        max-width:88vw;
+        padding:18px 16px 18px;
         border-radius:18px;
     }
 
     .login-container h2{
-        font-size:16px;
-        margin-bottom:6px;
+        font-size:15px;
+        margin-bottom:4px;
+    }
+
+    .login-meta{
+        font-size:14px;
+        margin-bottom:14px;
     }
 
     .company-logo-wrap{
-        width:96px;
-        height:96px;
+        width:72px;
+        height:72px;
+        margin:2px auto 8px;
     }
 
     .company-logo-wrap img{
-        width:96px;
-        height:96px;
+        width:72px;
+        height:72px;
+    }
+
+    .field{
+        margin-bottom:12px;
+    }
+
+    .field label{
+        font-size:14px;
+        margin-bottom:6px;
     }
 
     .login-container input,
+    .login-container select,
     .login-btn{
-        height:48px;
-        font-size:16px;
+        height:44px;
+        font-size:15px;
         border-radius:10px;
     }
 
+    .login-btn{
+        margin-top:4px;
+    }
+
     .forgot-password{
-        font-size:16px;
+        margin-top:14px;
+        font-size:14px;
     }
 
     .app-global-footer{
