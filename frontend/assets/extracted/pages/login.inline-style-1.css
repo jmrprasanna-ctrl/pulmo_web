@@ -120,23 +120,11 @@ body{
     position:relative;
 }
 
-.company-logo-wrap{
-    width:128px;
-    height:128px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    margin:8px auto 10px;
-}
-
-.company-logo-wrap.is-hidden{
-    display:none;
-}
-
-.company-logo-wrap img{
+.login-container img{
     width:128px;
     height:128px;
     object-fit:contain;
+    margin:8px auto 10px;
 }
 
 .login-container h2{
@@ -155,22 +143,6 @@ body{
 .field{
     margin-bottom:16px;
     text-align:left;
-}
-
-.company-code-status{
-    min-height:18px;
-    margin:6px 2px 0;
-    font-size:13px;
-    line-height:1.3;
-    color:#5d7082;
-}
-
-.company-code-status.is-ok{
-    color:#198754;
-}
-
-.company-code-status.is-error{
-    color:#b42318;
 }
 
 .field label{
@@ -311,12 +283,7 @@ body{
         margin-bottom:6px;
     }
 
-    .company-logo-wrap{
-        width:96px;
-        height:96px;
-    }
-
-    .company-logo-wrap img{
+    .login-container img{
         width:96px;
         height:96px;
     }
