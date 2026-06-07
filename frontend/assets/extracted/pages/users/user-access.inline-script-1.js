@@ -5,6 +5,17 @@ const userSelectEl = document.getElementById("userSelect");
         let moduleOptions = [];
         let defaultDatabaseName = "inventory";
 
+        function normalizeDatabaseName(value){
+            return String(value || "").trim().toLowerCase();
+        }
+
+        function getSelectedUserOptionLinkedDb(){
+            const option = userSelectEl && userSelectEl.selectedOptions && userSelectEl.selectedOptions[0]
+                ? userSelectEl.selectedOptions[0]
+                : null;
+            return normalizeDatabaseName(option && option.dataset ? option.dataset.databaseName : "");
+        }
+
         function toActionKey(path, action){
             return `${String(path || "").trim().toLowerCase()}::${String(action || "").trim().toLowerCase()}`;
         }
@@ -103,6 +114,7 @@ const userSelectEl = document.getElementById("userSelect");
                     const opt = document.createElement("option");
                     opt.value = u.selection_key;
                     opt.textContent = u.label || `${u.username} (${u.email})`;
+                    opt.dataset.databaseName = normalizeDatabaseName(u.database_name);
                     userSelectEl.appendChild(opt);
                 });
             }catch(err){
@@ -210,8 +222,12 @@ const userSelectEl = document.getElementById("userSelect");
                 setCheckedActions([...actions, ...pageViewActions]);
                 superUserCheckboxEl.checked = !!res.super_user;
                 superUserCheckboxEl.disabled = res.can_edit_super_user === false;
-                if(res.database_name){
-                    databaseSelectEl.value = res.database_name;
+                const preferredDb =
+                    normalizeDatabaseName(res.mapped_database_name) ||
+                    normalizeDatabaseName(res.database_name) ||
+                    getSelectedUserOptionLinkedDb();
+                if(preferredDb){
+                    databaseSelectEl.value = preferredDb;
                 }else if(defaultDatabaseName){
                     databaseSelectEl.value = defaultDatabaseName;
                 }

@@ -3103,6 +3103,11 @@ exports.getUserAccess = async (req, res) => {
     where: { user_id: ref.user_id, user_database: ref.user_database },
     order: [["updatedAt", "DESC"], ["id", "DESC"]],
   });
+  const mappedProfile = await findMappedUserProfile(ref.user_id);
+  const resolvedDatabaseName =
+    normalizeDatabaseName(mappedProfile?.database_name) ||
+    normalizeDatabaseName(row?.database_name) ||
+    normalizeDatabaseName(ref.user_database);
   res.json({
     user: {
       ...(user.toJSON ? user.toJSON() : user),
@@ -3111,7 +3116,8 @@ exports.getUserAccess = async (req, res) => {
     },
     allowed_pages: parseAllowedPages(row),
     allowed_actions: parseAllowedActions(row),
-    database_name: normalizeDatabaseName(row?.database_name),
+    database_name: resolvedDatabaseName,
+    mapped_database_name: normalizeDatabaseName(mappedProfile?.database_name) || null,
     user_database: ref.user_database,
     super_user: Boolean(userPlain.is_super_user),
     can_edit_super_user: canEditSuperUser,
