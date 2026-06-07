@@ -5,12 +5,18 @@ const companyCodeStatus = document.getElementById("companyCodeStatus");
 const companyLogoWrap = document.getElementById("companyLogoWrap");
 const companyLogo = document.getElementById("companyLogo");
 const loginCompanyName = document.getElementById("loginCompanyName");
+const savedCompanyCodeWrap = document.getElementById("savedCompanyCodeWrap");
+const savedCompanyCodeSelect = document.getElementById("savedCompanyCodeSelect");
+const SAVED_COMPANY_CODES_KEY = "axisSavedCompanyCodesV1";
+const LAST_COMPANY_CODE_KEY = "axisLastSelectedCompanyCodeV1";
+const MAX_SAVED_COMPANY_CODES = 10;
 let verifiedCompany = null;
 let verifiedCompanyCode = "";
 let companyCodeTimer = null;
 let companyLogoCandidates = [];
 let companyLogoCandidateIndex = 0;
 let companyLogoDisplayName = "Company";
+let savedCompanyCodes = [];
 
 function getLoginInputElement(){
     return document.getElementById("email")
@@ -37,6 +43,117 @@ function normalizeCompanyCode(value){
         .toUpperCase()
         .replace(/[^A-Z0-9_-]+/g, "")
         .slice(0, 40);
+}
+
+function normalizeCompanyCodeList(values){
+    const seen = new Set();
+    const next = [];
+    (Array.isArray(values) ? values : []).forEach((value) => {
+        const code = normalizeCompanyCode(value);
+        if(!code || seen.has(code)) return;
+        seen.add(code);
+        next.push(code);
+    });
+    return next;
+}
+
+function readSavedCompanyCodes(){
+    let codes = [];
+    try{
+        const raw = localStorage.getItem(SAVED_COMPANY_CODES_KEY);
+        if(raw){
+            const parsed = JSON.parse(raw);
+            if(Array.isArray(parsed)){
+                codes = parsed;
+            }
+        }
+    }catch(_){}
+    const mappedCode = normalizeCompanyCode(localStorage.getItem("mappedCompanyCode") || "");
+    if(mappedCode){
+        codes.unshift(mappedCode);
+    }
+    return normalizeCompanyCodeList(codes).slice(0, MAX_SAVED_COMPANY_CODES);
+}
+
+function getStoredLastCompanyCode(){
+    const lastCode = normalizeCompanyCode(localStorage.getItem(LAST_COMPANY_CODE_KEY) || "");
+    if(lastCode){
+        return lastCode;
+    }
+    return normalizeCompanyCode(localStorage.getItem("mappedCompanyCode") || "");
+}
+
+function syncSavedCompanyCodeSelection(code){
+    if(!savedCompanyCodeSelect) return;
+    const normalizedCode = normalizeCompanyCode(code);
+    savedCompanyCodeSelect.value = savedCompanyCodes.includes(normalizedCode) ? normalizedCode : "";
+}
+
+function renderSavedCompanyCodeOptions(selectedCode){
+    if(!savedCompanyCodeWrap || !savedCompanyCodeSelect) return;
+    const normalizedSelectedCode = normalizeCompanyCode(selectedCode);
+    savedCompanyCodeSelect.innerHTML = "";
+    const placeholderOption = document.createElement("option");
+    placeholderOption.value = "";
+    placeholderOption.textContent = "Recent company codes";
+    savedCompanyCodeSelect.appendChild(placeholderOption);
+    savedCompanyCodes.forEach((code) => {
+        const option = document.createElement("option");
+        option.value = code;
+        option.textContent = code;
+        savedCompanyCodeSelect.appendChild(option);
+    });
+    const shouldShow = savedCompanyCodes.length > 1;
+    savedCompanyCodeWrap.hidden = !shouldShow;
+    savedCompanyCodeWrap.setAttribute("aria-hidden", shouldShow ? "false" : "true");
+    syncSavedCompanyCodeSelection(normalizedSelectedCode);
+}
+
+function persistSavedCompanyCodes(nextCodes, lastCode){
+    const normalizedCodes = normalizeCompanyCodeList(nextCodes).slice(0, MAX_SAVED_COMPANY_CODES);
+    const normalizedLastCode = normalizeCompanyCode(lastCode);
+    savedCompanyCodes = normalizedCodes;
+    try{
+        if(savedCompanyCodes.length){
+            localStorage.setItem(SAVED_COMPANY_CODES_KEY, JSON.stringify(savedCompanyCodes));
+        }else{
+            localStorage.removeItem(SAVED_COMPANY_CODES_KEY);
+        }
+        if(normalizedLastCode){
+            localStorage.setItem(LAST_COMPANY_CODE_KEY, normalizedLastCode);
+        }else{
+            localStorage.removeItem(LAST_COMPANY_CODE_KEY);
+        }
+    }catch(_){}
+    renderSavedCompanyCodeOptions(normalizedLastCode);
+}
+
+function rememberSavedCompanyCode(code){
+    const normalizedCode = normalizeCompanyCode(code);
+    if(!normalizedCode) return;
+    const nextCodes = [normalizedCode].concat(savedCompanyCodes.filter((item) => item !== normalizedCode));
+    persistSavedCompanyCodes(nextCodes, normalizedCode);
+}
+
+function setCompanyCodeValue(code, rememberSelection){
+    const normalizedCode = normalizeCompanyCode(code);
+    if(!companyCodeInput) return;
+    companyCodeInput.value = normalizedCode;
+    syncSavedCompanyCodeSelection(normalizedCode);
+    if(rememberSelection && savedCompanyCodes.includes(normalizedCode)){
+        persistSavedCompanyCodes(savedCompanyCodes, normalizedCode);
+    }
+}
+
+function initializeSavedCompanyCodes(){
+    savedCompanyCodes = readSavedCompanyCodes();
+    const lastCode = getStoredLastCompanyCode();
+    renderSavedCompanyCodeOptions(lastCode);
+    const initialCode = lastCode || (savedCompanyCodes.length === 1 ? savedCompanyCodes[0] : "");
+    if(initialCode){
+        setCompanyCodeValue(initialCode, false);
+        scheduleCompanyCodeVerification();
+    }
 }
 
 function resolveAssetUrl(value){
@@ -156,6 +273,7 @@ function scheduleCompanyCodeVerification(){
     window.clearTimeout(companyCodeTimer);
     resetCompanyPreview();
     const code = normalizeCompanyCode(companyCodeInput ? companyCodeInput.value : "");
+    syncSavedCompanyCodeSelection(code);
     if(!code){
         setCompanyCodeStatus("", "");
         return;
@@ -197,6 +315,7 @@ async function login(){
             throw new Error("Please verify company code.");
         }
         const res = await request("/auth/login","POST",{company_code: companyCode, email, password});
+        rememberSavedCompanyCode(companyCode);
         localStorage.setItem("token",res.token);
         localStorage.setItem("role",res.user.role);
         if (res.user && res.user.database_name) {
@@ -297,6 +416,16 @@ if(companyCodeInput){
         });
     });
 }
+if(savedCompanyCodeSelect){
+    savedCompanyCodeSelect.addEventListener("change", () => {
+        const selectedCode = normalizeCompanyCode(savedCompanyCodeSelect.value);
+        if(!selectedCode){
+            return;
+        }
+        setCompanyCodeValue(selectedCode, true);
+        scheduleCompanyCodeVerification();
+    });
+}
 if(companyLogo){
     companyLogo.addEventListener("load", () => {
         setCompanyLogoWrapState(false, false);
@@ -341,6 +470,7 @@ window.addEventListener("DOMContentLoaded", () => {
         companyCodeInput.value = "";
     }
     resetCompanyPreview();
+    initializeSavedCompanyCodes();
     clearCredentialFields();
     window.setTimeout(clearCredentialFields, 120);
     window.setTimeout(clearCredentialFields, 320);

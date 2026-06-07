@@ -24,27 +24,62 @@ const String _legacyUsernameStorageKey = 'axis_saved_username';
 const String _legacyPasswordStorageKey = 'axis_saved_password';
 const String _androidPublicDownloadsPath = '/storage/emulated/0/Download';
 
+String _normalizeCompanyCode(String value) {
+  final String normalized = value
+      .trim()
+      .toUpperCase()
+      .replaceAll(RegExp(r'[^A-Z0-9_-]+'), '');
+  if (normalized.length <= 40) {
+    return normalized;
+  }
+  return normalized.substring(0, 40);
+}
+
+String _savedCredentialStorageKey(String username, {String companyCode = ''}) {
+  final String cleanUsername = username.trim().toLowerCase();
+  final String cleanCompanyCode = _normalizeCompanyCode(companyCode);
+  return '$cleanCompanyCode::$cleanUsername';
+}
+
 class _SavedCredential {
   const _SavedCredential({
     required this.username,
     required this.password,
     required this.updatedAtMs,
+    this.companyCode = '',
   });
 
   final String username;
   final String password;
   final int updatedAtMs;
+  final String companyCode;
+
+  String get normalizedCompanyCode => _normalizeCompanyCode(companyCode);
+
+  String get displayLabel =>
+      normalizedCompanyCode.isEmpty
+          ? username
+          : '$username ($normalizedCompanyCode)';
+
+  String get helperLabel =>
+      normalizedCompanyCode.isEmpty
+          ? 'Tap to use this account'
+          : 'Company code: $normalizedCompanyCode';
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'username': username,
     'password': password,
     'updatedAtMs': updatedAtMs,
+    'companyCode': normalizedCompanyCode,
   };
 
   static _SavedCredential? tryParse(dynamic raw) {
     if (raw is! Map) return null;
     final String username = (raw['username'] ?? '').toString().trim();
     final String password = (raw['password'] ?? '').toString();
+    final String companyCode = _normalizeCompanyCode(
+      (raw['companyCode'] ?? raw['company_code'] ?? '').toString(),
+    );
     final int updatedAtMs =
         int.tryParse((raw['updatedAtMs'] ?? '').toString()) ??
         DateTime.now().millisecondsSinceEpoch;
@@ -53,6 +88,7 @@ class _SavedCredential {
       username: username,
       password: password,
       updatedAtMs: updatedAtMs,
+      companyCode: companyCode,
     );
   }
 }
@@ -136,14 +172,17 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
   List<_SavedCredential> _savedCredentials = <_SavedCredential>[];
   String _pendingUsername = '';
   String _pendingPassword = '';
+  String _pendingCompanyCode = '';
   String _preferredLoginUsername = '';
   String _preferredLoginPassword = '';
+  String _preferredLoginCompanyCode = '';
   bool _offlinePasswordVisible = false;
   bool _isOfflineRetryInProgress = false;
   bool _showPasswordUpdateAction = false;
   bool _credentialSaveWarningShown = false;
   String _passwordUpdateUsername = '';
   String _passwordUpdateValue = '';
+  String _passwordUpdateCompanyCode = '';
   final Map<String, _PendingFileTransfer> _pendingPdfTransfers =
       <String, _PendingFileTransfer>{};
   final Map<String, _PendingFileTransfer> _pendingFileTransfers =
@@ -293,6 +332,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
               username: legacyUsername,
               password: legacyPassword,
               updatedAtMs: DateTime.now().millisecondsSinceEpoch,
+              companyCode: '',
             ),
           ];
           await _persistSavedCredentials();
@@ -362,19 +402,38 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     return _writeSavedCredentialsRaw(jsonEncode(payload));
   }
 
-  Future<void> _saveCredentials(String username, String password) async {
+  String _savedCredentialKey(String username, {String companyCode = ''}) {
+    return _savedCredentialStorageKey(
+      username,
+      companyCode: companyCode,
+    );
+  }
+
+  Future<void> _saveCredentials(
+    String username,
+    String password, {
+    String companyCode = '',
+  }) async {
     final String cleanUsername = username.trim();
+    final String cleanCompanyCode = _normalizeCompanyCode(companyCode);
     if (cleanUsername.isEmpty || password.isEmpty) return;
     try {
       final int nowMs = DateTime.now().millisecondsSinceEpoch;
-      final String key = cleanUsername.toLowerCase();
+      final String key = _savedCredentialKey(
+        cleanUsername,
+        companyCode: cleanCompanyCode,
+      );
       final int existingIndex = _savedCredentials.indexWhere(
-        (item) => item.username.toLowerCase() == key,
+        (item) => _savedCredentialKey(
+          item.username,
+          companyCode: item.companyCode,
+        ) == key,
       );
       final _SavedCredential next = _SavedCredential(
         username: cleanUsername,
         password: password,
         updatedAtMs: nowMs,
+        companyCode: cleanCompanyCode,
       );
       if (existingIndex >= 0) {
         _savedCredentials[existingIndex] = next;
@@ -410,11 +469,16 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     }
   }
 
-  void _setPendingCredentials(String username, String password) {
+  void _setPendingCredentials(
+    String username,
+    String password, {
+    String companyCode = '',
+  }) {
     final String cleanUsername = username.trim();
     if (cleanUsername.isEmpty || password.isEmpty) return;
     _pendingUsername = cleanUsername;
     _pendingPassword = password;
+    _pendingCompanyCode = _normalizeCompanyCode(companyCode);
   }
 
   void _handleCredentialsBridgeMessage(String rawMessage) {
@@ -425,8 +489,15 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
       if (type.isNotEmpty && type != 'login-credentials') return;
       final String username = (payload['username'] ?? '').toString().trim();
       final String password = (payload['password'] ?? '').toString();
+      final String companyCode = _normalizeCompanyCode(
+        (payload['companyCode'] ?? payload['company_code'] ?? '').toString(),
+      );
       if (username.isEmpty || password.isEmpty) return;
-      _setPendingCredentials(username, password);
+      _setPendingCredentials(
+        username,
+        password,
+        companyCode: companyCode,
+      );
     } catch (_) {
       // Ignore malformed bridge messages.
     }
@@ -435,18 +506,22 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
   Future<void> _clearPendingCredentialState() async {
     _pendingUsername = '';
     _pendingPassword = '';
+    _pendingCompanyCode = '';
     _preferredLoginUsername = '';
     _preferredLoginPassword = '';
+    _preferredLoginCompanyCode = '';
     if (mounted) {
       setState(() {
         _showPasswordUpdateAction = false;
         _passwordUpdateUsername = '';
         _passwordUpdateValue = '';
+        _passwordUpdateCompanyCode = '';
       });
     } else {
       _showPasswordUpdateAction = false;
       _passwordUpdateUsername = '';
       _passwordUpdateValue = '';
+      _passwordUpdateCompanyCode = '';
     }
   }
 
@@ -479,7 +554,11 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     final bool authenticated = await _isAuthenticatedInWebSession();
     if (!authenticated) return;
 
-    await _saveCredentials(_pendingUsername, _pendingPassword);
+    await _saveCredentials(
+      _pendingUsername,
+      _pendingPassword,
+      companyCode: _pendingCompanyCode,
+    );
     await _clearPendingCredentialState();
   }
 
@@ -505,16 +584,23 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
 
       final String username = (payload['username'] ?? '').toString().trim();
       final String password = (payload['password'] ?? '').toString();
+      final String companyCode = _normalizeCompanyCode(
+        (payload['companyCode'] ?? payload['company_code'] ?? '').toString(),
+      );
       final String pickedUsername = username.isNotEmpty
           ? username
           : _pendingUsername.trim();
       final String pickedPassword = password.isNotEmpty
           ? password
           : _pendingPassword;
+      final String pickedCompanyCode = companyCode.isNotEmpty
+          ? companyCode
+          : _pendingCompanyCode;
       if (pickedUsername.isEmpty || pickedPassword.isEmpty) return;
 
-      final _SavedCredential? saved = _findSavedCredentialByUsername(
+      final _SavedCredential? saved = _findSavedCredential(
         pickedUsername,
+        companyCode: pickedCompanyCode,
       );
       if (saved == null) return;
       if (saved.password == pickedPassword) {
@@ -526,6 +612,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
         _showPasswordUpdateAction = true;
         _passwordUpdateUsername = pickedUsername;
         _passwordUpdateValue = pickedPassword;
+        _passwordUpdateCompanyCode = pickedCompanyCode;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -543,12 +630,21 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
   Future<void> _updateSavedPasswordFromFailureState() async {
     final String username = _passwordUpdateUsername.trim();
     final String password = _passwordUpdateValue;
+    final String companyCode = _passwordUpdateCompanyCode;
     if (username.isEmpty || password.isEmpty) return;
 
-    await _saveCredentials(username, password);
+    await _saveCredentials(
+      username,
+      password,
+      companyCode: companyCode,
+    );
     _preferredLoginUsername = username;
     _preferredLoginPassword = password;
-    final _SavedCredential? saved = _findSavedCredentialByUsername(username);
+    _preferredLoginCompanyCode = companyCode;
+    final _SavedCredential? saved = _findSavedCredential(
+      username,
+      companyCode: companyCode,
+    );
     if (saved != null) {
       await _applyCredentialToLoginForm(saved);
     }
@@ -558,6 +654,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
       _showPasswordUpdateAction = false;
       _passwordUpdateUsername = '';
       _passwordUpdateValue = '';
+      _passwordUpdateCompanyCode = '';
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Saved password updated for $username.')),
@@ -577,7 +674,11 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     if (_isDashboardPageUrl(url) &&
         _pendingUsername.isNotEmpty &&
         _pendingPassword.isNotEmpty) {
-      await _saveCredentials(_pendingUsername, _pendingPassword);
+      await _saveCredentials(
+        _pendingUsername,
+        _pendingPassword,
+        companyCode: _pendingCompanyCode,
+      );
       await _clearPendingCredentialState();
     }
 
@@ -603,14 +704,24 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
 
   Future<void> _applyCredentialToLoginForm(_SavedCredential credential) async {
     if (!_isLoginPageUrl(_currentUrl)) return;
+    _preferredLoginUsername = credential.username;
+    _preferredLoginPassword = credential.password;
+    _preferredLoginCompanyCode = credential.normalizedCompanyCode;
     final String usernameJs = jsonEncode(credential.username);
     final String passwordJs = jsonEncode(credential.password);
+    final String companyCodeJs = jsonEncode(credential.normalizedCompanyCode);
     final String js =
         '''
       (function () {
         try {
+          var companyCode = document.getElementById('companyCode');
           var user = document.getElementById('User') || document.getElementById('user') || document.getElementById('email');
           var pass = document.getElementById('password');
+          if (companyCode) {
+            companyCode.value = $companyCodeJs;
+            companyCode.dispatchEvent(new Event('input', { bubbles: true }));
+            companyCode.dispatchEvent(new Event('change', { bubbles: true }));
+          }
           if (user) {
             user.value = $usernameJs;
             user.dispatchEvent(new Event('input', { bubbles: true }));
@@ -661,7 +772,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
                     leading: Icon(Icons.lock_outline),
                     title: Text('Saved Accounts'),
                     subtitle: Text(
-                      'Select an account to fill username and password',
+                      'Select an account to fill company code, username and password',
                     ),
                   ),
                   ConstrainedBox(
@@ -674,8 +785,8 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
                             _savedCredentials[index];
                         return ListTile(
                           leading: const Icon(Icons.person_outline),
-                          title: Text(credential.username),
-                          subtitle: const Text('Tap to use this account'),
+                          title: Text(credential.displayLabel),
+                          subtitle: Text(credential.helperLabel),
                           onTap: () => Navigator.of(context).pop(credential),
                         );
                       },
@@ -697,16 +808,21 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     if (!_isLoginPageUrl(url)) return;
     final String preferredUser = _preferredLoginUsername.trim();
     final String preferredPassword = _preferredLoginPassword;
+    final String preferredCompanyCode = _preferredLoginCompanyCode;
     final String preferredUserJs = jsonEncode(preferredUser);
     final String preferredPasswordJs = jsonEncode(preferredPassword);
+    final String preferredCompanyCodeJs = jsonEncode(preferredCompanyCode);
     final String js =
         '''
       (function () {
         try {
           var preferredUser = $preferredUserJs;
           var preferredPassword = $preferredPasswordJs;
+          var preferredCompanyCode = $preferredCompanyCodeJs;
           var hasPreferred = !!String(preferredUser || '').trim() && !!String(preferredPassword || '');
+          var hasPreferredCompanyCode = !!String(preferredCompanyCode || '').trim();
           var form = document.getElementById('loginForm');
+          var companyCode = document.getElementById('companyCode');
           var user = document.getElementById('User') || document.getElementById('user') || document.getElementById('email');
           var pass = document.getElementById('password');
           var loginBtn = document.getElementById('loginBtn');
@@ -716,6 +832,12 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
           if (form) {
             form.setAttribute('method', 'post');
             form.setAttribute('autocomplete', 'off');
+          }
+          if (companyCode) {
+            companyCode.setAttribute('autocomplete', 'off');
+            companyCode.setAttribute('autocapitalize', 'none');
+            companyCode.setAttribute('autocorrect', 'off');
+            companyCode.setAttribute('spellcheck', 'false');
           }
           if (user) {
             user.setAttribute('name', user.getAttribute('name') || 'username');
@@ -751,6 +873,10 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
           };
 
           var fillPreferredValues = function () {
+            if (hasPreferredCompanyCode && companyCode && !String(companyCode.value || '').trim()) {
+              companyCode.value = preferredCompanyCode;
+              dispatchFieldEvents(companyCode);
+            }
             if (!hasPreferred) return;
             if (user && !String(user.value || '').trim()) {
               user.value = preferredUser;
@@ -768,12 +894,14 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
               if (!user || !pass) return;
               var usernameValue = String(user.value || '').trim();
               var passwordValue = String(pass.value || '');
+              var companyCodeValue = companyCode ? String(companyCode.value || '').trim() : '';
               if (!usernameValue || !passwordValue) return;
               credentialBridge.postMessage(JSON.stringify({
                 type: 'login-credentials',
                 source: source || 'unknown',
                 username: usernameValue,
-                password: passwordValue
+                password: passwordValue,
+                company_code: companyCodeValue
               }));
             } catch (_) {}
           };
@@ -824,6 +952,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
                   loginStatusBridge.postMessage(JSON.stringify({
                     type: 'login-alert',
                     message: alertText,
+                    company_code: companyCode ? String(companyCode.value || '').trim() : '',
                     username: user ? String(user.value || '').trim() : '',
                     password: pass ? String(pass.value || '') : ''
                   }));
@@ -1293,26 +1422,45 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     }
   }
 
-  _SavedCredential? _findSavedCredentialByUsername(String username) {
+  _SavedCredential? _findSavedCredential(
+    String username, {
+    String companyCode = '',
+  }) {
     final String key = username.trim().toLowerCase();
+    final String normalizedCompanyCode = _normalizeCompanyCode(companyCode);
     if (key.isEmpty) return null;
     for (final _SavedCredential credential in _savedCredentials) {
-      if (credential.username.trim().toLowerCase() == key) {
+      if (credential.username.trim().toLowerCase() != key) {
+        continue;
+      }
+      if (normalizedCompanyCode.isNotEmpty &&
+          credential.normalizedCompanyCode != normalizedCompanyCode) {
+        continue;
+      }
+      if (normalizedCompanyCode.isEmpty ||
+          credential.normalizedCompanyCode == normalizedCompanyCode) {
         return credential;
       }
     }
     return null;
   }
 
-  void _onOfflineSavedUserPicked(String? username) {
-    if (username == null || username.trim().isEmpty) return;
-    final _SavedCredential? credential = _findSavedCredentialByUsername(
-      username,
+  void _onOfflineSavedUserPicked(String? credentialKey) {
+    if (credentialKey == null || credentialKey.trim().isEmpty) return;
+    final int credentialIndex = _savedCredentials.indexWhere(
+      (item) =>
+          _savedCredentialKey(
+            item.username,
+            companyCode: item.companyCode,
+          ) ==
+          credentialKey,
     );
-    if (credential == null) return;
+    if (credentialIndex < 0) return;
+    final _SavedCredential credential = _savedCredentials[credentialIndex];
     setState(() {
       _offlineUsernameController.text = credential.username;
       _offlinePasswordController.text = credential.password;
+      _preferredLoginCompanyCode = credential.normalizedCompanyCode;
     });
   }
 
@@ -1320,6 +1468,12 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     if (_isOfflineRetryInProgress) return;
     final String username = _offlineUsernameController.text.trim();
     final String password = _offlinePasswordController.text;
+    final _SavedCredential? matchedCredential = _findSavedCredential(
+      username,
+      companyCode: _preferredLoginCompanyCode,
+    );
+    final String companyCode = matchedCredential?.normalizedCompanyCode ??
+        _preferredLoginCompanyCode;
     if (username.isEmpty || password.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1328,9 +1482,10 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
       return;
     }
 
-    _setPendingCredentials(username, password);
+    _setPendingCredentials(username, password, companyCode: companyCode);
     _preferredLoginUsername = username;
     _preferredLoginPassword = password;
+    _preferredLoginCompanyCode = companyCode;
 
     if (mounted) {
       setState(() {
@@ -1518,14 +1673,17 @@ class _OfflineLoginView extends StatelessWidget {
             if (savedCredentials.isNotEmpty)
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(
-                  labelText: 'Saved Users',
+                  labelText: 'Saved Accounts',
                   border: OutlineInputBorder(),
                 ),
                 items: savedCredentials
                     .map(
                       (item) => DropdownMenuItem<String>(
-                        value: item.username,
-                        child: Text(item.username),
+                        value: _savedCredentialStorageKey(
+                          item.username,
+                          companyCode: item.companyCode,
+                        ),
+                        child: Text(item.displayLabel),
                       ),
                     )
                     .toList(),

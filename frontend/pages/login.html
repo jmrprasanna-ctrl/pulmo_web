@@ -9,7 +9,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PULMO TECHNOLOGIES - Login</title>
-<link rel="stylesheet" href="../assets/extracted/pages/login.inline-style-1.css?v=20260607p04">
+<link rel="stylesheet" href="../assets/extracted/pages/login.inline-style-1.css?v=20260608p01">
 </head>
 <body>
 
@@ -33,6 +33,12 @@
     <h2>User Login</h2>
     <p class="login-meta" id="loginCompanyName">AXIS CMS SYSTEM</p>
     <form id="loginForm" method="post" autocomplete="off" novalidate>
+        <div class="field saved-company-code-wrap" id="savedCompanyCodeWrap" hidden aria-hidden="true">
+            <label for="savedCompanyCodeSelect">Saved Company Codes</label>
+            <select id="savedCompanyCodeSelect">
+                <option value="">Recent company codes</option>
+            </select>
+        </div>
         <div class="field">
             <label for="companyCode">Company Code</label>
             <input
@@ -92,7 +98,7 @@
 </div>
 
 <script src="../assets/js/api.js?v=20260522p01"></script>
-<script src="../assets/extracted/pages/login.inline-script-1.js?v=20260607p05"></script>
+<script src="../assets/extracted/pages/login.inline-script-1.js?v=20260608p01"></script>
 
 </body>
 </html>
