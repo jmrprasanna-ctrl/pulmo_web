@@ -239,31 +239,83 @@ function logoUrlFromPath(logoPathRaw) {
   return `/${normalized}`;
 }
 
-function buildCompanyLogoUrl(rowLike = {}) {
-  const directUrl = logoUrlFromPath(rowLike.logo_path);
-  if (directUrl) return directUrl;
+function uniqueStrings(list = []) {
+  const seen = new Set();
+  const out = [];
+  (Array.isArray(list) ? list : []).forEach((value) => {
+    const normalized = String(value || "").trim();
+    if (!normalized || seen.has(normalized)) return;
+    seen.add(normalized);
+    out.push(normalized);
+  });
+  return out;
+}
 
-  const folderName = String(rowLike.folder_name || "").trim();
-  const logoFileName = String(rowLike.logo_file_name || "").trim();
-  if (folderName && logoFileName) {
-    return `/storage/companies/${folderName}/${logoFileName}`;
+function toCompanyFolderSlug(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80);
+}
+
+function findCompanyFolderName(rowLike = {}) {
+  const explicitFolderName = String(rowLike.folder_name || "").trim();
+  if (explicitFolderName) {
+    return explicitFolderName;
+  }
+  if (!fs.existsSync(COMPANY_STORAGE_ROOT)) {
+    return "";
   }
 
-  const companyCode = String(rowLike.company_code || "").trim().toUpperCase();
-  if (companyCode && fs.existsSync(COMPANY_STORAGE_ROOT)) {
-    const matchingDir = fs.readdirSync(COMPANY_STORAGE_ROOT, { withFileTypes: true }).find((entry) => {
+  const companyNameSlug = toCompanyFolderSlug(rowLike.company_name);
+  if (companyNameSlug) {
+    const matchingEntry = fs.readdirSync(COMPANY_STORAGE_ROOT, { withFileTypes: true }).find((entry) => {
       if (!entry.isDirectory()) return false;
-      return entry.name.toLowerCase().includes(companyCode.toLowerCase());
+      return entry.name === companyNameSlug || entry.name.startsWith(`${companyNameSlug}_`);
     });
-    if (matchingDir) {
-      const dirPath = path.join(COMPANY_STORAGE_ROOT, matchingDir.name);
-      const logoFile = fs.readdirSync(dirPath).find((name) => /^logo\./i.test(String(name || "")));
-      if (logoFile) {
-        return `/storage/companies/${matchingDir.name}/${logoFile}`;
-      }
+    if (matchingEntry) {
+      return matchingEntry.name;
     }
   }
-  return null;
+
+  return "";
+}
+
+function buildCompanyLogoCandidates(rowLike = {}) {
+  const candidates = [];
+  const folderName = findCompanyFolderName(rowLike);
+  const logoFileName = String(rowLike.logo_file_name || "").trim();
+  const directUrl = logoUrlFromPath(rowLike.logo_path);
+
+  if (folderName && logoFileName) {
+    candidates.push(`/storage/companies/${folderName}/${logoFileName}`);
+  }
+  if (directUrl) {
+    candidates.push(directUrl);
+  }
+  if (folderName) {
+    const folderPath = path.join(COMPANY_STORAGE_ROOT, folderName);
+    if (fs.existsSync(folderPath)) {
+      const discoveredLogo = fs.readdirSync(folderPath).find((name) => /^logo\./i.test(String(name || "")));
+      if (discoveredLogo) {
+        candidates.push(`/storage/companies/${folderName}/${discoveredLogo}`);
+      }
+    }
+    if (!logoFileName) {
+      ["png", "jpg", "jpeg", "gif", "bmp", "tif", "tiff"].forEach((ext) => {
+        candidates.push(`/storage/companies/${folderName}/logo.${ext}`);
+      });
+    }
+  }
+
+  return uniqueStrings(candidates);
+}
+
+function buildCompanyLogoUrl(rowLike = {}) {
+  const candidates = buildCompanyLogoCandidates(rowLike);
+  return candidates[0] || null;
 }
 
 async function loadCompanyProfileByCode(client, companyCode) {
@@ -283,6 +335,7 @@ async function loadCompanyProfileByCode(client, companyCode) {
       company_name: normalizeCompanyName(row.company_name),
       company_code: normalizeCompanyCode(row.company_code),
       logo_url: buildCompanyLogoUrl(row),
+      logo_urls: buildCompanyLogoCandidates(row),
     };
   } catch (err) {
     if (String(err?.code || "") === "42P01") return null;

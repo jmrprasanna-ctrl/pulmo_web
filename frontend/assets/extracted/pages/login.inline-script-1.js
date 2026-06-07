@@ -8,6 +8,9 @@ const loginCompanyName = document.getElementById("loginCompanyName");
 let verifiedCompany = null;
 let verifiedCompanyCode = "";
 let companyCodeTimer = null;
+let companyLogoCandidates = [];
+let companyLogoCandidateIndex = 0;
+let companyLogoDisplayName = "Company";
 
 function getLoginInputElement(){
     return document.getElementById("email")
@@ -52,16 +55,55 @@ function setCompanyCodeStatus(message, type){
     companyCodeStatus.classList.toggle("is-error", type === "error");
 }
 
+function setCompanyLogoWrapState(hidden, loading){
+    if(!companyLogoWrap) return;
+    companyLogoWrap.classList.toggle("is-hidden", !!hidden);
+    companyLogoWrap.classList.toggle("is-loading", !!loading);
+    companyLogoWrap.setAttribute("aria-hidden", hidden ? "true" : "false");
+}
+
+function resetCompanyLogoImage(){
+    if(!companyLogo) return;
+    companyLogo.removeAttribute("src");
+    companyLogo.alt = "Company Logo";
+}
+
+function getCompanyLogoCandidates(company){
+    const rawList = Array.isArray(company?.logo_urls) ? company.logo_urls : [company?.logo_url];
+    const seen = new Set();
+    const resolved = [];
+    rawList.forEach((value) => {
+        const resolvedUrl = resolveAssetUrl(value);
+        if(!resolvedUrl || seen.has(resolvedUrl)) return;
+        seen.add(resolvedUrl);
+        resolved.push(resolvedUrl);
+    });
+    return resolved;
+}
+
+function loadCurrentCompanyLogoCandidate(){
+    if(!companyLogo){
+        return;
+    }
+    const nextUrl = companyLogoCandidates[companyLogoCandidateIndex];
+    if(!nextUrl){
+        resetCompanyLogoImage();
+        setCompanyLogoWrapState(true, false);
+        return;
+    }
+    companyLogo.alt = `${companyLogoDisplayName} Logo`;
+    setCompanyLogoWrapState(false, true);
+    companyLogo.src = nextUrl;
+}
+
 function resetCompanyPreview(){
     verifiedCompany = null;
     verifiedCompanyCode = "";
-    if(companyLogo){
-        companyLogo.removeAttribute("src");
-    }
-    if(companyLogoWrap){
-        companyLogoWrap.classList.add("is-hidden");
-        companyLogoWrap.setAttribute("aria-hidden", "true");
-    }
+    companyLogoCandidates = [];
+    companyLogoCandidateIndex = 0;
+    companyLogoDisplayName = "Company";
+    resetCompanyLogoImage();
+    setCompanyLogoWrapState(true, false);
     if(loginCompanyName){
         loginCompanyName.textContent = "AXIS CMS SYSTEM";
     }
@@ -69,18 +111,17 @@ function resetCompanyPreview(){
 
 function showCompanyPreview(company){
     const name = String(company?.company_name || "AXIS CMS SYSTEM").trim() || "AXIS CMS SYSTEM";
-    const logoUrl = resolveAssetUrl(company?.logo_url);
+    companyLogoDisplayName = name;
     if(loginCompanyName){
         loginCompanyName.textContent = name;
     }
-    if(companyLogo && companyLogoWrap && logoUrl){
-        companyLogo.src = logoUrl;
-        companyLogo.alt = `${name} Logo`;
-        companyLogoWrap.classList.remove("is-hidden");
-        companyLogoWrap.setAttribute("aria-hidden", "false");
-    }else if(companyLogoWrap){
-        companyLogoWrap.classList.add("is-hidden");
-        companyLogoWrap.setAttribute("aria-hidden", "true");
+    companyLogoCandidates = getCompanyLogoCandidates(company);
+    companyLogoCandidateIndex = 0;
+    if(companyLogo && companyLogoCandidates.length){
+        loadCurrentCompanyLogoCandidate();
+    }else{
+        resetCompanyLogoImage();
+        setCompanyLogoWrapState(true, false);
     }
 }
 
@@ -257,11 +298,17 @@ if(companyCodeInput){
     });
 }
 if(companyLogo){
+    companyLogo.addEventListener("load", () => {
+        setCompanyLogoWrapState(false, false);
+    });
     companyLogo.addEventListener("error", () => {
-        if(companyLogoWrap){
-            companyLogoWrap.classList.add("is-hidden");
-            companyLogoWrap.setAttribute("aria-hidden", "true");
+        companyLogoCandidateIndex += 1;
+        if(companyLogoCandidateIndex < companyLogoCandidates.length){
+            loadCurrentCompanyLogoCandidate();
+            return;
         }
+        resetCompanyLogoImage();
+        setCompanyLogoWrapState(true, false);
     });
 }
 ["companyCode", "email", "User", "user", "password"].forEach((id) => {
