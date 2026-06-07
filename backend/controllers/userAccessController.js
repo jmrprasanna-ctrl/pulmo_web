@@ -971,27 +971,97 @@ async function seedDefaultCategoryData(databaseName) {
   });
 }
 
-function runBash(command, env = {}) {
+function runSchemaClone(sourceDb, targetDb) {
   return new Promise((resolve, reject) => {
-    const child = spawn("bash", ["-lc", command], {
-      env: { ...process.env, ...env },
+    const cfg = getDbConfig();
+    const pgDumpPath = (process.env.PG_DUMP_PATH || "pg_dump").trim() || "pg_dump";
+    const psqlPath = (process.env.PSQL_PATH || "psql").trim() || "psql";
+    const env = { ...process.env, PGPASSWORD: cfg.password || "" };
+    const commonArgs = [
+      "-h",
+      String(cfg.host),
+      "-p",
+      String(cfg.port),
+      "-U",
+      String(cfg.user),
+    ];
+    const dump = spawn(pgDumpPath, ["--schema-only", ...commonArgs, "-d", sourceDb], {
+      env,
       stdio: ["ignore", "pipe", "pipe"],
     });
+    const load = spawn(psqlPath, ["-v", "ON_ERROR_STOP=1", ...commonArgs, "-d", targetDb], {
+      env,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
 
-    let stdout = "";
-    let stderr = "";
-    child.stdout.on("data", (d) => { stdout += String(d || ""); });
-    child.stderr.on("data", (d) => { stderr += String(d || ""); });
+    let dumpDone = false;
+    let loadDone = false;
+    let dumpCode = null;
+    let loadCode = null;
+    let settled = false;
+    let dumpStderr = "";
+    let loadStdout = "";
+    let loadStderr = "";
 
-    child.on("error", reject);
-    child.on("close", (code) => {
-      if (code === 0) {
-        resolve({ stdout, stderr });
+    const fail = (message) => {
+      if (settled) return;
+      settled = true;
+      dump.kill();
+      load.kill();
+      reject(new Error(message));
+    };
+    const finish = () => {
+      if (settled || !dumpDone || !loadDone) return;
+      if (dumpCode === 0 && loadCode === 0) {
+        settled = true;
+        resolve();
         return;
       }
-      reject(new Error(stderr || stdout || `Command failed with code ${code}`));
+      const details = [dumpStderr, loadStderr, loadStdout]
+        .map((x) => String(x || "").trim())
+        .filter(Boolean)
+        .join("\n");
+      settled = true;
+      reject(new Error(details || `Schema clone failed (pg_dump ${dumpCode}, psql ${loadCode}).`));
+    };
+
+    dump.stdout.pipe(load.stdin);
+    load.stdin.on("error", () => {});
+    dump.stderr.on("data", (d) => { dumpStderr += String(d || ""); });
+    load.stdout.on("data", (d) => { loadStdout += String(d || ""); });
+    load.stderr.on("data", (d) => { loadStderr += String(d || ""); });
+    dump.on("error", (err) => fail(`Failed to start pg_dump. Check PG_DUMP_PATH or PostgreSQL bin PATH. ${err.message}`));
+    load.on("error", (err) => fail(`Failed to start psql. Check PSQL_PATH or PostgreSQL bin PATH. ${err.message}`));
+    dump.on("close", (code) => {
+      dumpDone = true;
+      dumpCode = code;
+      finish();
+    });
+    load.on("close", (code) => {
+      loadDone = true;
+      loadCode = code;
+      finish();
     });
   });
+}
+
+async function databaseExists(adminClient, databaseName) {
+  const rs = await adminClient.query(
+    "SELECT 1 FROM pg_database WHERE datname = $1 LIMIT 1",
+    [databaseName]
+  );
+  return rs.rowCount > 0;
+}
+
+async function fetchPhysicalDatabaseNames(adminClient) {
+  const rows = await adminClient.query(
+    "SELECT datname FROM pg_database WHERE datistemplate = false"
+  );
+  return new Set(
+    (rows.rows || [])
+      .map((row) => normalizeDatabaseName(row?.datname))
+      .filter(Boolean)
+  );
 }
 
 async function ensureDemoDatabaseSchema() {
@@ -1023,41 +1093,15 @@ async function ensureDemoDatabaseSchema() {
     return { demoExists: true, schemaCloned: false };
   }
 
-  const pgDumpPath = (process.env.PG_DUMP_PATH || "pg_dump").trim();
-  const psqlPath = (process.env.PSQL_PATH || "psql").trim();
   const sourceDb = String(cfg.database || "").trim();
   if (!sourceDb || sourceDb.toLowerCase() === DEMO_DB_NAME) return { demoExists: true, schemaCloned: false };
 
-  const escapedSource = `'${sourceDb.replace(/'/g, "'\\''")}'`;
-  const escapedDemo = `'${DEMO_DB_NAME}'`;
-  const escapedHost = `'${String(cfg.host).replace(/'/g, "'\\''")}'`;
-  const escapedPort = `'${String(cfg.port).replace(/'/g, "'\\''")}'`;
-  const escapedUser = `'${String(cfg.user).replace(/'/g, "'\\''")}'`;
-  const escapedDump = `'${pgDumpPath.replace(/'/g, "'\\''")}'`;
-  const escapedPsql = `'${psqlPath.replace(/'/g, "'\\''")}'`;
-
-  const cmd = [
-    `${escapedDump} --schema-only`,
-    `-h ${escapedHost}`,
-    `-p ${escapedPort}`,
-    `-U ${escapedUser}`,
-    `-d ${escapedSource}`,
-    `|`,
-    `${escapedPsql}`,
-    `-h ${escapedHost}`,
-    `-p ${escapedPort}`,
-    `-U ${escapedUser}`,
-    `-d ${escapedDemo}`
-  ].join(" ");
-
-  await runBash(cmd, { PGPASSWORD: cfg.password || "" });
+  await runSchemaClone(sourceDb, DEMO_DB_NAME);
   return { demoExists: true, schemaCloned: true };
 }
 
 async function cloneSchemaToDatabase(targetDatabaseName) {
   const cfg = getDbConfig();
-  const pgDumpPath = (process.env.PG_DUMP_PATH || "pg_dump").trim();
-  const psqlPath = (process.env.PSQL_PATH || "psql").trim();
   const sourceDb = String(cfg.database || "").trim();
   const targetDb = String(targetDatabaseName || "").trim();
   if (!sourceDb || !targetDb) {
@@ -1067,29 +1111,7 @@ async function cloneSchemaToDatabase(targetDatabaseName) {
     return;
   }
 
-  const escapedSource = `'${sourceDb.replace(/'/g, "'\\''")}'`;
-  const escapedTarget = `'${targetDb.replace(/'/g, "'\\''")}'`;
-  const escapedHost = `'${String(cfg.host).replace(/'/g, "'\\''")}'`;
-  const escapedPort = `'${String(cfg.port).replace(/'/g, "'\\''")}'`;
-  const escapedUser = `'${String(cfg.user).replace(/'/g, "'\\''")}'`;
-  const escapedDump = `'${pgDumpPath.replace(/'/g, "'\\''")}'`;
-  const escapedPsql = `'${psqlPath.replace(/'/g, "'\\''")}'`;
-
-  const cmd = [
-    `${escapedDump} --schema-only`,
-    `-h ${escapedHost}`,
-    `-p ${escapedPort}`,
-    `-U ${escapedUser}`,
-    `-d ${escapedSource}`,
-    `|`,
-    `${escapedPsql}`,
-    `-h ${escapedHost}`,
-    `-p ${escapedPort}`,
-    `-U ${escapedUser}`,
-    `-d ${escapedTarget}`,
-  ].join(" ");
-
-  await runBash(cmd, { PGPASSWORD: cfg.password || "" });
+  await runSchemaClone(sourceDb, targetDb);
 }
 
 async function fetchCompanyDatabaseMap(mainDbClient) {
@@ -1108,7 +1130,7 @@ async function fetchCompanyDatabaseMap(mainDbClient) {
   return map;
 }
 
-async function fetchCreatedDatabases(mainDbClient) {
+async function fetchCreatedDatabases(mainDbClient, physicalDatabaseNames = null) {
   await ensureDatabaseRegistryTable(mainDbClient);
   const rs = await mainDbClient.query(
     `SELECT database_name, company_name, created_by, "createdAt", "updatedAt"
@@ -1121,6 +1143,7 @@ async function fetchCreatedDatabases(mainDbClient) {
     .map((row) => {
       const name = normalizeDatabaseName(row?.database_name);
       if (!name || name === INVENTORY_DB_NAME) return null;
+      if (physicalDatabaseNames instanceof Set && !physicalDatabaseNames.has(name)) return null;
       return {
         name,
         company_name: normalizeCompanyName(row?.company_name),
@@ -1645,26 +1668,31 @@ exports.createDatabase = async (req, res) => {
     database: cfg.database || INVENTORY_DB_NAME,
   });
 
+  let createdPhysicalDatabase = false;
+  let registeredDatabase = false;
   try {
     await adminClient.connect();
-    const existsRs = await adminClient.query(
-      "SELECT 1 FROM pg_database WHERE datname = $1 LIMIT 1",
-      [databaseName]
-    );
-    if (existsRs.rowCount > 0) {
+    await mainDbClient.connect();
+    await ensureDatabaseRegistryTable(mainDbClient);
+
+    if (await databaseExists(adminClient, databaseName)) {
       return res.status(409).json({ message: "Database already exists." });
     }
 
     await adminClient.query(`CREATE DATABASE ${quoteIdentifier(databaseName)}`);
+    createdPhysicalDatabase = true;
+    if (!(await databaseExists(adminClient, databaseName))) {
+      throw new Error("PostgreSQL did not create the requested database.");
+    }
+
     await cloneSchemaToDatabase(databaseName);
     await db.registerDatabase(databaseName);
+    registeredDatabase = true;
 
     const connection = db.getConnection(databaseName);
     await connection.sync({ alter: true });
     await seedDefaultCategoryData(databaseName);
 
-    await mainDbClient.connect();
-    await ensureDatabaseRegistryTable(mainDbClient);
     ensureDir(DATABASE_STORAGE_ROOT);
     let dbFolderPath = path.join(DATABASE_STORAGE_ROOT, safeNamePart(companyName) || `db_${Date.now()}`);
     let suffix = 1;
@@ -1690,6 +1718,16 @@ exports.createDatabase = async (req, res) => {
       },
     });
   } catch (err) {
+    if (createdPhysicalDatabase && !registeredDatabase) {
+      await adminClient.query(
+        `SELECT pg_terminate_backend(pid)
+         FROM pg_stat_activity
+         WHERE datname = $1
+           AND pid <> pg_backend_pid()`,
+        [databaseName]
+      ).catch(() => {});
+      await adminClient.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(databaseName)}`).catch(() => {});
+    }
     res.status(500).json({ message: err.message || "Failed to create database." });
   } finally {
     await adminClient.end().catch(() => {});
@@ -1699,6 +1737,13 @@ exports.createDatabase = async (req, res) => {
 
 exports.getCreatedDatabases = async (_req, res) => {
   const cfg = getDbConfig();
+  const adminClient = new Client({
+    host: cfg.host,
+    port: cfg.port,
+    user: cfg.user,
+    password: cfg.password,
+    database: "postgres",
+  });
   const mainDbClient = new Client({
     host: cfg.host,
     port: cfg.port,
@@ -1707,12 +1752,15 @@ exports.getCreatedDatabases = async (_req, res) => {
     database: cfg.database || INVENTORY_DB_NAME,
   });
   try {
+    await adminClient.connect();
     await mainDbClient.connect();
-    const databases = await fetchCreatedDatabases(mainDbClient);
+    const physicalDatabaseNames = await fetchPhysicalDatabaseNames(adminClient);
+    const databases = await fetchCreatedDatabases(mainDbClient, physicalDatabaseNames);
     res.json({ databases });
   } catch (err) {
     res.status(500).json({ message: err.message || "Failed to load created databases." });
   } finally {
+    await adminClient.end().catch(() => {});
     await mainDbClient.end().catch(() => {});
   }
 };
