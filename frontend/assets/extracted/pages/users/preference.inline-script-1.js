@@ -175,20 +175,22 @@ function byId(id){
 
         function addTargetOption(select, optionData, seenKeys){
             if(!select || !optionData) return;
+            const explicitUserRef = String(optionData.user_ref || "").trim();
             const userId = Number(optionData.user_id || optionData.id || 0);
             const userDb = String(optionData.user_database || "inventory").trim().toLowerCase() || "inventory";
             const dbName = String(optionData.database_name || "").trim().toLowerCase();
-            if(!Number.isFinite(userId) || userId <= 0 || !dbName){
+            const optionValue = explicitUserRef || `${userDb}:${userId}`;
+            if((!explicitUserRef && (!Number.isFinite(userId) || userId <= 0)) || !dbName){
                 return;
             }
-            const dedupeKey = `${userDb}:${userId}|${dbName}`;
+            const dedupeKey = `${optionValue}|${dbName}`;
             if(seenKeys.has(dedupeKey)){
                 return;
             }
             seenKeys.add(dedupeKey);
 
             const option = document.createElement("option");
-            option.value = `${userDb}:${userId}`;
+            option.value = optionValue;
             option.dataset.databaseName = dbName;
             option.textContent = String(optionData.label || buildTargetOptionLabel(optionData, dbName));
             select.appendChild(option);
@@ -210,57 +212,82 @@ function byId(id){
                 const currentUserDb = String(getActiveDatabaseName() || "inventory").trim().toLowerCase();
                 const fallbackSelection = `${currentUserDb}:${currentUserId}`;
                 const fallbackInventorySelection = `inventory:${currentUserId}`;
+                const isMappedDbAdminView = currentUserDb !== "inventory";
 
                 select.innerHTML = "";
                 const seenKeys = new Set();
-                try{
-                    const invMapRes = await request("/users/inv-map/entries", "GET");
-                    const invMapEntries = Array.isArray(invMapRes?.entries) ? invMapRes.entries : [];
-                    invMapEntries.forEach((entry) => {
+                if(isMappedDbAdminView){
+                    const users = await request("/users", "GET");
+                    const activeDbUsers = Array.isArray(users) ? users : [];
+                    activeDbUsers.forEach((user) => {
+                        const dbName = String(user?.database_name || currentUserDb).trim().toLowerCase();
+                        const rawUserRef = String(user?.user_ref || user?.id || "").trim();
+                        if(!rawUserRef || dbName !== currentUserDb){
+                            return;
+                        }
+                        if(Boolean(user?.is_directory_mapped_user) || /^directory-self:/i.test(rawUserRef)){
+                            return;
+                        }
                         addTargetOption(select, {
-                            user_id: Number(entry?.user_id || 0),
-                            username: String(entry?.username || "").trim(),
-                            email: String(entry?.email || "").trim(),
-                            user_database: "inventory",
-                            database_name: String(entry?.database_name || "").trim().toLowerCase(),
-                        }, seenKeys);
-                    });
-                }catch(_invMapErr){
-                }
-
-                if(!select.options.length){
-                    const accessRes = await request("/users/access-users", "GET");
-                    const users = Array.isArray(accessRes?.users) ? accessRes.users : [];
-                    users.forEach((user) => {
-                        const selectionKey = String(user?.selection_key || "").trim();
-                        const userDb = String(user?.user_database || "").trim().toLowerCase() || "inventory";
-                        const parsedUserId = Number(String(selectionKey.split(":")[1] || "").trim() || 0);
-                        addTargetOption(select, {
-                            user_id: parsedUserId,
+                            user_ref: String(user?.id || "").trim() || rawUserRef,
+                            user_id: Number(user?.id || 0),
                             username: String(user?.username || "").trim(),
                             email: String(user?.email || "").trim(),
                             role: String(user?.role || "").trim().toLowerCase(),
-                            user_database: userDb,
-                            database_name: String(user?.database_name || "").trim().toLowerCase(),
-                            label: String(user?.label || "").trim(),
+                            user_database: currentUserDb,
+                            database_name: dbName,
                         }, seenKeys);
                     });
-                }
+                }else{
+                    try{
+                        const invMapRes = await request("/users/inv-map/entries", "GET");
+                        const invMapEntries = Array.isArray(invMapRes?.entries) ? invMapRes.entries : [];
+                        invMapEntries.forEach((entry) => {
+                            addTargetOption(select, {
+                                user_id: Number(entry?.user_id || 0),
+                                username: String(entry?.username || "").trim(),
+                                email: String(entry?.email || "").trim(),
+                                user_database: "inventory",
+                                database_name: String(entry?.database_name || "").trim().toLowerCase(),
+                            }, seenKeys);
+                        });
+                    }catch(_invMapErr){
+                    }
 
-                const hasSelfOption = Array.from(select.options).some((opt) => {
-                    const value = String(opt?.value || "").trim();
-                    const dbName = String(opt?.dataset?.databaseName || "").trim().toLowerCase();
-                    return value === fallbackSelection && dbName === currentUserDb;
-                });
-                if(!hasSelfOption && currentUserId > 0){
-                    addTargetOption(select, {
-                        user_id: currentUserId,
-                        username: String(localStorage.getItem("userName") || "").trim(),
-                        email: String(localStorage.getItem("userEmail") || "").trim(),
-                        user_database: currentUserDb,
-                        database_name: currentUserDb,
-                        label: `My account (${currentUserDb})`,
-                    }, seenKeys);
+                    if(!select.options.length){
+                        const accessRes = await request("/users/access-users", "GET");
+                        const users = Array.isArray(accessRes?.users) ? accessRes.users : [];
+                        users.forEach((user) => {
+                            const selectionKey = String(user?.selection_key || "").trim();
+                            const userDb = String(user?.user_database || "").trim().toLowerCase() || "inventory";
+                            const parsedUserId = Number(String(selectionKey.split(":")[1] || "").trim() || 0);
+                            addTargetOption(select, {
+                                user_id: parsedUserId,
+                                username: String(user?.username || "").trim(),
+                                email: String(user?.email || "").trim(),
+                                role: String(user?.role || "").trim().toLowerCase(),
+                                user_database: userDb,
+                                database_name: String(user?.database_name || "").trim().toLowerCase(),
+                                label: String(user?.label || "").trim(),
+                            }, seenKeys);
+                        });
+                    }
+
+                    const hasSelfOption = Array.from(select.options).some((opt) => {
+                        const value = String(opt?.value || "").trim();
+                        const dbName = String(opt?.dataset?.databaseName || "").trim().toLowerCase();
+                        return value === fallbackSelection && dbName === currentUserDb;
+                    });
+                    if(!hasSelfOption && currentUserId > 0){
+                        addTargetOption(select, {
+                            user_id: currentUserId,
+                            username: String(localStorage.getItem("userName") || "").trim(),
+                            email: String(localStorage.getItem("userEmail") || "").trim(),
+                            user_database: currentUserDb,
+                            database_name: currentUserDb,
+                            label: `My account (${currentUserDb})`,
+                        }, seenKeys);
+                    }
                 }
 
                 if(!select.options.length){
