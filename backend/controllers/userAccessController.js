@@ -3254,6 +3254,7 @@ exports.getMyAccess = async (req, res) => {
     return res.status(401).json({ message: "Invalid token user" });
   }
   const role = normalizeAccessRole(req.user?.role);
+  const authScope = String(req.user?.auth_scope || req.user?.authScope || "").trim().toLowerCase();
 
   const userDatabase = normalizeUserDatabase(req.databaseName || req.user?.database_name || INVENTORY_DB_NAME);
 
@@ -3274,10 +3275,23 @@ exports.getMyAccess = async (req, res) => {
   if (!row) {
     row = await findAccessFromCurrentDb(userDatabase);
   }
-  if (!row && userDatabase !== INVENTORY_DB_NAME) {
+  const allowInventoryFallback = userDatabase === INVENTORY_DB_NAME || authScope === "directory";
+  if (!row && userDatabase !== INVENTORY_DB_NAME && allowInventoryFallback) {
     row = await findAccessFromMainDb(userId, INVENTORY_DB_NAME);
+    if (row && authScope === "directory") {
+      const fallbackDatabase = normalizeDatabaseName(row?.database_name);
+      if (fallbackDatabase && fallbackDatabase !== userDatabase) {
+        row = null;
+      }
+    }
     if (!row) {
       row = await findAccessFromCurrentDb(INVENTORY_DB_NAME);
+      if (row && authScope === "directory") {
+        const fallbackDatabase = normalizeDatabaseName(row?.database_name);
+        if (fallbackDatabase && fallbackDatabase !== userDatabase) {
+          row = null;
+        }
+      }
     }
   }
   const parsedActions = parseAllowedActions(row);
