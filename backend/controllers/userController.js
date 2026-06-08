@@ -21,7 +21,7 @@ const USER_PROFILE_TABLE = "user_profiles";
 const USER_PROFILE_STORAGE_ROOT = path.resolve(__dirname, "../storage/user-profiles");
 const PROFILE_IMAGE_ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".bmp", ".gif", ".png", ".tif", ".tiff", ".webp"]);
 
-let userProfileSchemaEnsured = false;
+const ensuredUserProfileSchemaDbs = new Set();
 const ALLOWED_USER_DEPARTMENTS = ["Manager", "IT", "Finance", "Admin", "Cordinater", "Technician"];
 const ALLOWED_USER_DEPARTMENT_SET = new Set(ALLOWED_USER_DEPARTMENTS);
 const USER_DIRECTORY_DB = db.normalizeDatabaseName(process.env.DB_NAME || "inventory") || "inventory";
@@ -139,6 +139,51 @@ async function findDirectoryScopedRequesterUser(req, options = {}) {
   return findUserByIdInDatabase(USER_DIRECTORY_DB, requesterId, options);
 }
 
+async function resolveProfileTarget(req, userIdRaw, options = {}) {
+  const targetRef = parseUserReference(userIdRaw);
+  const targetUserId = Number(targetRef.user_id || 0);
+  const activeDatabaseName = getRequestDatabaseName(req);
+  const requesterId = getRequesterId(req);
+  const attributes = options.attributes;
+
+  let user = null;
+  let userDatabaseName = activeDatabaseName;
+  let profileDatabaseName = activeDatabaseName;
+  let usedDirectoryFallback = false;
+
+  if (!targetRef.is_directory_self && targetUserId > 0) {
+    user = await User.findByPk(targetUserId, attributes ? { attributes } : undefined);
+  }
+
+  if (
+    !user
+    && activeDatabaseName !== USER_DIRECTORY_DB
+    && isDirectoryScopedAuth(req)
+    && requesterId > 0
+    && requesterId === targetUserId
+  ) {
+    user = await findDirectoryScopedRequesterUser(
+      req,
+      attributes ? { attributes } : undefined
+    );
+    if (user) {
+      userDatabaseName = USER_DIRECTORY_DB;
+      profileDatabaseName = USER_DIRECTORY_DB;
+      usedDirectoryFallback = true;
+    }
+  }
+
+  return {
+    targetRef,
+    targetUserId,
+    user,
+    userDatabaseName,
+    profileDatabaseName,
+    usedDirectoryFallback,
+    userRef: usedDirectoryFallback ? `directory-self:${targetUserId}` : String(targetUserId || ""),
+  };
+}
+
 async function findDepartmentTemplateUser(department, transaction) {
   const tokenCandidates = Array.isArray(DEPARTMENT_ACCESS_TEMPLATE_TOKENS[department])
     ? DEPARTMENT_ACCESS_TEMPLATE_TOKENS[department]
@@ -243,8 +288,8 @@ function parseBase64Payload(fileDataBase64) {
   return Buffer.from(payload, "base64");
 }
 
-function resolveProfileUserStorageDir(req, userId) {
-  const dbName = getRequestDatabaseName(req);
+function resolveProfileUserStorageDir(databaseName, userId) {
+  const dbName = normalizeDatabaseName(databaseName);
   return path.join(USER_PROFILE_STORAGE_ROOT, dbName, `user_${Number(userId) || 0}`);
 }
 
@@ -258,60 +303,71 @@ function resolveProfilePictureMime(filePath) {
   return "image/jpeg";
 }
 
-async function ensureUserProfileSchema() {
-  if (userProfileSchemaEnsured) return;
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS ${USER_PROFILE_TABLE} (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      profile_name VARCHAR(200),
-      address TEXT,
-      mobile VARCHAR(60),
-      id_number VARCHAR(120),
-      emergency_contact_no VARCHAR(60),
-      authoris_officer VARCHAR(200),
-      profile_picture_path VARCHAR(500),
-      "createdAt" TIMESTAMP DEFAULT NOW(),
-      "updatedAt" TIMESTAMP DEFAULT NOW()
+async function ensureUserProfileSchema(databaseName) {
+  const targetDb = normalizeDatabaseName(databaseName);
+  if (ensuredUserProfileSchemaDbs.has(targetDb)) return;
+  await db.withDatabase(targetDb, async () => {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS ${USER_PROFILE_TABLE} (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        profile_name VARCHAR(200),
+        address TEXT,
+        mobile VARCHAR(60),
+        id_number VARCHAR(120),
+        emergency_contact_no VARCHAR(60),
+        authoris_officer VARCHAR(200),
+        profile_picture_path VARCHAR(500),
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    await db.query(`ALTER TABLE ${USER_PROFILE_TABLE} ADD COLUMN IF NOT EXISTS mobile VARCHAR(60);`);
+    await db.query(`ALTER TABLE ${USER_PROFILE_TABLE} ADD COLUMN IF NOT EXISTS id_number VARCHAR(120);`);
+    await db.query(`ALTER TABLE ${USER_PROFILE_TABLE} ADD COLUMN IF NOT EXISTS emergency_contact_no VARCHAR(60);`);
+    await db.query(`ALTER TABLE ${USER_PROFILE_TABLE} ADD COLUMN IF NOT EXISTS authoris_officer VARCHAR(200);`);
+    await db.query(`ALTER TABLE ${USER_PROFILE_TABLE} ADD COLUMN IF NOT EXISTS profile_picture_path VARCHAR(500);`);
+    await db.query(`CREATE INDEX IF NOT EXISTS user_profiles_profile_name_idx ON ${USER_PROFILE_TABLE}(LOWER(COALESCE(profile_name, '')));`);
+  });
+  ensuredUserProfileSchemaDbs.add(targetDb);
+}
+
+async function ensureProfileRowForUser(databaseName, userId) {
+  const targetDb = normalizeDatabaseName(databaseName);
+  await ensureUserProfileSchema(targetDb);
+  await db.withDatabase(targetDb, async () => {
+    await db.query(
+      `INSERT INTO ${USER_PROFILE_TABLE} (user_id, "createdAt", "updatedAt")
+       VALUES ($1, NOW(), NOW())
+       ON CONFLICT (user_id) DO NOTHING`,
+      { bind: [userId] }
     );
-  `);
-  await db.query(`ALTER TABLE ${USER_PROFILE_TABLE} ADD COLUMN IF NOT EXISTS mobile VARCHAR(60);`);
-  await db.query(`ALTER TABLE ${USER_PROFILE_TABLE} ADD COLUMN IF NOT EXISTS id_number VARCHAR(120);`);
-  await db.query(`ALTER TABLE ${USER_PROFILE_TABLE} ADD COLUMN IF NOT EXISTS emergency_contact_no VARCHAR(60);`);
-  await db.query(`ALTER TABLE ${USER_PROFILE_TABLE} ADD COLUMN IF NOT EXISTS authoris_officer VARCHAR(200);`);
-  await db.query(`ALTER TABLE ${USER_PROFILE_TABLE} ADD COLUMN IF NOT EXISTS profile_picture_path VARCHAR(500);`);
-  await db.query(`CREATE INDEX IF NOT EXISTS user_profiles_profile_name_idx ON ${USER_PROFILE_TABLE}(LOWER(COALESCE(profile_name, '')));`);
-  userProfileSchemaEnsured = true;
+  });
 }
 
-async function ensureProfileRowForUser(userId) {
-  await ensureUserProfileSchema();
-  await db.query(
-    `INSERT INTO ${USER_PROFILE_TABLE} (user_id, "createdAt", "updatedAt")
-     VALUES ($1, NOW(), NOW())
-     ON CONFLICT (user_id) DO NOTHING`,
-    { bind: [userId] }
-  );
-}
-
-async function getProfileRowByUserId(userId) {
-  await ensureUserProfileSchema();
-  const result = await db.query(
-    `SELECT id, user_id, profile_name, address, mobile, id_number, emergency_contact_no, authoris_officer, profile_picture_path, "createdAt", "updatedAt"
-     FROM ${USER_PROFILE_TABLE}
-     WHERE user_id = $1
-     LIMIT 1`,
-    { bind: [userId] }
-  );
+async function getProfileRowByUserId(databaseName, userId) {
+  const targetDb = normalizeDatabaseName(databaseName);
+  await ensureUserProfileSchema(targetDb);
+  const result = await db.withDatabase(targetDb, async () => {
+    return db.query(
+      `SELECT id, user_id, profile_name, address, mobile, id_number, emergency_contact_no, authoris_officer, profile_picture_path, "createdAt", "updatedAt"
+       FROM ${USER_PROFILE_TABLE}
+       WHERE user_id = $1
+       LIMIT 1`,
+      { bind: [userId] }
+    );
+  });
   const rows = Array.isArray(result?.[0]) ? result[0] : [];
   return rows[0] || null;
 }
 
-function toProfileResponse(user, profileRow) {
+function toProfileResponse(user, profileRow, extra = {}) {
   const userPlain = user && typeof user.toJSON === "function" ? user.toJSON() : (user || {});
+  const userRef = String(extra.user_ref || userPlain.user_ref || Number(userPlain.id || 0)).trim();
   const picturePath = String(profileRow?.profile_picture_path || "").trim();
   return {
     user_id: Number(userPlain.id || 0),
+    user_ref: userRef,
     profile_name: String(profileRow?.profile_name || "").trim() || String(userPlain.username || "").trim(),
     email: String(userPlain.email || "").trim(),
     login_user: String(userPlain.username || "").trim(),
@@ -321,8 +377,9 @@ function toProfileResponse(user, profileRow) {
     id_number: String(profileRow?.id_number || "").trim(),
     emergency_contact_no: String(profileRow?.emergency_contact_no || "").trim(),
     authoris_officer: String(profileRow?.authoris_officer || "").trim(),
-    picture_url: picturePath ? `/api/users/profiles/${Number(userPlain.id || 0)}/picture` : "",
+    picture_url: picturePath ? `/api/users/profiles/${encodeURIComponent(userRef)}/picture` : "",
     updated_at: profileRow?.updatedAt ? new Date(profileRow.updatedAt).toISOString() : "",
+    ...extra,
   };
 }
 
@@ -663,7 +720,8 @@ exports.updateUser = async (req, res) => {
 exports.getUserProfiles = async (req, res) => {
   try {
     await ensureUserSuperColumn();
-    await ensureUserProfileSchema();
+    const activeDatabaseName = getRequestDatabaseName(req);
+    await ensureUserProfileSchema(activeDatabaseName);
 
     const requesterId = getRequesterId(req);
     if (!requesterId) {
@@ -696,8 +754,25 @@ exports.getUserProfiles = async (req, res) => {
 
     const result = [];
     for (const user of filteredUsers) {
-      const profileRow = await getProfileRowByUserId(Number(user.id || 0));
+      const profileRow = await getProfileRowByUserId(activeDatabaseName, Number(user.id || 0));
       result.push(toProfileResponse(user, profileRow));
+    }
+
+    if (activeDatabaseName !== USER_DIRECTORY_DB) {
+      const requesterDirectoryUser = await findDirectoryScopedRequesterUser(req, {
+        attributes: ["id", "username", "department", "telephone", "email", "role", "is_super_user"],
+      });
+      if (
+        requesterDirectoryUser
+        && !isTargetProtectedSuperAdmin(requesterDirectoryUser, requesterId, requesterIsSuper)
+        && !result.some((row) => usersRepresentSamePerson(row, requesterDirectoryUser))
+      ) {
+        const profileRow = await getProfileRowByUserId(USER_DIRECTORY_DB, Number(requesterDirectoryUser.id || 0));
+        result.unshift(toProfileResponse(requesterDirectoryUser, profileRow, {
+          user_ref: `directory-self:${Number(requesterDirectoryUser.id || 0)}`,
+          is_directory_mapped_user: true,
+        }));
+      }
     }
     result.sort((a, b) => String(a.profile_name || "").localeCompare(String(b.profile_name || ""), undefined, { sensitivity: "base" }));
     res.json(result);
@@ -708,21 +783,22 @@ exports.getUserProfiles = async (req, res) => {
 };
 
 exports.getUserProfileByUserId = async (req, res) => {
-  const userId = Number(req.params.userId || 0);
-  if (!Number.isFinite(userId) || userId <= 0) {
-    return res.status(400).json({ message: "Invalid user id" });
-  }
-
   try {
+    const target = await resolveProfileTarget(req, req.params.userId, {
+      attributes: ["id", "username", "department", "telephone", "email", "role", "is_super_user"],
+    });
+    const userId = Number(target.targetUserId || 0);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      return res.status(400).json({ message: "Invalid user id" });
+    }
+
     await ensureUserSuperColumn();
     const canAccessTarget = await canRequesterAccessProfileUser(req, userId);
     if (!canAccessTarget) {
       return res.status(403).json({ message: "Forbidden: You can only access your own profile." });
     }
 
-    const user = await User.findByPk(userId, {
-      attributes: ["id", "username", "department", "telephone", "email", "role", "is_super_user"],
-    });
+    const user = target.user;
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -733,9 +809,12 @@ exports.getUserProfileByUserId = async (req, res) => {
       return res.status(403).json({ message: "Forbidden: Super admin user is protected." });
     }
 
-    await ensureProfileRowForUser(userId);
-    const profileRow = await getProfileRowByUserId(userId);
-    res.json(toProfileResponse(user, profileRow));
+    await ensureProfileRowForUser(target.profileDatabaseName, userId);
+    const profileRow = await getProfileRowByUserId(target.profileDatabaseName, userId);
+    res.json(toProfileResponse(user, profileRow, target.usedDirectoryFallback ? {
+      user_ref: target.userRef,
+      is_directory_mapped_user: true,
+    } : {}));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err?.message || "Failed to load profile." });
@@ -743,21 +822,22 @@ exports.getUserProfileByUserId = async (req, res) => {
 };
 
 exports.updateUserProfile = async (req, res) => {
-  const userId = Number(req.params.userId || 0);
-  if (!Number.isFinite(userId) || userId <= 0) {
-    return res.status(400).json({ message: "Invalid user id" });
-  }
-
   try {
+    const target = await resolveProfileTarget(req, req.params.userId, {
+      attributes: ["id", "username", "department", "telephone", "email", "role", "is_super_user"],
+    });
+    const userId = Number(target.targetUserId || 0);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      return res.status(400).json({ message: "Invalid user id" });
+    }
+
     await ensureUserSuperColumn();
     const canAccessTarget = await canRequesterAccessProfileUser(req, userId);
     if (!canAccessTarget) {
       return res.status(403).json({ message: "Forbidden: You can only update your own profile." });
     }
 
-    const user = await User.findByPk(userId, {
-      attributes: ["id", "username", "department", "telephone", "email", "role", "is_super_user"],
-    });
+    const user = target.user;
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -768,7 +848,7 @@ exports.updateUserProfile = async (req, res) => {
       return res.status(403).json({ message: "Forbidden: Super admin user is protected." });
     }
 
-    await ensureProfileRowForUser(userId);
+    await ensureProfileRowForUser(target.profileDatabaseName, userId);
 
     const profileName = String(req.body?.profile_name || "").trim().slice(0, 200);
     const address = String(req.body?.address || "").trim().slice(0, 1000);
@@ -777,33 +857,38 @@ exports.updateUserProfile = async (req, res) => {
     const emergencyContactNo = String(req.body?.emergency_contact_no || "").trim().slice(0, 60);
     const authorisOfficer = String(req.body?.authoris_officer || "").trim().slice(0, 200);
 
-    await db.query(
-      `UPDATE ${USER_PROFILE_TABLE}
-       SET profile_name = $1,
-           address = $2,
-           mobile = $3,
-           id_number = $4,
-           emergency_contact_no = $5,
-           authoris_officer = $6,
-           "updatedAt" = NOW()
-       WHERE user_id = $7`,
-      {
-        bind: [
-          profileName || null,
-          address || null,
-          mobile || null,
-          idNumber || null,
-          emergencyContactNo || null,
-          authorisOfficer || null,
-          userId,
-        ],
-      }
-    );
+    await db.withDatabase(target.profileDatabaseName, async () => {
+      await db.query(
+        `UPDATE ${USER_PROFILE_TABLE}
+         SET profile_name = $1,
+             address = $2,
+             mobile = $3,
+             id_number = $4,
+             emergency_contact_no = $5,
+             authoris_officer = $6,
+             "updatedAt" = NOW()
+         WHERE user_id = $7`,
+        {
+          bind: [
+            profileName || null,
+            address || null,
+            mobile || null,
+            idNumber || null,
+            emergencyContactNo || null,
+            authorisOfficer || null,
+            userId,
+          ],
+        }
+      );
+    });
 
-    const profileRow = await getProfileRowByUserId(userId);
+    const profileRow = await getProfileRowByUserId(target.profileDatabaseName, userId);
     res.json({
       message: "Profile saved successfully.",
-      profile: toProfileResponse(user, profileRow),
+      profile: toProfileResponse(user, profileRow, target.usedDirectoryFallback ? {
+        user_ref: target.userRef,
+        is_directory_mapped_user: true,
+      } : {}),
     });
   } catch (err) {
     console.error(err);
@@ -812,21 +897,22 @@ exports.updateUserProfile = async (req, res) => {
 };
 
 exports.uploadUserProfilePicture = async (req, res) => {
-  const userId = Number(req.params.userId || 0);
-  if (!Number.isFinite(userId) || userId <= 0) {
-    return res.status(400).json({ message: "Invalid user id" });
-  }
-
   try {
+    const target = await resolveProfileTarget(req, req.params.userId, {
+      attributes: ["id", "username", "department", "telephone", "email", "role", "is_super_user"],
+    });
+    const userId = Number(target.targetUserId || 0);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      return res.status(400).json({ message: "Invalid user id" });
+    }
+
     await ensureUserSuperColumn();
     const canAccessTarget = await canRequesterAccessProfileUser(req, userId);
     if (!canAccessTarget) {
       return res.status(403).json({ message: "Forbidden: You can only update your own profile picture." });
     }
 
-    const user = await User.findByPk(userId, {
-      attributes: ["id", "username", "department", "telephone", "email", "role", "is_super_user"],
-    });
+    const user = target.user;
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -848,27 +934,29 @@ exports.uploadUserProfilePicture = async (req, res) => {
       return res.status(400).json({ message: "Uploaded image is empty." });
     }
 
-    const targetDir = resolveProfileUserStorageDir(req, userId);
+    const targetDir = resolveProfileUserStorageDir(target.profileDatabaseName, userId);
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });
     }
     const targetPath = path.join(targetDir, `profile-picture${ext}`);
     fs.writeFileSync(targetPath, fileBuffer);
 
-    await ensureProfileRowForUser(userId);
-    await db.query(
-      `UPDATE ${USER_PROFILE_TABLE}
-       SET profile_picture_path = $1,
-           "updatedAt" = NOW()
-       WHERE user_id = $2`,
-      {
-        bind: [targetPath, userId],
-      }
-    );
+    await ensureProfileRowForUser(target.profileDatabaseName, userId);
+    await db.withDatabase(target.profileDatabaseName, async () => {
+      await db.query(
+        `UPDATE ${USER_PROFILE_TABLE}
+         SET profile_picture_path = $1,
+             "updatedAt" = NOW()
+         WHERE user_id = $2`,
+        {
+          bind: [targetPath, userId],
+        }
+      );
+    });
 
     res.json({
       message: "Profile picture uploaded successfully.",
-      picture_url: `/api/users/profiles/${userId}/picture`,
+      picture_url: `/api/users/profiles/${encodeURIComponent(target.userRef)}/picture`,
     });
   } catch (err) {
     console.error(err);
@@ -877,22 +965,25 @@ exports.uploadUserProfilePicture = async (req, res) => {
 };
 
 exports.getUserProfilePicture = async (req, res) => {
-  const userId = Number(req.params.userId || 0);
-  if (!Number.isFinite(userId) || userId <= 0) {
-    return res.status(400).json({ message: "Invalid user id" });
-  }
-
   try {
+    const target = await resolveProfileTarget(req, req.params.userId, {
+      attributes: ["id"],
+    });
+    const userId = Number(target.targetUserId || 0);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      return res.status(400).json({ message: "Invalid user id" });
+    }
+
     const canAccessTarget = await canRequesterAccessProfileUser(req, userId);
     if (!canAccessTarget) {
       return res.status(403).json({ message: "Forbidden: You can only view your own profile picture." });
     }
 
-    const user = await User.findByPk(userId, { attributes: ["id"] });
+    const user = target.user;
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    const profileRow = await getProfileRowByUserId(userId);
+    const profileRow = await getProfileRowByUserId(target.profileDatabaseName, userId);
     const picturePath = String(profileRow?.profile_picture_path || "").trim();
     if (!picturePath || !fs.existsSync(picturePath)) {
       return res.status(404).json({ message: "Profile picture not found." });

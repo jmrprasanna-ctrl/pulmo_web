@@ -113,6 +113,7 @@ async function loadProfiles(){
         const tbody = document.getElementById("profile-table-body");
         tbody.innerHTML = "";
         (Array.isArray(profiles) ? profiles : []).forEach((row) => {
+            const userRef = encodeURIComponent(safeText(row.user_ref) || safeText(row.user_id));
             const tr = document.createElement("tr");
             tr.classList.add("profile-row-clickable");
             tr.appendChild(createProfileNameCell(row));
@@ -121,7 +122,7 @@ async function loadProfiles(){
             tr.appendChild(createTextCell(row.department));
             tr.appendChild(createTextCell(row.mobile));
             tr.addEventListener("click", () => {
-                window.location.href = `edit-profile.html?userId=${row.user_id}`;
+                window.location.href = `edit-profile.html?userId=${userRef}`;
             });
             tbody.appendChild(tr);
         });

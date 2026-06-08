@@ -3,6 +3,15 @@ function getTargetUserId(){
     return params.get("userId") || params.get("id");
 }
 
+function getComparableUserId(targetUserId){
+    const raw = safeText(targetUserId);
+    const directorySelfMatch = /^directory-self:(\d+)$/i.exec(raw);
+    if(directorySelfMatch){
+        return safeText(directorySelfMatch[1]);
+    }
+    return raw;
+}
+
 function isViewOnlyMode(){
     const params = new URLSearchParams(window.location.search);
     const mode = String(params.get("mode") || "").trim().toLowerCase();
@@ -113,15 +122,15 @@ async function loadProfilePicture(userId, options = {}){
 }
 
 async function loadProfile(){
-    const userId = Number(getTargetUserId() || 0);
-    if(!Number.isFinite(userId) || userId <= 0){
+    const userId = safeText(getTargetUserId());
+    if(!userId){
         alert("Missing user id");
         window.location.href = "profile-list.html";
         return;
     }
 
     try{
-        const profile = await request(`/users/profiles/${userId}`, "GET");
+        const profile = await request(`/users/profiles/${encodeURIComponent(userId)}`, "GET");
         document.getElementById("profile_name").value = profile.profile_name || "";
         document.getElementById("address").value = profile.address || "";
         document.getElementById("mobile").value = profile.mobile || "";
@@ -188,14 +197,14 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     const form = document.getElementById("editProfileForm");
     const pictureInput = document.getElementById("profilePictureFile");
-    const userId = Number(getTargetUserId() || 0);
+    const userId = safeText(getTargetUserId());
     const readOnly = isViewOnlyMode();
 
     if(form && !readOnly){
         form.addEventListener("submit", async (e) => {
             e.preventDefault();
             try{
-                await request(`/users/profiles/${userId}`, "PUT", {
+                await request(`/users/profiles/${encodeURIComponent(userId)}`, "PUT", {
                     profile_name: document.getElementById("profile_name").value.trim(),
                     address: document.getElementById("address").value.trim(),
                     mobile: document.getElementById("mobile").value.trim(),
@@ -223,7 +232,7 @@ window.addEventListener("DOMContentLoaded", async () => {
                     preview.src = fileDataBase64;
                     preview.style.visibility = "visible";
                 }
-                await request(`/users/profiles/${userId}/picture`, "POST", {
+                await request(`/users/profiles/${encodeURIComponent(userId)}/picture`, "POST", {
                     fileName: file.name,
                     fileDataBase64
                 });
