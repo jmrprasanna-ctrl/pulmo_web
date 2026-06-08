@@ -1,5 +1,4 @@
-const filterFromDateEl = document.getElementById("filterFromDate");
-const filterToDateEl = document.getElementById("filterToDate");
+const filterServiceMonthEl = document.getElementById("filterServiceMonth");
 const filterServiceTypeEl = document.getElementById("filterServiceType");
 const filterServiceModeWrapEl = document.getElementById("filterServiceModeWrap");
 const filterServiceModeEl = document.getElementById("filterServiceMode");
@@ -8,9 +7,9 @@ const serviceTableBodyEl = document.getElementById("serviceTableBody");
 const addServiceBtn = document.getElementById("addServiceBtn");
 
 const today = new Date();
-const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-filterFromDateEl.value = monthStart.toISOString().slice(0, 10);
-filterToDateEl.value = today.toISOString().slice(0, 10);
+if (filterServiceMonthEl) {
+    filterServiceMonthEl.value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+}
 
 const rawRole = String(localStorage.getItem("role") || "").toLowerCase();
 const role = ["coordinator", "cordinator", "co-ordinator", "co ordinator", "co_ordinator"].includes(rawRole) ? "user" : rawRole;
@@ -89,11 +88,15 @@ function escapeHtml(value) {
         .replace(/'/g, "&#39;");
 }
 
-function isRowWithinDate(rowDate, fromDate, toDate) {
+function safeMonthValue(value) {
+    const raw = String(value || "").trim();
+    return /^\d{4}-\d{2}$/.test(raw) ? raw : "";
+}
+
+function isRowWithinMonth(rowDate, monthValue) {
     if (!rowDate) return false;
-    if (fromDate && rowDate < fromDate) return false;
-    if (toDate && rowDate > toDate) return false;
-    return true;
+    if (!monthValue) return true;
+    return rowDate.slice(0, 7) === monthValue;
 }
 
 function shouldShowModeFilter() {
@@ -111,15 +114,14 @@ function updateModeFilterVisibility() {
 }
 
 function applyFilters() {
-    const fromDate = safeDateOnly(filterFromDateEl.value);
-    const toDate = safeDateOnly(filterToDateEl.value);
+    const selectedMonth = safeMonthValue(filterServiceMonthEl?.value);
     const typeFilter = String(filterServiceTypeEl.value || "").trim().toLowerCase();
     const modeFilter = shouldShowModeFilter() ? normalizeServiceMode(filterServiceModeEl.value) : "";
     const query = String(serviceSearchEl.value || "").trim().toLowerCase();
 
     const filtered = allServiceRows.filter((row) => {
         const serviceDate = safeDateOnly(row.service_date);
-        if (!isRowWithinDate(serviceDate, fromDate, toDate)) return false;
+        if (!isRowWithinMonth(serviceDate, selectedMonth)) return false;
 
         const rowType = normalizeServiceType(row.service_type);
         if (typeFilter && rowType !== typeFilter) return false;
@@ -209,8 +211,7 @@ async function loadServiceRows() {
     }
 }
 
-filterFromDateEl.addEventListener("change", applyFilters);
-filterToDateEl.addEventListener("change", applyFilters);
+filterServiceMonthEl?.addEventListener("change", applyFilters);
 filterServiceTypeEl.addEventListener("change", () => {
     updateModeFilterVisibility();
     applyFilters();
