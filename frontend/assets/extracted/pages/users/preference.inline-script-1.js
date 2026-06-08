@@ -217,33 +217,7 @@ function byId(id){
                 select.innerHTML = "";
                 const seenKeys = new Set();
                 if(isMappedDbAdminView){
-                    const users = await request("/users", "GET");
-                    const activeDbUsers = Array.isArray(users) ? users : [];
-                    activeDbUsers.forEach((user) => {
-                        const dbName = String(user?.database_name || currentUserDb).trim().toLowerCase();
-                        const rawUserRef = String(user?.user_ref || user?.id || "").trim();
-                        if(!rawUserRef || dbName !== currentUserDb){
-                            return;
-                        }
-                        if(Boolean(user?.is_directory_mapped_user) || /^directory-self:/i.test(rawUserRef)){
-                            return;
-                        }
-                        addTargetOption(select, {
-                            user_ref: String(user?.id || "").trim() || rawUserRef,
-                            user_id: Number(user?.id || 0),
-                            username: String(user?.username || "").trim(),
-                            email: String(user?.email || "").trim(),
-                            role: String(user?.role || "").trim().toLowerCase(),
-                            user_database: currentUserDb,
-                            database_name: dbName,
-                        }, seenKeys);
-                    });
-                    const hasMappedDbSelfOption = Array.from(select.options).some((opt) => {
-                        const value = String(opt?.value || "").trim();
-                        const dbName = String(opt?.dataset?.databaseName || "").trim().toLowerCase();
-                        return value === fallbackInventorySelection && dbName === currentUserDb;
-                    });
-                    if(!hasMappedDbSelfOption && currentUserId > 0){
+                    if(currentUserId > 0){
                         addTargetOption(select, {
                             user_ref: fallbackInventorySelection,
                             user_id: currentUserId,
