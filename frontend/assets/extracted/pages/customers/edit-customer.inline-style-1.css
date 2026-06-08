@@ -73,12 +73,18 @@
 
     @media (max-width: 900px){
         .form-actions{
-            flex-direction: row;
-            flex-wrap: nowrap;
-            align-items: center !important;
+            display:grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap:10px;
+            align-items: stretch !important;
         }
 
         .form-actions > *{
-            width: auto !important;
+            width:100% !important;
+        }
+
+        .form-actions .icon-btn{
+            width:100%;
+            min-width:0;
         }
     }
