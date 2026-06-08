@@ -238,6 +238,22 @@ function byId(id){
                             database_name: dbName,
                         }, seenKeys);
                     });
+                    const hasMappedDbSelfOption = Array.from(select.options).some((opt) => {
+                        const value = String(opt?.value || "").trim();
+                        const dbName = String(opt?.dataset?.databaseName || "").trim().toLowerCase();
+                        return value === fallbackInventorySelection && dbName === currentUserDb;
+                    });
+                    if(!hasMappedDbSelfOption && currentUserId > 0){
+                        addTargetOption(select, {
+                            user_ref: fallbackInventorySelection,
+                            user_id: currentUserId,
+                            username: String(localStorage.getItem("userName") || "").trim(),
+                            email: String(localStorage.getItem("userEmail") || "").trim(),
+                            user_database: "inventory",
+                            database_name: currentUserDb,
+                            label: `My account (${currentUserDb})`,
+                        }, seenKeys);
+                    }
                 }else{
                     try{
                         const invMapRes = await request("/users/inv-map/entries", "GET");
