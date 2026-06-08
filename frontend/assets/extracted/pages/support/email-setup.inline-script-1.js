@@ -13,6 +13,15 @@ function isAdminLikeRole(role) {
     return normalized === "admin" || normalized === "administrator" || normalized === "manager" || normalized === "super_admin";
 }
 
+function getActiveDatabaseName() {
+    return normalizeDbName(localStorage.getItem("selectedDatabaseName") || "");
+}
+
+function isMappedDbScopedView() {
+    const activeDb = getActiveDatabaseName();
+    return !!activeDb && activeDb !== DEFAULT_MAPPED_DB;
+}
+
 function canManageEmailSetup() {
     const role = getRole();
     if (isAdminLikeRole(role)) return true;
@@ -61,6 +70,24 @@ function mergeMappedOptionArrays(primary = [], secondary = []) {
     const map = new Map();
     (Array.isArray(primary) ? primary : []).forEach((item) => upsertMappedOption(map, item));
     (Array.isArray(secondary) ? secondary : []).forEach((item) => upsertMappedOption(map, item));
+    const scopedDb = isMappedDbScopedView() ? getActiveDatabaseName() : "";
+    if (scopedDb) {
+        const scopedItems = Array.from(map.values()).filter((item) => normalizeDbName(item.database_name) === scopedDb);
+        if (!scopedItems.length) {
+            upsertMappedOption(map, {
+                database_name: scopedDb,
+                company_name: String(scopedDb || "").toUpperCase(),
+                email: "",
+            });
+        }
+        return Array.from(map.values())
+            .filter((item) => normalizeDbName(item.database_name) === scopedDb)
+            .sort((a, b) => {
+                const byCompany = String(a.company_name || "").localeCompare(String(b.company_name || ""), undefined, { sensitivity: "base" });
+                if (byCompany !== 0) return byCompany;
+                return String(a.database_name || "").localeCompare(String(b.database_name || ""), undefined, { sensitivity: "base" });
+            });
+    }
     if (!map.has(DEFAULT_MAPPED_DB)) {
         upsertMappedOption(map, {
             database_name: DEFAULT_MAPPED_DB,
@@ -77,6 +104,10 @@ function mergeMappedOptionArrays(primary = [], secondary = []) {
 
 async function loadAdminMappedOptions() {
     if (adminMappedOptionsCache) return adminMappedOptionsCache;
+    if (isMappedDbScopedView()) {
+        adminMappedOptionsCache = mergeMappedOptionArrays([], []);
+        return adminMappedOptionsCache;
+    }
     const map = new Map();
 
     const allDbRes = await request("/users/databases", "GET").catch(() => null);
@@ -190,6 +221,7 @@ function fillMappedDatabaseSelect(setup) {
     } else if (mappedOptions.length) {
         selectEl.value = mappedOptions[0].database_name;
     }
+    selectEl.disabled = isMappedDbScopedView();
 }
 
 function applyMappedSelectionToBranding(setup, options = {}) {
@@ -281,7 +313,7 @@ async function loadSetup(mappedDatabaseName) {
         isLoadingMappedSetup = true;
         const setup = await request(path, "GET");
         const role = getRole();
-        if (isAdminLikeRole(role)) {
+        if (isAdminLikeRole(role) && !isMappedDbScopedView()) {
             const adminOptions = await loadAdminMappedOptions();
             const mergedOptions = mergeMappedOptionArrays(setup?.mapped_options, adminOptions);
             setup.mapped_options = mergedOptions;

@@ -281,6 +281,17 @@ async function resolveMappedDatabaseOptions(req) {
   }
 
   let options = finalizeMappedOptions(optionMap);
+  if (requestDb && requestDb !== INVENTORY_DB_NAME) {
+    const scoped = options.filter((item) => item.database_name === requestDb);
+    if (scoped.length) {
+      return scoped;
+    }
+    return finalizeMappedOptions(new Map([[requestDb, {
+      database_name: requestDb,
+      company_name: requestDb.toUpperCase(),
+      email: "",
+    }]]));
+  }
   if (!isAdminLikeRole(role)) {
     const allowed = new Set([...userScopedDbSet].filter(Boolean));
     if (!allowed.size) {
@@ -300,6 +311,16 @@ async function resolveMappedDatabaseOptions(req) {
 }
 
 function resolveSelectedMappedOption(req, options = [], explicitDatabaseName) {
+  const normalizedRequestDb = normalizeDatabaseName(req?.databaseName || req?.user?.database_name || "");
+  if (normalizedRequestDb && normalizedRequestDb !== INVENTORY_DB_NAME) {
+    const matchedRequestDb = options.find((item) => item.database_name === normalizedRequestDb);
+    if (matchedRequestDb) return matchedRequestDb;
+    return {
+      database_name: normalizedRequestDb,
+      company_name: normalizedRequestDb.toUpperCase(),
+      email: "",
+    };
+  }
   const normalizedExplicit = normalizeDatabaseName(explicitDatabaseName || "");
   if (normalizedExplicit) {
     const matchedExplicit = options.find((item) => item.database_name === normalizedExplicit);
@@ -310,7 +331,6 @@ function resolveSelectedMappedOption(req, options = [], explicitDatabaseName) {
       email: normalizedExplicit === INVENTORY_DB_NAME ? DEFAULT_FROM_EMAIL : "",
     };
   }
-  const normalizedRequestDb = normalizeDatabaseName(req?.databaseName || req?.user?.database_name || "");
   const fallbackOrder = [normalizedRequestDb, INVENTORY_DB_NAME].filter(Boolean);
   for (const dbName of fallbackOrder) {
     const matched = options.find((item) => item.database_name === dbName);
