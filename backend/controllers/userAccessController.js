@@ -186,7 +186,7 @@ const ACCESS_MODULE_OPTIONS = [
     ],
   },
   {
-    module: "Visits",
+    module: "Task's",
     items: [
       { path: "/services/service-list.html", label: "Customer Visits", actions: ["view", "add", "edit"] },
       { path: "/services/add-service.html", label: "Add Visit", actions: ["view", "add"] },
