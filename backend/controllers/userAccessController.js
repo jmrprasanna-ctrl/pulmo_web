@@ -952,6 +952,46 @@ async function findMappedUserProfile(userId) {
   }
 }
 
+async function findMappedCompanyProfileByDatabase(databaseName) {
+  const normalizedDb = normalizeDatabaseName(databaseName);
+  if (!normalizedDb || normalizedDb === INVENTORY_DB_NAME) {
+    return null;
+  }
+
+  const cfg = getDbConfig();
+  const client = new Client({
+    host: cfg.host,
+    port: cfg.port,
+    user: cfg.user,
+    password: cfg.password,
+    database: cfg.database || INVENTORY_DB_NAME,
+  });
+  try {
+    await client.connect();
+    const rs = await client.query(
+      `SELECT cp.company_name, cp.company_code, cp.email, cp.logo_path
+       FROM user_mappings um
+       JOIN ${COMPANY_REGISTRY_TABLE} cp ON cp.id = um.company_profile_id
+       WHERE LOWER(COALESCE(um.database_name, '')) = $1
+       ORDER BY um."updatedAt" DESC NULLS LAST, um.id DESC
+       LIMIT 1`,
+      [normalizedDb]
+    );
+    if (!rs.rowCount) return null;
+    return {
+      database_name: normalizedDb,
+      company_name: normalizeCompanyName(rs.rows[0]?.company_name),
+      company_code: normalizeCompanyCode(rs.rows[0]?.company_code),
+      email: normalizeEmail(rs.rows[0]?.email),
+      logo_path: String(rs.rows[0]?.logo_path || "").trim(),
+    };
+  } catch (_err) {
+    return null;
+  } finally {
+    await client.end().catch(() => {});
+  }
+}
+
 function getDbConfig() {
   return {
     host: process.env.DB_HOST || "localhost",
@@ -3312,10 +3352,16 @@ exports.getMyAccess = async (req, res) => {
   }
   const hasAccessConfig = hasStoredConfig || allowedPages.length > 0 || allowedActions.length > 0;
   const mappedProfile = await findMappedUserProfile(userId);
+  const mappedProfileForActiveDb = await findMappedCompanyProfileByDatabase(userDatabase);
+  const resolvedMappedProfile = mappedProfileForActiveDb || mappedProfile;
   const resolvedCurrentDatabase =
     normalizeDatabaseName(req.databaseName || req.user?.database_name) ||
-    normalizeDatabaseName(mappedProfile?.database_name) ||
+    normalizeDatabaseName(resolvedMappedProfile?.database_name) ||
     normalizeDatabaseName(row?.database_name);
+  const mappedCompanyCode = normalizeCompanyCode(resolvedMappedProfile?.company_code);
+  const mappedCompanyLogoUrl = mappedCompanyCode
+    ? `/api/auth/company-code/${encodeURIComponent(mappedCompanyCode)}/logo`
+    : (String(resolvedMappedProfile?.logo_path || "").trim() || null);
 
   res.json({
     allowed_pages: allowedPages,
@@ -3323,5 +3369,9 @@ exports.getMyAccess = async (req, res) => {
     database_name: resolvedCurrentDatabase,
     user_database: userDatabase,
     has_access_config: hasAccessConfig,
+    mapped_company_name: normalizeCompanyName(resolvedMappedProfile?.company_name) || null,
+    mapped_company_code: mappedCompanyCode || null,
+    mapped_company_email: normalizeEmail(resolvedMappedProfile?.email) || null,
+    mapped_company_logo_url: mappedCompanyLogoUrl,
   });
 };
