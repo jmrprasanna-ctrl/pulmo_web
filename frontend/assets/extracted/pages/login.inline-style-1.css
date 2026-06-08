@@ -352,7 +352,7 @@ body{
 .login-version{
     position:absolute;
     right:22px;
-    bottom:11px;
+    bottom:9px;
     font-size:12px;
     font-weight:600;
     color:#607487;
@@ -464,7 +464,7 @@ body{
 
     .login-version{
         right:18px;
-        bottom:9px;
+        bottom:7px;
         font-size:11px;
     }
 
