@@ -1659,6 +1659,9 @@ exports.getAccessPages = async (_req, res) => {
 };
 
 exports.getDatabases = async (_req, res) => {
+  const requesterDatabase = normalizeDatabaseName(
+    _req?.databaseName || _req?.user?.database_name || _req?.headers?.["x-database-name"] || INVENTORY_DB_NAME
+  ) || INVENTORY_DB_NAME;
   const cfg = getDbConfig();
   const adminClient = new Client({
     host: cfg.host,
@@ -1704,9 +1707,21 @@ exports.getDatabases = async (_req, res) => {
       });
     });
 
+    const sortedDatabases = databases.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+    const scopedDatabases = requesterDatabase !== INVENTORY_DB_NAME
+      ? sortedDatabases.filter((entry) => normalizeDatabaseName(entry?.name) === requesterDatabase)
+      : sortedDatabases;
+    if (requesterDatabase !== INVENTORY_DB_NAME && !scopedDatabases.length) {
+      const companyName = companyMap.get(requesterDatabase) || "";
+      scopedDatabases.push({
+        name: requesterDatabase,
+        company_name: companyName,
+        label: companyName ? `${companyName} (${requesterDatabase})` : requesterDatabase,
+      });
+    }
     res.json({
-      current: normalizeDatabaseName(cfg.database) || INVENTORY_DB_NAME,
-      databases: databases.sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""))),
+      current: requesterDatabase,
+      databases: scopedDatabases,
     });
   } catch (err) {
     res.status(500).json({ message: err.message || "Failed to list databases." });
@@ -3140,6 +3155,9 @@ exports.getUserAccess = async (req, res) => {
     return res.status(403).json({ message: "Forbidden: Super admin user is protected." });
   }
   const canEditSuperUser = await canRequesterEditSuperFlag(req, userPlain);
+  const requesterDatabase = normalizeDatabaseName(
+    req?.databaseName || req?.user?.database_name || req?.headers?.["x-database-name"] || INVENTORY_DB_NAME
+  ) || INVENTORY_DB_NAME;
 
   const row = await UserAccess.findOne({
     where: { user_id: ref.user_id, user_database: ref.user_database },
@@ -3147,6 +3165,7 @@ exports.getUserAccess = async (req, res) => {
   });
   const mappedProfile = await findMappedUserProfile(ref.user_id);
   const resolvedDatabaseName =
+    (requesterDatabase !== INVENTORY_DB_NAME ? requesterDatabase : null) ||
     normalizeDatabaseName(mappedProfile?.database_name) ||
     normalizeDatabaseName(row?.database_name) ||
     normalizeDatabaseName(ref.user_database);
@@ -3185,7 +3204,12 @@ exports.saveUserAccess = async (req, res) => {
   const allowedActions = expandImplicitActionDependencies(normalizeActions(req.body.allowed_actions));
   const requestedPages = normalizePages(req.body.allowed_pages);
   const allowedPages = derivePagesFromActions(allowedActions, requestedPages);
-  const databaseName = normalizeDatabaseName(req.body.database_name);
+  const requesterDatabase = normalizeDatabaseName(
+    req?.databaseName || req?.user?.database_name || req?.headers?.["x-database-name"] || INVENTORY_DB_NAME
+  ) || INVENTORY_DB_NAME;
+  const databaseName = requesterDatabase !== INVENTORY_DB_NAME
+    ? requesterDatabase
+    : normalizeDatabaseName(req.body.database_name);
 
   let row = await UserAccess.findOne({
     where: { user_id: ref.user_id, user_database: ref.user_database },

@@ -9,6 +9,15 @@ const userSelectEl = document.getElementById("userSelect");
             return String(value || "").trim().toLowerCase();
         }
 
+        function getActiveDatabaseName(){
+            return normalizeDatabaseName(localStorage.getItem("selectedDatabaseName") || "");
+        }
+
+        function isMappedDbScopedView(){
+            const activeDb = getActiveDatabaseName();
+            return !!activeDb && activeDb !== "inventory";
+        }
+
         function getSelectedUserOptionLinkedDb(){
             const option = userSelectEl && userSelectEl.selectedOptions && userSelectEl.selectedOptions[0]
                 ? userSelectEl.selectedOptions[0]
@@ -166,6 +175,7 @@ const userSelectEl = document.getElementById("userSelect");
             try{
                 const res = await request("/users/databases", "GET");
                 const rows = Array.isArray(res.databases) ? res.databases : [];
+                const activeDb = getActiveDatabaseName();
                 const normalizedRows = [];
                 const seen = new Set();
                 rows.forEach((entry) => {
@@ -178,23 +188,29 @@ const userSelectEl = document.getElementById("userSelect");
                     });
                 });
                 const currentDb = String(res.current || "").trim().toLowerCase();
+                const visibleRows = isMappedDbScopedView()
+                    ? normalizedRows.filter((entry) => entry.name === activeDb)
+                    : normalizedRows;
                 databaseSelectEl.innerHTML = `<option value="">Select database</option>`;
-                normalizedRows.forEach((entry) => {
+                visibleRows.forEach((entry) => {
                     const opt = document.createElement("option");
                     opt.value = entry.name;
                     opt.textContent = entry.label;
                     databaseSelectEl.appendChild(opt);
                 });
-                if(normalizedRows.some((x) => x.name === "inventory")){
+                if(isMappedDbScopedView()){
+                    defaultDatabaseName = activeDb || currentDb || defaultDatabaseName;
+                }else if(visibleRows.some((x) => x.name === "inventory")){
                     defaultDatabaseName = "inventory";
                 }else if(currentDb){
                     defaultDatabaseName = currentDb;
-                }else if(normalizedRows.length){
-                    defaultDatabaseName = normalizedRows[0].name;
+                }else if(visibleRows.length){
+                    defaultDatabaseName = visibleRows[0].name;
                 }
                 if(defaultDatabaseName){
                     databaseSelectEl.value = defaultDatabaseName;
                 }
+                databaseSelectEl.disabled = isMappedDbScopedView();
             }catch(err){
                 alert(err.message || "Failed to load databases");
             }
@@ -226,7 +242,9 @@ const userSelectEl = document.getElementById("userSelect");
                     normalizeDatabaseName(res.mapped_database_name) ||
                     normalizeDatabaseName(res.database_name) ||
                     getSelectedUserOptionLinkedDb();
-                if(preferredDb){
+                const preferredDbExists = preferredDb
+                    && Array.from(databaseSelectEl.options).some((opt) => normalizeDatabaseName(opt.value) === preferredDb);
+                if(preferredDbExists){
                     databaseSelectEl.value = preferredDb;
                 }else if(defaultDatabaseName){
                     databaseSelectEl.value = defaultDatabaseName;
