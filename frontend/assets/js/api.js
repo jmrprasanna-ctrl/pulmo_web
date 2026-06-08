@@ -37,6 +37,7 @@ function resolveBaseUrl(){
 
 const BASE_URL = resolveBaseUrl();
 window.BASE_URL = BASE_URL;
+const DEFAULT_SYSTEM_TITLE_BRAND = "AXIS CMS SYSTEM";
 const GLOBAL_FOOTER_TEXT = "Copyright \u00A9 2025 Powered by CRONIT SOLLUTIONS, All Right Received.";
 const UI_SETTINGS_CACHE_KEY = "publicUiSettingsCache";
 const USER_UI_SETTINGS_CACHE_KEY = "userUiSettingsCache";
@@ -711,7 +712,44 @@ function darkenHex(hex, amount){
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
+function applyDocumentTitleBrand(brandName){
+    const nextBrand = String(brandName || "").trim() || DEFAULT_SYSTEM_TITLE_BRAND;
+    if(!document || !document.title) return;
+    const currentTitle = String(document.title || "").trim();
+    if(!currentTitle){
+        document.title = nextBrand;
+        return;
+    }
+    const knownBrandPattern = /pulmo technologies|axis cms system/ig;
+    if(knownBrandPattern.test(currentTitle)){
+        const replacedTitle = currentTitle.replace(knownBrandPattern, nextBrand)
+            .replace(new RegExp(`(\\s*[|\\-]\\s*${nextBrand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}){2,}`, "i"), ` - ${nextBrand}`);
+        document.title = replacedTitle;
+        return;
+    }
+    const separators = [" - ", " | "];
+    let baseTitle = currentTitle;
+    for(const separator of separators){
+        const idx = currentTitle.lastIndexOf(separator);
+        if(idx > 0){
+            baseTitle = currentTitle.slice(0, idx).trim();
+            break;
+        }
+    }
+    const normalizedBase = String(baseTitle || "").trim();
+    if(normalizedBase && normalizedBase.toLowerCase() !== nextBrand.toLowerCase() && currentTitle !== normalizedBase){
+        document.title = `${normalizedBase} - ${nextBrand}`;
+        return;
+    }
+    if(normalizedBase.toLowerCase() === nextBrand.toLowerCase()){
+        document.title = nextBrand;
+        return;
+    }
+    document.title = `${normalizedBase} - ${nextBrand}`;
+}
+
 function applyUiSettingsToPage(settings){
+    applyDocumentTitleBrand(DEFAULT_SYSTEM_TITLE_BRAND);
     if(!settings) return;
     if(settings.primary_color){
         const primary = normalizeHexColor(settings.primary_color, "#0f6abf");
@@ -749,9 +787,7 @@ function applyUiSettingsToPage(settings){
         document.querySelectorAll(".sidebar .logo span").forEach((el) => {
             el.textContent = normalizedAppName;
         });
-        if(document.title && !document.title.toLowerCase().includes(normalizedAppName.toLowerCase())){
-            document.title = `${document.title} | ${normalizedAppName}`;
-        }
+        applyDocumentTitleBrand(DEFAULT_SYSTEM_TITLE_BRAND);
     }
     if(settings.logo_url){
         const apiOrigin = BASE_URL.replace(/\/api$/,"");
@@ -838,6 +874,7 @@ window.cacheUserUiSettings = cacheUserUiSettings;
 })();
 
 function applyMappedBranding(){
+    applyDocumentTitleBrand(DEFAULT_SYSTEM_TITLE_BRAND);
     const mappedCompanyName = String(localStorage.getItem(MAPPED_COMPANY_NAME_KEY) || "").trim();
     if(mappedCompanyName){
         document.querySelectorAll(".sidebar .logo span").forEach((el) => {
@@ -859,7 +896,7 @@ function applyMappedBranding(){
 function normalizeAppName(appName){
     const compact = String(appName || "").trim().toLowerCase().replace(/[_\s]+/g, " ");
     if(compact.includes("ulmotech") || compact.includes("pulmotech") || compact.includes("inhouse")){
-        return "PULMO TECHNOLOGIES";
+        return "AXIS CMS SYSTEM";
     }
     return String(appName).replace(/_/g, " ").toUpperCase();
 }
