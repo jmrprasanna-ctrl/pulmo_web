@@ -379,6 +379,8 @@ async function canRequesterAccessProfileUser(req, targetUserId) {
   if (!requesterId || !Number.isFinite(targetUserId) || targetUserId <= 0) return false;
   const requesterIsSuper = await isRequesterSuperAdmin(req);
   if (requesterIsSuper) return true;
+  const requesterRole = String(req?.user?.role || "").trim().toLowerCase();
+  if (requesterRole === "admin" || requesterRole === "manager") return true;
   return requesterId === Number(targetUserId);
 }
 
@@ -668,9 +670,11 @@ exports.getUserProfiles = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
     const requesterIsSuper = await isRequesterSuperAdmin(req);
+    const requesterRole = String(req?.user?.role || "").trim().toLowerCase();
+    const canListAllProfiles = requesterIsSuper || requesterRole === "admin" || requesterRole === "manager";
 
     let filteredUsers = [];
-    if (requesterIsSuper) {
+    if (canListAllProfiles) {
       const users = await User.findAll({
         attributes: ["id", "username", "department", "telephone", "email", "role", "is_super_user"],
         order: [["id", "DESC"]],
@@ -679,9 +683,14 @@ exports.getUserProfiles = async (req, res) => {
         ? users.filter((u) => !isTargetProtectedSuperAdmin(u, requesterId, requesterIsSuper))
         : [];
     } else {
-      const me = await User.findByPk(requesterId, {
+      let me = await User.findByPk(requesterId, {
         attributes: ["id", "username", "department", "telephone", "email", "role", "is_super_user"],
       });
+      if (!me && isDirectoryScopedAuth(req)) {
+        me = await findDirectoryScopedRequesterUser(req, {
+          attributes: ["id", "username", "department", "telephone", "email", "role", "is_super_user"],
+        });
+      }
       filteredUsers = me ? [me] : [];
     }
 
