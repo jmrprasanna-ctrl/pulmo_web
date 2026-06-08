@@ -3,6 +3,15 @@ function getUserId(){
             return params.get("id");
         }
 
+        function getComparableUserId(targetUserId){
+            const raw = String(targetUserId || "").trim();
+            const directorySelfMatch = /^directory-self:(\d+)$/i.exec(raw);
+            if(directorySelfMatch){
+                return String(directorySelfMatch[1] || "").trim();
+            }
+            return raw;
+        }
+
         const USER_DEPARTMENTS = new Set(["Manager", "IT", "Finance", "Admin", "Cordinater", "Technician"]);
 
         function ensureDepartmentOption(value){
@@ -21,7 +30,7 @@ function getUserId(){
 
         function isCurrentLoggedInUser(targetUserId){
             const currentUserId = String(localStorage.getItem("userId") || "").trim();
-            const targetId = String(targetUserId || "").trim();
+            const targetId = getComparableUserId(targetUserId);
             return !!currentUserId && !!targetId && currentUserId === targetId;
         }
 
@@ -33,7 +42,7 @@ function getUserId(){
                 return;
             }
             try{
-                const user = await request(`/users/${id}`,"GET");
+                const user = await request(`/users/${encodeURIComponent(id)}`,"GET");
                 document.getElementById('username').value = user.username || "";
                 document.getElementById('company').value = user.company || "";
                 document.getElementById('department').value = ensureDepartmentOption(user.department) || "";
@@ -87,7 +96,7 @@ function getUserId(){
                     payload.password = password;
                 }
                 try{
-                    await request(`/users/${id}`,"PUT",payload);
+                    await request(`/users/${encodeURIComponent(id)}`,"PUT",payload);
                     showMessageBox("User updated successfully!");
                     window.location.href = "user-list.html";
                 }catch(err){
@@ -118,7 +127,7 @@ function getUserId(){
                         }
                         if(!confirm("Delete this user?")) return;
                         try{
-                            await request(`/users/${id}`,"DELETE");
+                            await request(`/users/${encodeURIComponent(id)}`,"DELETE");
                             showMessageBox("User deleted");
                             window.location.href = "user-list.html";
                         }catch(err){

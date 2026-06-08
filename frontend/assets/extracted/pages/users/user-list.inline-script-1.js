@@ -43,10 +43,14 @@ function canShowAdminTool(path){
                 const tbody = document.getElementById('user-table-body');
                 tbody.innerHTML = '';
                 users.forEach(u => {
+                    const userRef = encodeURIComponent(String(u.user_ref || u.id || "").trim());
+                    const displayId = typeof u.display_id !== "undefined" && u.display_id !== null && String(u.display_id).trim() !== ""
+                        ? u.display_id
+                        : u.id;
                     const row = document.createElement('tr');
                     row.classList.add("user-row-clickable");
                     row.innerHTML = `
-                        <td>${u.id}</td>
+                        <td>${displayId}</td>
                         <td>${u.username}</td>
                         <td>${u.company || ""}</td>
                         <td>${u.department || ""}</td>
@@ -57,7 +61,7 @@ function canShowAdminTool(path){
                     row.addEventListener("click", (event) => {
                         const target = event.target;
                         if(target && target.closest("a, button, input, select, textarea")) return;
-                        window.location.href = `edit-user.html?id=${u.id}`;
+                        window.location.href = `edit-user.html?id=${userRef}`;
                     });
                     tbody.appendChild(row);
                 });

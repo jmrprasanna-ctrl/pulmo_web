@@ -66,6 +66,79 @@ function runRequestUserDatabase(req, task) {
   return db.withDatabase(getRequestDatabaseName(req), task);
 }
 
+function isDirectoryScopedAuth(req) {
+  return String(req?.user?.auth_scope || req?.user?.authScope || "").trim().toLowerCase() === "directory";
+}
+
+function normalizeIdentityValue(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function toPlainUser(userLike = {}) {
+  return userLike && typeof userLike.toJSON === "function"
+    ? userLike.toJSON()
+    : { ...(userLike || {}) };
+}
+
+function toUserResponse(userLike, databaseName, extra = {}) {
+  return {
+    ...toPlainUser(userLike),
+    database_name: databaseName,
+    ...extra,
+  };
+}
+
+function usersRepresentSamePerson(left, right) {
+  const leftEmail = normalizeIdentityValue(left?.email);
+  const rightEmail = normalizeIdentityValue(right?.email);
+  if (leftEmail && rightEmail && leftEmail === rightEmail) {
+    return true;
+  }
+
+  const leftUsername = normalizeIdentityValue(left?.username);
+  const rightUsername = normalizeIdentityValue(right?.username);
+  return !!leftUsername && !!rightUsername && leftUsername === rightUsername;
+}
+
+function parseUserReference(value) {
+  const raw = String(value || "").trim();
+  const directorySelfMatch = /^directory-self:(\d+)$/i.exec(raw);
+  if (directorySelfMatch) {
+    return {
+      user_id: Number(directorySelfMatch[1] || 0),
+      is_directory_self: true,
+      raw,
+    };
+  }
+
+  const numericId = Number(raw || 0);
+  return {
+    user_id: Number.isFinite(numericId) && numericId > 0 ? numericId : 0,
+    is_directory_self: false,
+    raw,
+  };
+}
+
+async function findUserByIdInDatabase(databaseName, userId, options = {}) {
+  const normalizedDb = normalizeDatabaseName(databaseName);
+  const normalizedUserId = Number(userId || 0);
+  if (!normalizedDb || !Number.isFinite(normalizedUserId) || normalizedUserId <= 0) {
+    return null;
+  }
+
+  return db.withDatabase(normalizedDb, async () => {
+    await ensureUserSuperColumn();
+    return User.findByPk(normalizedUserId, options);
+  });
+}
+
+async function findDirectoryScopedRequesterUser(req, options = {}) {
+  if (!isDirectoryScopedAuth(req)) return null;
+  const requesterId = getRequesterId(req);
+  if (!requesterId) return null;
+  return findUserByIdInDatabase(USER_DIRECTORY_DB, requesterId, options);
+}
+
 async function findDepartmentTemplateUser(department, transaction) {
   const tokenCandidates = Array.isArray(DEPARTMENT_ACCESS_TEMPLATE_TOKENS[department])
     ? DEPARTMENT_ACCESS_TEMPLATE_TOKENS[department]
@@ -286,9 +359,12 @@ async function isRequesterSuperAdmin(req) {
   await ensureUserSuperColumn();
   const role = String(req?.user?.role || "").toLowerCase();
   if (role !== "admin") return false;
-  const requesterId = Number(req?.user?.id || req?.user?.userId || 0);
-  if (!Number.isFinite(requesterId) || requesterId <= 0) return false;
-  const me = await User.findByPk(requesterId, { attributes: ["id", "role", "is_super_user"] });
+  const requesterId = getRequesterId(req);
+  if (!requesterId) return false;
+  let me = await User.findByPk(requesterId, { attributes: ["id", "role", "is_super_user"] });
+  if (!me && isDirectoryScopedAuth(req)) {
+    me = await findDirectoryScopedRequesterUser(req, { attributes: ["id", "role", "is_super_user"] });
+  }
   return Boolean(me && String(me.role || "").toLowerCase() === "admin" && me.is_super_user);
 }
 
@@ -345,10 +421,26 @@ exports.getUsers = async (req, res) => {
         if (!isTargetProtectedSuperAdmin(u, requesterId, requesterIsSuper)) return true;
         return false;
       });
-      res.json(filtered.map((user) => ({
-        ...(user && typeof user.toJSON === "function" ? user.toJSON() : user),
-        database_name: activeDatabaseName,
-      })));
+
+      const responseUsers = filtered.map((user) => toUserResponse(user, activeDatabaseName));
+      if (activeDatabaseName !== USER_DIRECTORY_DB) {
+        const requesterDirectoryUser = await findDirectoryScopedRequesterUser(req, {
+          attributes: ["id", "username", "company", "department", "telephone", "email", "role", "is_super_user", "createdAt"],
+        });
+        if (
+          requesterDirectoryUser
+          && !isTargetProtectedSuperAdmin(requesterDirectoryUser, requesterId, requesterIsSuper)
+          && !responseUsers.some((user) => usersRepresentSamePerson(user, requesterDirectoryUser))
+        ) {
+          responseUsers.unshift(toUserResponse(requesterDirectoryUser, activeDatabaseName, {
+            user_ref: `directory-self:${Number(requesterDirectoryUser.id || 0)}`,
+            display_id: Number(requesterDirectoryUser.id || 0) || "",
+            is_directory_mapped_user: true,
+          }));
+        }
+      }
+
+      res.json(responseUsers);
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "Server error" });
@@ -362,21 +454,38 @@ exports.getUserById = async (req, res) => {
   return runRequestUserDatabase(req, async () => {
     try {
       await ensureUserSuperColumn();
-      const user = await User.findByPk(id, {
-        attributes: ["id", "username", "company", "department", "telephone", "email", "role", "is_super_user"],
-      });
+      const requesterId = getRequesterId(req);
+      const targetRef = parseUserReference(id);
+      const targetUserId = targetRef.user_id;
+      let user = null;
+      if (!targetRef.is_directory_self) {
+        user = await User.findByPk(targetUserId, {
+          attributes: ["id", "username", "company", "department", "telephone", "email", "role", "is_super_user"],
+        });
+      }
+      let usedDirectoryFallback = false;
+      if (
+        !user
+        && activeDatabaseName !== USER_DIRECTORY_DB
+        && isDirectoryScopedAuth(req)
+        && requesterId > 0
+        && requesterId === targetUserId
+      ) {
+        user = await findDirectoryScopedRequesterUser(req, {
+          attributes: ["id", "username", "company", "department", "telephone", "email", "role", "is_super_user"],
+        });
+        usedDirectoryFallback = Boolean(user);
+      }
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      const requesterId = Number(req?.user?.id || req?.user?.userId || 0);
       const requesterIsSuper = await isRequesterSuperAdmin(req);
       if (isTargetProtectedSuperAdmin(user, requesterId, requesterIsSuper)) {
         return res.status(403).json({ message: "Forbidden: Super admin user is protected." });
       }
-      res.json({
-        ...(user && typeof user.toJSON === "function" ? user.toJSON() : user),
-        database_name: activeDatabaseName,
-      });
+      res.json(toUserResponse(user, activeDatabaseName, usedDirectoryFallback ? {
+        is_directory_mapped_user: true,
+      } : {}));
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "Server error" });
@@ -465,18 +574,38 @@ exports.updateUser = async (req, res) => {
   return runRequestUserDatabase(req, async () => {
     try {
       await ensureUserSuperColumn();
-      const user = await User.findByPk(id);
+      const requesterId = getRequesterId(req);
+      const targetRef = parseUserReference(id);
+      const targetUserId = targetRef.user_id;
+      let storageDatabaseName = activeDatabaseName;
+      let user = null;
+      if (!targetRef.is_directory_self) {
+        user = await User.findByPk(targetUserId);
+      }
+      if (
+        !user
+        && activeDatabaseName !== USER_DIRECTORY_DB
+        && isDirectoryScopedAuth(req)
+        && requesterId > 0
+        && requesterId === targetUserId
+      ) {
+        user = await findDirectoryScopedRequesterUser(req);
+        if (user) {
+          storageDatabaseName = USER_DIRECTORY_DB;
+        }
+      }
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      const requesterId = Number(req?.user?.id || req?.user?.userId || 0);
       const requesterIsSuper = await isRequesterSuperAdmin(req);
       if (isTargetProtectedSuperAdmin(user, requesterId, requesterIsSuper)) {
         return res.status(403).json({ message: "Forbidden: Super admin user is protected." });
       }
 
       if (email && email !== user.email) {
-        const existing = await User.findOne({ where: { email } });
+        const existing = await db.withDatabase(storageDatabaseName, async () => {
+          return User.findOne({ where: { email } });
+        });
         if (existing && existing.id !== user.id) {
           return res.status(400).json({ message: "Email already in use" });
         }
@@ -502,14 +631,16 @@ exports.updateUser = async (req, res) => {
 
       await user.save();
 
-      const persisted = await User.findByPk(user.id, {
-        attributes: ["id", "username", "company", "department", "telephone", "email", "role"],
+      const persisted = await db.withDatabase(storageDatabaseName, async () => {
+        return User.findByPk(user.id, {
+          attributes: ["id", "username", "company", "department", "telephone", "email", "role"],
+        });
       });
       if (!persisted) {
         return res.status(500).json({ message: "User was updated but could not be reloaded." });
       }
 
-      res.json({
+      res.json(toUserResponse({
         id: persisted.id,
         username: persisted.username,
         company: persisted.company,
@@ -517,8 +648,9 @@ exports.updateUser = async (req, res) => {
         telephone: persisted.telephone,
         email: persisted.email,
         role: persisted.role,
-        database_name: activeDatabaseName,
-      });
+      }, activeDatabaseName, storageDatabaseName !== activeDatabaseName ? {
+        is_directory_mapped_user: true,
+      } : {}));
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "Server error" });
@@ -768,10 +900,14 @@ exports.getUserProfilePicture = async (req, res) => {
 
 exports.deleteUser = async (req, res) => {
   const { id } = req.params;
-  const userId = Number(id);
+  const targetRef = parseUserReference(id);
+  const userId = Number(targetRef.user_id || 0);
 
   if (!Number.isFinite(userId) || userId <= 0) {
     return res.status(400).json({ message: "Invalid user id" });
+  }
+  if (targetRef.is_directory_self) {
+    return res.status(403).json({ message: "Directory-mapped user records cannot be deleted from this database view." });
   }
 
   return runRequestUserDatabase(req, async () => {
