@@ -21,6 +21,29 @@ let savedCompanyCodes = [];
 let companyCodeDropdownOpen = false;
 let companyCodeDropdownForceAll = false;
 
+function clearStoredLoginSessionState(){
+    [
+        "token",
+        "role",
+        "userId",
+        "userEmail",
+        "userName",
+        "selectedDatabaseName",
+        "userAllowedPathsRuntime",
+        "userAllowedActionsRuntime",
+        "userAccessConfigEnabledRuntime",
+        "mappedCompanyName",
+        "mappedCompanyCode",
+        "mappedCompanyEmail",
+        "mappedCompanyLogoUrl",
+        "lastActivityAt"
+    ].forEach((key) => {
+        try{
+            localStorage.removeItem(key);
+        }catch(_err){}
+    });
+}
+
 function getLoginInputElement(){
     return document.getElementById("email")
         || document.getElementById("User")
@@ -373,6 +396,7 @@ async function login(){
             throw new Error("Please verify company code.");
         }
         const res = await request("/auth/login","POST",{company_code: companyCode, email, password});
+        clearStoredLoginSessionState();
         rememberSavedCompanyCode(companyCode);
         localStorage.setItem("token",res.token);
         localStorage.setItem("role",res.user.role);

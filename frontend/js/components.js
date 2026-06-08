@@ -72,7 +72,22 @@ window.toggleSidebar = toggleSidebar;
 
                 
 const logout = () => {
-    localStorage.removeItem('token');
+    [
+        'token',
+        'role',
+        'userId',
+        'userEmail',
+        'userName',
+        'selectedDatabaseName',
+        'userAllowedPathsRuntime',
+        'userAllowedActionsRuntime',
+        'userAccessConfigEnabledRuntime',
+        'mappedCompanyName',
+        'mappedCompanyCode',
+        'mappedCompanyEmail',
+        'mappedCompanyLogoUrl',
+        'lastActivityAt'
+    ].forEach((key) => localStorage.removeItem(key));
     window.location.href = 'login.html';
 };
 

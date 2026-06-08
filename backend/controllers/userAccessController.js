@@ -3299,7 +3299,11 @@ exports.getMyAccess = async (req, res) => {
   const hasStoredConfig = Boolean(row) || parsedPages.length > 0 || parsedActions.length > 0;
   let allowedActions = parsedActions;
   let allowedPages = parsedPages;
-  if (!hasStoredConfig) {
+  const canUseEmergencyRecovery =
+    !hasStoredConfig &&
+    role === "admin" &&
+    userDatabase === INVENTORY_DB_NAME;
+  if (canUseEmergencyRecovery) {
     const emergency = getEmergencyRecoveryAccess(role);
     if (emergency.pages.length > 0 || emergency.actions.length > 0) {
       allowedActions = normalizeActions(emergency.actions);
