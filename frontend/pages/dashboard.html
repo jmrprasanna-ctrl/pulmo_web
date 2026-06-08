@@ -11,6 +11,28 @@
 <title>Dashboard - PULMO TECHNOLOGIES</title>
 <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/dashboard.css?v=20260608p07">
+<script>
+    (function () {
+        try {
+            var mappedCompanyName = String(localStorage.getItem("mappedCompanyName") || "").trim();
+            var mappedCompanyLogoUrl = String(localStorage.getItem("mappedCompanyLogoUrl") || "").trim();
+            if (!mappedCompanyName && !mappedCompanyLogoUrl) {
+                return;
+            }
+            window.__PRELOADED_MAPPED_BRANDING__ = {
+                name: mappedCompanyName,
+                logoUrl: mappedCompanyLogoUrl
+            };
+            document.documentElement.setAttribute("data-preload-mapped-branding", "1");
+        } catch (_err) {
+        }
+    })();
+</script>
+<style>
+    html[data-preload-mapped-branding="1"] .sidebar .logo {
+        visibility: hidden;
+    }
+</style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -33,6 +55,37 @@
         <li><a href="analytics/sales-chart.html">Analytics</a></li>
     </ul>
 </div>
+<script>
+    (function () {
+        try {
+            var branding = window.__PRELOADED_MAPPED_BRANDING__ || null;
+            if (!branding) {
+                document.documentElement.removeAttribute("data-preload-mapped-branding");
+                return;
+            }
+            var apiBaseUrl = String(localStorage.getItem("apiBaseUrl") || "").trim();
+            var apiOrigin = apiBaseUrl
+                ? apiBaseUrl.replace(/\/api\/?$/i, "").replace(/\/+$/, "")
+                : window.location.origin.replace(/\/+$/, "");
+            if (branding.name) {
+                document.querySelectorAll(".sidebar .logo span").forEach(function (el) {
+                    el.textContent = branding.name;
+                });
+            }
+            if (branding.logoUrl) {
+                var resolvedLogoUrl = /^https?:\/\//i.test(branding.logoUrl)
+                    ? branding.logoUrl
+                    : apiOrigin + (branding.logoUrl.charAt(0) === "/" ? "" : "/") + branding.logoUrl;
+                document.querySelectorAll(".sidebar .logo img").forEach(function (img) {
+                    img.src = resolvedLogoUrl;
+                });
+            }
+        } catch (_err) {
+        } finally {
+            document.documentElement.removeAttribute("data-preload-mapped-branding");
+        }
+    })();
+</script>
 
                      
 <div class="main-content">
