@@ -856,6 +856,22 @@ function normalizeNameCompare(value) {
   return String(value || "").trim().replace(/\s+/g, " ").toUpperCase();
 }
 
+function normalizeIdentityValue(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function usersRepresentSamePerson(left, right) {
+  const leftEmail = normalizeIdentityValue(left?.email);
+  const rightEmail = normalizeIdentityValue(right?.email);
+  if (leftEmail && rightEmail && leftEmail === rightEmail) {
+    return true;
+  }
+
+  const leftUsername = normalizeIdentityValue(left?.username);
+  const rightUsername = normalizeIdentityValue(right?.username);
+  return !!leftUsername && !!rightUsername && leftUsername === rightUsername;
+}
+
 function parseUserReference(raw) {
   const value = String(raw || "").trim();
   if (!value) return null;
@@ -1535,12 +1551,15 @@ exports.getAccessUsers = async (_req, res) => {
     }
 
     const includeDemo = String(_req?.query?.include_demo || "").trim().toLowerCase() === "true";
-    const sourceDbs = includeDemo
-      ? [INVENTORY_DB_NAME, DEMO_DB_NAME]
-      : [INVENTORY_DB_NAME];
-
     const requesterId = Number(_req?.user?.id || _req?.user?.userId || 0);
     const requesterIsSuper = await isRequesterSuperAdmin(_req);
+    const requesterDatabase = normalizeUserDatabase(
+      _req?.databaseName || _req?.user?.database_name || _req?.headers?.["x-database-name"] || INVENTORY_DB_NAME
+    );
+    const isMappedDbScopedView = requesterDatabase !== INVENTORY_DB_NAME;
+    const sourceDbs = isMappedDbScopedView
+      ? [requesterDatabase]
+      : (includeDemo ? [INVENTORY_DB_NAME, DEMO_DB_NAME] : [INVENTORY_DB_NAME]);
 
     for (const databaseName of sourceDbs) {
       let users = [];
@@ -1580,6 +1599,29 @@ exports.getAccessUsers = async (_req, res) => {
           label: `${plain.username || plain.email || `User ${plain.id}`} [${role}] (${linkedDb})`,
         });
       });
+    }
+
+    if (isMappedDbScopedView && requesterId > 0) {
+      const requesterDirectoryUser = await getUserFromDatabase(INVENTORY_DB_NAME, requesterId).catch(() => null);
+      const requesterPlain = requesterDirectoryUser && requesterDirectoryUser.toJSON
+        ? requesterDirectoryUser.toJSON()
+        : requesterDirectoryUser;
+      if (
+        requesterPlain
+        && !isProtectedSuperAdminTarget(requesterPlain, requesterId, requesterIsSuper)
+        && !rows.some((row) => usersRepresentSamePerson(row, requesterPlain))
+      ) {
+        rows.unshift({
+          selection_key: `${INVENTORY_DB_NAME}:${Number(requesterPlain.id || 0)}`,
+          id: Number(requesterPlain.id || 0),
+          username: requesterPlain.username || "",
+          email: requesterPlain.email || "",
+          role: String(requesterPlain.role || "").toLowerCase() || "admin",
+          user_database: INVENTORY_DB_NAME,
+          database_name: requesterDatabase,
+          label: `${requesterPlain.username || requesterPlain.email || `User ${requesterPlain.id}`} [${String(requesterPlain.role || "").toLowerCase() || "admin"}] (${requesterDatabase})`,
+        });
+      }
     }
 
     rows.sort((a, b) => {
