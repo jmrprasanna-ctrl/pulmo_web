@@ -764,11 +764,16 @@ exports.login = async (req, res) => {
       }
     }
 
+    const userDatabase = authScope === "directory" ? INVENTORY_DB_NAME : databaseName;
+    const userRef = `${userDatabase}:${Number(user.id || 0)}`;
+
     const tokenPayload = {
       id: Number(user.id || 0),
       role: user.role,
       database_name: databaseName,
       auth_scope: authScope,
+      user_database: userDatabase,
+      user_ref: userRef,
     };
     if (directoryUserId) {
       tokenPayload.directory_user_id = directoryUserId;
@@ -794,6 +799,9 @@ exports.login = async (req, res) => {
         role: user.role,
         company: user.company || "",
         database_name: databaseName,
+        user_database: userDatabase,
+        user_ref: userRef,
+        auth_scope: authScope,
         mapped_company_name: mappedCompanyName,
         mapped_company_code: mappedCompanyCode,
         mapped_company_email: mappedCompanyEmail,

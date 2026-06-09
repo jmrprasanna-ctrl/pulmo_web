@@ -61,6 +61,9 @@ const MAPPED_COMPANY_NAME_KEY = "mappedCompanyName";
 const MAPPED_COMPANY_LOGO_URL_KEY = "mappedCompanyLogoUrl";
 const MAPPED_COMPANY_CODE_KEY = "mappedCompanyCode";
 const MAPPED_COMPANY_EMAIL_KEY = "mappedCompanyEmail";
+const USER_DATABASE_KEY = "userDatabase";
+const USER_REF_KEY = "userRef";
+const AUTH_SCOPE_KEY = "authScope";
 window.__userAccessPermissionsLoaded = false;
 window.__waitForUserAccessPermissions = function __waitForUserAccessPermissions(){
     if(window.__userAccessPermissionsLoaded){
@@ -175,6 +178,9 @@ function logoutForInactivity(){
     localStorage.removeItem("userName");
     localStorage.removeItem("profileName");
     localStorage.removeItem("selectedDatabaseName");
+    localStorage.removeItem(USER_DATABASE_KEY);
+    localStorage.removeItem(USER_REF_KEY);
+    localStorage.removeItem(AUTH_SCOPE_KEY);
     localStorage.removeItem(LAST_ACTIVITY_KEY);
     localStorage.removeItem(USER_ALLOWED_CACHE_KEY);
     localStorage.removeItem(USER_ALLOWED_ACTIONS_CACHE_KEY);
@@ -1073,6 +1079,21 @@ async function loadUserAccessPermissions(){
         }else{
                                                                                                        
         }
+        if(data.user_database){
+            localStorage.setItem(USER_DATABASE_KEY, String(data.user_database).trim().toLowerCase());
+        }else{
+            localStorage.removeItem(USER_DATABASE_KEY);
+        }
+        if(data.user_ref){
+            localStorage.setItem(USER_REF_KEY, String(data.user_ref).trim().toLowerCase());
+        }else{
+            localStorage.removeItem(USER_REF_KEY);
+        }
+        if(data.auth_scope){
+            localStorage.setItem(AUTH_SCOPE_KEY, String(data.auth_scope).trim().toLowerCase());
+        }else{
+            localStorage.removeItem(AUTH_SCOPE_KEY);
+        }
         if(data.mapped_company_name){
             localStorage.setItem(MAPPED_COMPANY_NAME_KEY, String(data.mapped_company_name).trim());
         }else{
@@ -1337,6 +1358,21 @@ async function login(){
             localStorage.setItem("selectedDatabaseName", String(res.user.database_name).trim().toLowerCase());
         }else{
             localStorage.removeItem("selectedDatabaseName");
+        }
+        if(res.user && res.user.user_database){
+            localStorage.setItem(USER_DATABASE_KEY, String(res.user.user_database).trim().toLowerCase());
+        }else{
+            localStorage.removeItem(USER_DATABASE_KEY);
+        }
+        if(res.user && res.user.user_ref){
+            localStorage.setItem(USER_REF_KEY, String(res.user.user_ref).trim().toLowerCase());
+        }else{
+            localStorage.removeItem(USER_REF_KEY);
+        }
+        if(res.user && res.user.auth_scope){
+            localStorage.setItem(AUTH_SCOPE_KEY, String(res.user.auth_scope).trim().toLowerCase());
+        }else{
+            localStorage.removeItem(AUTH_SCOPE_KEY);
         }
         if(res.user && res.user.mapped_company_name){
             localStorage.setItem(MAPPED_COMPANY_NAME_KEY, String(res.user.mapped_company_name).trim());

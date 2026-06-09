@@ -5,6 +5,32 @@ const createMessageCard = document.getElementById("create-message-card");
 const toggleCreateMessageBtn = document.getElementById("toggleCreateMessageBtn");
 let userMap = {};
 
+function normalizeMessageDb(value){
+    return String(value || "").trim().toLowerCase();
+}
+
+function buildMessageUserRef(userDatabase, userId){
+    const dbName = normalizeMessageDb(userDatabase);
+    const id = String(userId || "").trim();
+    if(!dbName || !id) return "";
+    return `${dbName}:${id}`;
+}
+
+function getCurrentMessageUserRef(){
+    const storedRef = String(localStorage.getItem("userRef") || "").trim().toLowerCase();
+    if(storedRef) return storedRef;
+    const storedDb = normalizeMessageDb(localStorage.getItem("userDatabase") || localStorage.getItem("selectedDatabaseName") || "inventory");
+    const storedId = String(localStorage.getItem("userId") || "").trim();
+    return buildMessageUserRef(storedDb || "inventory", storedId);
+}
+
+function getMessageLastSeenKey(){
+    const currentRef = getCurrentMessageUserRef();
+    if(currentRef) return `messagesLastSeen:${currentRef}`;
+    const userId = String(localStorage.getItem("userId") || "").trim();
+    return `messagesLastSeen:${userId || "guest"}`;
+}
+
 function getRole(){
     return (localStorage.getItem("role") || "").toLowerCase();
 }
@@ -94,9 +120,10 @@ async function loadUsers(){
             const userId = localStorage.getItem("userId");
             const userEmail = localStorage.getItem("userEmail");
             const userName = localStorage.getItem("userName");
+            const currentRef = getCurrentMessageUserRef();
             userMap = {};
-            if(userId){
-                userMap[userId] = userName || userEmail || `User ${userId}`;
+            if(currentRef || userId){
+                userMap[currentRef || userId] = userName || userEmail || `User ${userId}`;
             }
             return;
         }
@@ -104,10 +131,19 @@ async function loadUsers(){
         userMap = {};
         toUserSelect.innerHTML = "";
         users.forEach(u=>{
-            userMap[u.id] = u.username || u.email || `User ${u.id}`;
+            const rawUserRef = String(u.user_ref || "").trim();
+            const optionRef = String(
+                ((rawUserRef.includes(":") || /^directory-self:/i.test(rawUserRef)) ? rawUserRef : "")
+                || buildMessageUserRef(u.user_database || u.database_name || localStorage.getItem("selectedDatabaseName") || "inventory", u.id)
+                || rawUserRef
+                || u.id
+            ).trim();
+            const optionName = u.username || u.email || `User ${u.id}`;
+            userMap[optionRef] = optionName;
+            userMap[String(u.id)] = optionName;
             const opt = document.createElement("option");
-            opt.value = u.id;
-            opt.innerText = userMap[u.id];
+            opt.value = optionRef;
+            opt.innerText = optionName;
             toUserSelect.appendChild(opt);
         });
     }catch(err){
@@ -117,40 +153,46 @@ async function loadUsers(){
 
 async function loadMessages(){
     try{
-        const userId = localStorage.getItem("userId");
+        const userId = String(localStorage.getItem("userId") || "").trim();
+        const currentRef = getCurrentMessageUserRef();
         const allMessages = await request("/messages","GET");
         const messages = (Array.isArray(allMessages) ? allMessages : [])
             .filter((m) => {
-                if(!userId) return true;
+                const toRef = String(m?.to_user_ref || "").trim().toLowerCase();
+                const fromRef = String(m?.from_user_ref || "").trim().toLowerCase();
                 const toId = m && m.to_user_id != null ? String(m.to_user_id) : "";
                 const fromId = m && m.from_user_id != null ? String(m.from_user_id) : "";
-                const isBroadcast = m && m.to_user_id == null;
-                return toId === String(userId) || fromId === String(userId) || isBroadcast;
+                const isBroadcast = !toRef && m && m.to_user_id == null;
+                if(!currentRef && !userId) return true;
+                return toRef === currentRef || fromRef === currentRef || toId === userId || fromId === userId || isBroadcast;
             })
             .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
         messageList.innerHTML = "";
         messages.forEach(m=>{
             const div = document.createElement("div");
-            const toName = m.to_name || userMap[m.to_user_id] || (m.to_user_id ? `User ${m.to_user_id}` : "All");
-            const fromName = m.from_name || (m.from_user_id ? `User ${m.from_user_id}` : "System");
+            const toRef = String(m?.to_user_ref || "").trim().toLowerCase();
+            const fromRef = String(m?.from_user_ref || "").trim().toLowerCase();
+            const toName = m.to_name || userMap[toRef] || userMap[String(m.to_user_id || "")] || (m.to_user_id ? `User ${m.to_user_id}` : "All");
+            const fromName = m.from_name || userMap[fromRef] || userMap[String(m.from_user_id || "")] || (m.from_user_id ? `User ${m.from_user_id}` : "System");
             div.className = "message-item";
-            const eligibleForDelete = isAdminOrManager() || (userId && (String(m.to_user_id) === String(userId) || m.to_user_id === null));
+            const eligibleForDelete = isAdminOrManager() || ((currentRef || userId) && (toRef === currentRef || String(m.to_user_id) === userId || m.to_user_id === null));
             const canDelete = canDeleteMessages() && eligibleForDelete;
+            const storageDb = String(m.storage_database_name || "").trim();
             div.innerHTML = `
                 <div class="message-row">
                     <div class="message-title">${m.title || "(No title)"}</div>
                     <div class="message-meta">From: ${fromName} | To: ${toName} | ${new Date(m.createdAt).toLocaleString()}</div>
                     <div class="message-actions">
                         <button class="btn" type="button" onclick="toggleMessageBody(${m.id})">View</button>
-                        ${canDelete ? `<button class="btn btn-danger" type="button" onclick="deleteMessage(${m.id})">Delete</button>` : ""}
+                        ${canDelete ? `<button class="btn btn-danger" type="button" onclick="deleteMessage(${m.id}, '${storageDb.replace(/'/g, "\\'")}')">Delete</button>` : ""}
                     </div>
                 </div>
                 <div id="msg-body-${m.id}" class="message-body">${m.body || ""}</div>
             `;
             messageList.appendChild(div);
         });
-        if(userId){
-            localStorage.setItem(`messagesLastSeen:${userId}`, new Date().toISOString());
+        if(currentRef || userId){
+            localStorage.setItem(getMessageLastSeenKey(), new Date().toISOString());
         }
     }catch(err){
         alert(err.message || "Failed to load messages");
@@ -164,7 +206,7 @@ document.getElementById("messageForm").addEventListener("submit", async (e)=>{
         return;
     }
     const data = {
-        to_user_id: toUserSelect.value,
+        to_user_ref: toUserSelect.value,
         title: document.getElementById("title").value.trim(),
         body: document.getElementById("body").value.trim()
     };
@@ -179,14 +221,15 @@ document.getElementById("messageForm").addEventListener("submit", async (e)=>{
     }
 });
 
-async function deleteMessage(id){
+async function deleteMessage(id, storageDb){
     if(!canDeleteMessages()){
         alert("You don't have permission to delete messages.");
         return;
     }
     if(!confirm("Delete this message?")) return;
     try{
-        await request(`/messages/${id}`,"DELETE");
+        const query = storageDb ? `?storage_db=${encodeURIComponent(storageDb)}` : "";
+        await request(`/messages/${id}${query}`,"DELETE");
         showMessageBox("Message deleted");
         loadMessages();
     }catch(err){

@@ -31,6 +31,9 @@ function clearStoredLoginSessionState(){
         "userId",
         "userEmail",
         "userName",
+        "userDatabase",
+        "userRef",
+        "authScope",
         "selectedDatabaseName",
         "userAllowedPathsRuntime",
         "userAllowedActionsRuntime",
@@ -446,6 +449,21 @@ async function login(){
             localStorage.setItem("selectedDatabaseName", String(res.user.database_name).trim().toLowerCase());
         } else {
             localStorage.removeItem("selectedDatabaseName");
+        }
+        if (res.user && res.user.user_database) {
+            localStorage.setItem("userDatabase", String(res.user.user_database).trim().toLowerCase());
+        } else {
+            localStorage.removeItem("userDatabase");
+        }
+        if (res.user && res.user.user_ref) {
+            localStorage.setItem("userRef", String(res.user.user_ref).trim().toLowerCase());
+        } else {
+            localStorage.removeItem("userRef");
+        }
+        if (res.user && res.user.auth_scope) {
+            localStorage.setItem("authScope", String(res.user.auth_scope).trim().toLowerCase());
+        } else {
+            localStorage.removeItem("authScope");
         }
         localStorage.setItem("userId", res.user.id);
         localStorage.setItem("userEmail", res.user.email || email);

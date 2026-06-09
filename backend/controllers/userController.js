@@ -481,7 +481,9 @@ exports.getUsers = async (req, res) => {
         return false;
       });
 
-      const responseUsers = filtered.map((user) => toUserResponse(user, activeDatabaseName));
+      const responseUsers = filtered.map((user) => toUserResponse(user, activeDatabaseName, {
+        user_database: activeDatabaseName,
+      }));
       if (activeDatabaseName !== USER_DIRECTORY_DB) {
         const requesterDirectoryUser = await findDirectoryScopedRequesterUser(req, {
           attributes: ["id", "username", "company", "department", "telephone", "email", "role", "is_super_user", "createdAt"],
@@ -495,6 +497,7 @@ exports.getUsers = async (req, res) => {
             user_ref: `directory-self:${Number(requesterDirectoryUser.id || 0)}`,
             display_id: Number(requesterDirectoryUser.id || 0) || "",
             is_directory_mapped_user: true,
+            user_database: USER_DIRECTORY_DB,
           }));
         }
       }
