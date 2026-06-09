@@ -36,6 +36,10 @@
     margin-top:12px;
 }
 
+#counterValue{
+    width:min(100%, 320px);
+}
+
 @media (max-width: 900px){
     .form-grid{
         grid-template-columns:1fr;
