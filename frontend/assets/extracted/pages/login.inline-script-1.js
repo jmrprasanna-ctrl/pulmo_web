@@ -11,6 +11,7 @@ const savedCompanyCodeMenu = document.getElementById("savedCompanyCodeMenu");
 const SAVED_COMPANY_CODES_KEY = "axisSavedCompanyCodesV1";
 const LAST_COMPANY_CODE_KEY = "axisLastSelectedCompanyCodeV1";
 const MAX_SAVED_COMPANY_CODES = 10;
+const COMPANY_LOGO_PLACEHOLDER = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
 let verifiedCompany = null;
 let verifiedCompanyCode = "";
 let companyCodeTimer = null;
@@ -262,8 +263,9 @@ function resetCompanyLogoImage(){
         companyLogoPreloader = null;
     }
     companyLogo.hidden = true;
-    companyLogo.removeAttribute("src");
-    companyLogo.alt = "Company Logo";
+    companyLogo.src = COMPANY_LOGO_PLACEHOLDER;
+    companyLogo.alt = "";
+    companyLogo.setAttribute("aria-hidden", "true");
 }
 
 function getCompanyLogoCandidates(company){
@@ -289,9 +291,10 @@ function loadCurrentCompanyLogoCandidate(){
         setCompanyLogoWrapState(true, false);
         return;
     }
-    companyLogo.alt = `${companyLogoDisplayName} Logo`;
     companyLogo.hidden = true;
-    companyLogo.removeAttribute("src");
+    companyLogo.src = COMPANY_LOGO_PLACEHOLDER;
+    companyLogo.alt = "";
+    companyLogo.setAttribute("aria-hidden", "true");
     setCompanyLogoWrapState(false, true);
     const currentLoadToken = companyLogoLoadToken + 1;
     companyLogoLoadToken = currentLoadToken;
@@ -303,7 +306,9 @@ function loadCurrentCompanyLogoCandidate(){
         }
         companyLogoPreloader = null;
         companyLogo.src = nextUrl;
+        companyLogo.alt = `${companyLogoDisplayName} Logo`;
         companyLogo.hidden = false;
+        companyLogo.setAttribute("aria-hidden", "false");
         setCompanyLogoWrapState(false, false);
     };
     preloadImage.onerror = () => {
