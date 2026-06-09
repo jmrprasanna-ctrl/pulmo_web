@@ -291,7 +291,13 @@ function toDashboardMenuHref(canonicalPath){
 
 const DASHBOARD_MENU_ENTRIES = [
     { path: "/dashboard.html", label: "Dashboard" },
-    { path: "/services/service-list.html", label: "Task's" },
+    {
+        path: "/services/service-list.html",
+        label: "Visit",
+        children: [
+            { path: "/services/service-list.html", label: "Task's" }
+        ]
+    },
     {
         path: "/products/product-list.html",
         label: "Administration",
