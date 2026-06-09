@@ -16,8 +16,23 @@ if(!canAccessPendings){
 }
 
 const yearFilter = document.getElementById("yearFilter");
+const pendingTableBody = document.querySelector("#pendingTable tbody");
+const pendingActionHeader = document.getElementById("pendingActionHeader");
+const canDeletePendingInvoices = role === "admin";
 let selectedYear = String(new Date().getFullYear());
 let rowsCache = [];
+const DELETE_ICON_SVG = `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 7h14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        <path d="M9.5 7V5.5h5V7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+        <path d="M7.5 7.5l.8 11a1 1 0 0 0 1 .9h5.4a1 1 0 0 0 1-.9l.8-11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+        <path d="M10 10.5v6M14 10.5v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+    </svg>
+`;
+
+if(pendingActionHeader){
+    pendingActionHeader.style.display = canDeletePendingInvoices ? "" : "none";
+}
 
 function asNumber(v){
     const n = Number(v);
@@ -36,6 +51,10 @@ function normalizeStatus(v){
     return "Pending";
 }
 
+function getPendingTotalAmount(){
+    return rowsCache.reduce((sum, row) => sum + asNumber(row.total_amount), 0);
+}
+
 function initYearFilter(){
     const currentYear = new Date().getFullYear();
     yearFilter.innerHTML = "";
@@ -49,13 +68,12 @@ function initYearFilter(){
 }
 
 function renderTable(){
-    const tbody = document.querySelector("#pendingTable tbody");
-    tbody.innerHTML = "";
+    pendingTableBody.innerHTML = "";
 
     if(!rowsCache.length){
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td colspan="8">No pending invoices found.</td>`;
-        tbody.appendChild(tr);
+        tr.innerHTML = `<td colspan="${canDeletePendingInvoices ? 9 : 8}">No pending invoices found.</td>`;
+        pendingTableBody.appendChild(tr);
         return;
     }
 
@@ -70,8 +88,21 @@ function renderTable(){
             <td>${row.payment_method || "Cash"}</td>
             <td>${row.cheque_no || ""}</td>
             <td><span class="status-badge">${normalizeStatus(row.payment_status)}</span></td>
+            ${canDeletePendingInvoices ? `<td class="pending-action-cell"></td>` : ""}
         `;
-        tbody.appendChild(tr);
+        if(canDeletePendingInvoices){
+            const actionCell = tr.querySelector(".pending-action-cell");
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "icon-btn btn-danger pending-delete-btn";
+            button.setAttribute("aria-label", "Delete invoice");
+            button.setAttribute("title", "Delete invoice");
+            button.dataset.invoiceId = String(Number(row.id) || 0);
+            button.dataset.invoiceNo = String(row.invoice_no || "");
+            button.innerHTML = DELETE_ICON_SVG;
+            actionCell.appendChild(button);
+        }
+        pendingTableBody.appendChild(tr);
     });
 }
 
@@ -89,6 +120,30 @@ async function loadPendings(){
         renderTable();
     }catch(err){
         alert(err.message || "Failed to load pending invoices.");
+    }
+}
+
+async function deletePendingInvoice(invoiceId, invoiceNo){
+    const normalizedId = Number.parseInt(String(invoiceId || ""), 10);
+    if(!Number.isInteger(normalizedId) || normalizedId <= 0){
+        alert("Invoice id is invalid.");
+        return;
+    }
+
+    const label = String(invoiceNo || "").trim();
+    const confirmMessage = label
+        ? `Delete invoice ${label} and related quotation data from the system?`
+        : "Delete this invoice and related quotation data from the system?";
+    if(!confirm(confirmMessage)) return;
+
+    try{
+        await request(`/invoices/${normalizedId}`, "DELETE");
+        rowsCache = rowsCache.filter((row) => Number(row.id) !== normalizedId);
+        renderSummary(getPendingTotalAmount());
+        renderTable();
+        alert("Invoice deleted.");
+    }catch(err){
+        alert(err.message || "Failed to delete invoice.");
     }
 }
 
@@ -136,6 +191,12 @@ function exportPendingsPDF(){
 
     doc.save(`Pending_Invoices_${selectedYear}.pdf`);
 }
+
+pendingTableBody.addEventListener("click", (event) => {
+    const button = event.target.closest(".pending-delete-btn");
+    if(!button) return;
+    deletePendingInvoice(button.dataset.invoiceId, button.dataset.invoiceNo);
+});
 
 yearFilter.addEventListener("change", () => {
     selectedYear = String(yearFilter.value || "");

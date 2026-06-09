@@ -33,6 +33,14 @@
     #pendingTable td{
         white-space:nowrap;
     }
+    #pendingActionHeader,
+    .pending-action-cell{
+        text-align:center;
+        width:76px;
+    }
+    .pending-action-cell .icon-btn{
+        margin:0 auto;
+    }
 
 @media (max-width: 900px){
     .pendings-list-toolbar{
