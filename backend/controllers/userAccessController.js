@@ -208,7 +208,7 @@ const ACCESS_MODULE_OPTIONS = [
     module: "Communication",
     items: [
       { path: "/messages/messages.html", label: "Messages", actions: ["view", "add", "delete"] },
-      { path: "/notifications/notifications.html", label: "Notifications", actions: ["view"] },
+      { path: "/notifications/notifications.html", label: "Notifications", actions: ["view", "add", "delete"] },
       { path: "/support/warrenty.html", label: "Warrenty", actions: ["view"] },
       { path: "/support/warranty-invoice-view.html", label: "Warranty Invoice View", actions: ["view"] },
     ],

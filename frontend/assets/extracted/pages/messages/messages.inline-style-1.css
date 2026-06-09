@@ -7,10 +7,17 @@
     }
     .page-head h2{
         margin:0;
+        flex:1 1 auto;
     }
-    .page-head .icon-btn{
+    .page-head-actions{
+        display:flex;
+        align-items:center;
+        gap:8px;
         margin-left:auto;
         flex:0 0 auto;
+    }
+    .page-head-actions .icon-btn{
+        margin:0;
     }
 .message-grid{
         display: grid;
@@ -23,6 +30,9 @@
         border-radius: var(--radius-lg);
         box-shadow: var(--shadow-sm);
         padding: 16px;
+    }
+    .message-card.is-hidden{
+        display:none;
     }
     .message-list{
         display: flex;

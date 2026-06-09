@@ -2,6 +2,7 @@ const MESSAGE_ACCESS_PATH = "/messages/messages.html";
 const messageList = document.getElementById("messageList");
 const toUserSelect = document.getElementById("toUser");
 const createMessageCard = document.getElementById("create-message-card");
+const toggleCreateMessageBtn = document.getElementById("toggleCreateMessageBtn");
 let userMap = {};
 
 function getRole(){
@@ -69,6 +70,22 @@ function canDeleteMessages(){
             : false;
     }
     return true;
+}
+
+function setCreateMessageVisibility(visible){
+    if(!createMessageCard) return;
+    createMessageCard.classList.toggle("is-hidden", !visible);
+    if(toggleCreateMessageBtn){
+        toggleCreateMessageBtn.setAttribute("aria-expanded", visible ? "true" : "false");
+        toggleCreateMessageBtn.setAttribute("aria-label", visible ? "Hide create message" : "Show create message");
+        toggleCreateMessageBtn.setAttribute("title", visible ? "Hide create message" : "Show create message");
+    }
+}
+
+function toggleCreateMessageCard(){
+    if(!canCreateMessage()) return;
+    const isHidden = createMessageCard?.classList.contains("is-hidden");
+    setCreateMessageVisibility(!!isHidden);
 }
 
 async function loadUsers(){
@@ -155,6 +172,7 @@ document.getElementById("messageForm").addEventListener("submit", async (e)=>{
         await request("/messages","POST",data);
         showMessageBox("Message sent");
         e.target.reset();
+        setCreateMessageVisibility(false);
         loadMessages();
     }catch(err){
         alert(err.message || "Failed to create message");
@@ -191,7 +209,13 @@ async function init(){
         window.location.href = "../dashboard.html";
         return;
     }
-    if(!canCreateMessage() && createMessageCard){
+    const canCreate = canCreateMessage();
+    if(toggleCreateMessageBtn){
+        toggleCreateMessageBtn.style.display = canCreate ? "" : "none";
+        toggleCreateMessageBtn.addEventListener("click", toggleCreateMessageCard);
+    }
+    setCreateMessageVisibility(false);
+    if(!canCreate && createMessageCard){
         createMessageCard.style.display = "none";
     }
     await loadUsers();

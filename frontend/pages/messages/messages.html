@@ -11,7 +11,7 @@
 <title>Messages - PULMO TECHNOLOGIES</title>
 <link rel="stylesheet" href="../../assets/css/style.css">
 <link rel="stylesheet" href="../../assets/css/dashboard.css">
-<link rel="stylesheet" href="../../assets/extracted/pages/messages/messages.inline-style-1.css?v=20260519p01">
+<link rel="stylesheet" href="../../assets/extracted/pages/messages/messages.inline-style-1.css?v=20260610msgadd1">
 </head>
 <body>
 
@@ -37,15 +37,22 @@
 <div class="main-content">
     <header class="page-head">
         <h2>Messages</h2>
-        <a class="icon-btn" href="../dashboard.html" aria-label="Back to dashboard" title="Back to dashboard">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-        </a>
+        <div class="page-head-actions">
+            <button class="icon-btn" id="toggleCreateMessageBtn" type="button" aria-label="Show create message" title="Show create message" aria-expanded="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <a class="icon-btn" href="../dashboard.html" aria-label="Back to dashboard" title="Back to dashboard">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </a>
+        </div>
     </header>
 
     <div class="message-grid">
-        <div class="message-card" id="create-message-card">
+        <div class="message-card is-hidden" id="create-message-card">
             <h3>Create Message</h3>
             <form id="messageForm">
                 <label>To</label>
@@ -68,7 +75,7 @@
 </div>
 
 <script src="../../assets/js/api.js"></script>
-<script src="../../assets/extracted/pages/messages/messages.inline-script-1.js"></script>
+<script src="../../assets/extracted/pages/messages/messages.inline-script-1.js?v=20260610msgadd1"></script>
 </body>
 </html>
 
