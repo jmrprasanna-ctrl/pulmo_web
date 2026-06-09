@@ -5,6 +5,10 @@ const serviceModeWrapEl = document.getElementById("serviceModeWrap");
 const serviceModeEl = document.getElementById("serviceMode");
 const customerIdEl = document.getElementById("customerId");
 const machineIdEl = document.getElementById("machineId");
+const technicianSearchEl = document.getElementById("technicianSearch");
+const technicianOptionsEl = document.getElementById("technicianOptions");
+const technicianUserIdEl = document.getElementById("technicianUserId");
+const technicianHelpTextEl = document.getElementById("technicianHelpText");
 const serviceSpareEl = document.getElementById("serviceSpare");
 const counterValueEl = document.getElementById("counterValue");
 const commentTextEl = document.getElementById("commentText");
@@ -67,6 +71,7 @@ if (!Number.isFinite(serviceId) || serviceId <= 0) {
 }
 
 let customerRows = [];
+let technicianRows = [];
 const machineCache = {
     general: null,
     rental: null,
@@ -88,13 +93,44 @@ function normalizeServiceSpare(value) {
     return raw && SPARE_LOOKUP[raw] ? SPARE_LOOKUP[raw] : "";
 }
 
+function normalizeDepartmentToken(value) {
+    return String(value || "").trim().toLowerCase().replace(/[^a-z]+/g, "");
+}
+
+function isTechnicianDepartment(value) {
+    const token = normalizeDepartmentToken(value);
+    return token === "technician" || token === "tech";
+}
+
+function formatTechnicianLabel(row) {
+    const id = Number(row?.id || 0);
+    const username = String(row?.username || "").trim();
+    const email = String(row?.email || "").trim();
+    const base = username || email || `User #${id}`;
+    if (email && email.toLowerCase() !== base.toLowerCase()) {
+        return `${base} (${email})`;
+    }
+    return base;
+}
+
 function selectedCustomerId() {
     const id = Number.parseInt(customerIdEl.value, 10);
     return Number.isFinite(id) && id > 0 ? id : 0;
 }
 
+function selectedTechnicianId() {
+    const id = Number.parseInt(technicianUserIdEl?.value, 10);
+    return Number.isFinite(id) && id > 0 ? id : 0;
+}
+
 function setMachineHint(message) {
     machineHelpTextEl.textContent = message;
+}
+
+function setTechnicianHint(message) {
+    if (technicianHelpTextEl) {
+        technicianHelpTextEl.textContent = message;
+    }
 }
 
 function updateCommentVisibility() {
@@ -172,6 +208,39 @@ function setCustomerOptions(preferredCustomerId = 0) {
     }
 }
 
+function setTechnicianOptions(rows) {
+    technicianRows = Array.isArray(rows) ? rows : [];
+    if (technicianOptionsEl) {
+        technicianOptionsEl.innerHTML = "";
+        technicianRows.forEach((row) => {
+            const option = document.createElement("option");
+            option.value = formatTechnicianLabel(row);
+            technicianOptionsEl.appendChild(option);
+        });
+    }
+    setTechnicianHint(technicianRows.length ? `${technicianRows.length} technician user(s) available.` : "No technician users found.");
+}
+
+function setTechnicianSelection(preferredTechnicianId = 0, preferredTechnicianName = "") {
+    const normalizedId = Number(preferredTechnicianId || 0);
+    const matched = technicianRows.find((row) => Number(row.id || 0) === normalizedId) || null;
+    if (matched) {
+        technicianSearchEl.value = formatTechnicianLabel(matched);
+        technicianUserIdEl.value = String(Number(matched.id || 0));
+        return;
+    }
+    technicianSearchEl.value = String(preferredTechnicianName || "").trim();
+    technicianUserIdEl.value = normalizedId > 0 ? String(normalizedId) : "";
+}
+
+function syncTechnicianSelection() {
+    const rawValue = String(technicianSearchEl?.value || "").trim().toLowerCase();
+    const matched = technicianRows.find((row) => formatTechnicianLabel(row).trim().toLowerCase() === rawValue);
+    if (technicianUserIdEl) {
+        technicianUserIdEl.value = matched ? String(Number(matched.id || 0)) : "";
+    }
+}
+
 async function fetchMachinesByType(serviceType) {
     if (serviceType === "rental") {
         if (!Array.isArray(machineCache.rental)) {
@@ -221,6 +290,20 @@ async function loadCustomers() {
     }
 }
 
+async function loadTechnicians() {
+    try {
+        const rows = await request("/users/assignable", "GET");
+        const filtered = (Array.isArray(rows) ? rows : [])
+            .filter((row) => !row?.is_directory_mapped_user)
+            .filter((row) => isTechnicianDepartment(row?.department))
+            .sort((left, right) => formatTechnicianLabel(left).localeCompare(formatTechnicianLabel(right)));
+        setTechnicianOptions(filtered);
+    } catch (_err) {
+        setTechnicianOptions([]);
+        setTechnicianHint("Failed to load technician users.");
+    }
+}
+
 function applyPermissionState() {
     if (saveServiceBtn && !canEditService) {
         saveServiceBtn.style.display = "none";
@@ -229,7 +312,7 @@ function applyPermissionState() {
         deleteServiceBtn.style.display = "none";
     }
     if (!canEditService) {
-        [serviceDateEl, serviceTypeEl, serviceModeEl, customerIdEl, machineIdEl, serviceSpareEl, counterValueEl, commentTextEl].forEach((el) => {
+        [serviceDateEl, serviceTypeEl, serviceModeEl, customerIdEl, machineIdEl, technicianSearchEl, serviceSpareEl, counterValueEl, commentTextEl].forEach((el) => {
             if (el) el.disabled = true;
         });
     }
@@ -243,6 +326,7 @@ async function loadServiceEntry() {
     serviceSpareEl.value = normalizeServiceSpare(row.service_spare);
     counterValueEl.value = String(row.counter_value || "");
     commentTextEl.value = String(row.comment_text || "");
+    setTechnicianSelection(Number(row.technician_user_id || 0), String(row.technician_name || ""));
 
     setCustomerOptions(Number(row.customer_id || 0));
     await refreshMachineOptions(Number(row.machine_ref_id || 0));
@@ -264,6 +348,14 @@ serviceSpareEl?.addEventListener("change", () => {
     updateCommentVisibility();
 });
 
+technicianSearchEl?.addEventListener("input", () => {
+    syncTechnicianSelection();
+});
+
+technicianSearchEl?.addEventListener("change", () => {
+    syncTechnicianSelection();
+});
+
 editServiceFormEl.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!canEditService) return;
@@ -273,6 +365,7 @@ editServiceFormEl.addEventListener("submit", async (event) => {
     const service_mode = service_type === "general" ? normalizeServiceMode(serviceModeEl.value) : "";
     const customer_id = selectedCustomerId();
     const machine_ref_id = Number.parseInt(machineIdEl.value, 10);
+    const technician_user_id = selectedTechnicianId();
     const service_spare = normalizeServiceSpare(serviceSpareEl?.value);
     const counter_value = String(counterValueEl.value || "").trim();
     const comment_text = String(commentTextEl.value || "").trim();
@@ -301,6 +394,10 @@ editServiceFormEl.addEventListener("submit", async (event) => {
         alert("Counter is required.");
         return;
     }
+    if (String(technicianSearchEl?.value || "").trim() && !technician_user_id) {
+        alert("Please select a valid technician from the list.");
+        return;
+    }
 
     const payload = {
         service_date,
@@ -308,6 +405,7 @@ editServiceFormEl.addEventListener("submit", async (event) => {
         service_mode,
         customer_id,
         machine_ref_id,
+        technician_user_id: technician_user_id || null,
         service_spare,
         counter_value,
         comment_text,
@@ -348,7 +446,7 @@ deleteServiceBtn?.addEventListener("click", async () => {
     applyPermissionState();
     updateModeVisibility();
     updateCommentVisibility();
-    await loadCustomers();
+    await Promise.all([loadCustomers(), loadTechnicians()]);
     try {
         await loadServiceEntry();
     } catch (err) {

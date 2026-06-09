@@ -5,6 +5,10 @@ const serviceModeWrapEl = document.getElementById("serviceModeWrap");
 const serviceModeEl = document.getElementById("serviceMode");
 const customerIdEl = document.getElementById("customerId");
 const machineIdEl = document.getElementById("machineId");
+const technicianSearchEl = document.getElementById("technicianSearch");
+const technicianOptionsEl = document.getElementById("technicianOptions");
+const technicianUserIdEl = document.getElementById("technicianUserId");
+const technicianHelpTextEl = document.getElementById("technicianHelpText");
 const serviceSpareEl = document.getElementById("serviceSpare");
 const counterValueEl = document.getElementById("counterValue");
 const noteTextEl = document.getElementById("noteText");
@@ -36,6 +40,7 @@ const today = new Date();
 serviceDateEl.value = today.toISOString().slice(0, 10);
 
 let customerRows = [];
+let technicianRows = [];
 const machineCache = {
     general: null,
     rental: null,
@@ -55,6 +60,26 @@ function normalizeServiceMode(value) {
 function normalizeServiceSpare(value) {
     const raw = String(value || "").trim().toLowerCase();
     return raw && SPARE_LOOKUP[raw] ? SPARE_LOOKUP[raw] : "";
+}
+
+function normalizeDepartmentToken(value) {
+    return String(value || "").trim().toLowerCase().replace(/[^a-z]+/g, "");
+}
+
+function isTechnicianDepartment(value) {
+    const token = normalizeDepartmentToken(value);
+    return token === "technician" || token === "tech";
+}
+
+function formatTechnicianLabel(row) {
+    const id = Number(row?.id || 0);
+    const username = String(row?.username || "").trim();
+    const email = String(row?.email || "").trim();
+    const base = username || email || `User #${id}`;
+    if (email && email.toLowerCase() !== base.toLowerCase()) {
+        return `${base} (${email})`;
+    }
+    return base;
 }
 
 function updateNoteVisibility() {
@@ -93,8 +118,19 @@ function selectedCustomerId() {
     return Number.isFinite(id) && id > 0 ? id : 0;
 }
 
+function selectedTechnicianId() {
+    const id = Number.parseInt(technicianUserIdEl?.value, 10);
+    return Number.isFinite(id) && id > 0 ? id : 0;
+}
+
 function setMachineHint(message) {
     machineHelpTextEl.textContent = message;
+}
+
+function setTechnicianHint(message) {
+    if (technicianHelpTextEl) {
+        technicianHelpTextEl.textContent = message;
+    }
 }
 
 function setMachineOptions(rows) {
@@ -131,6 +167,27 @@ function setCustomerOptions() {
 
     machineIdEl.innerHTML = `<option value="">Select Machine</option>`;
     setMachineHint("Select customer first.");
+}
+
+function setTechnicianOptions(rows) {
+    technicianRows = Array.isArray(rows) ? rows : [];
+    if (technicianOptionsEl) {
+        technicianOptionsEl.innerHTML = "";
+        technicianRows.forEach((row) => {
+            const option = document.createElement("option");
+            option.value = formatTechnicianLabel(row);
+            technicianOptionsEl.appendChild(option);
+        });
+    }
+    setTechnicianHint(technicianRows.length ? `${technicianRows.length} technician user(s) available.` : "No technician users found.");
+}
+
+function syncTechnicianSelection() {
+    const rawValue = String(technicianSearchEl?.value || "").trim().toLowerCase();
+    const matched = technicianRows.find((row) => formatTechnicianLabel(row).trim().toLowerCase() === rawValue);
+    if (technicianUserIdEl) {
+        technicianUserIdEl.value = matched ? String(Number(matched.id || 0)) : "";
+    }
 }
 
 async function fetchMachinesByType(serviceType) {
@@ -175,12 +232,22 @@ async function refreshMachineOptions() {
 
 async function loadInitialData() {
     try {
-        const rows = await request("/customers", "GET");
-        customerRows = Array.isArray(rows) ? rows : [];
+        const [customers, users] = await Promise.all([
+            request("/customers", "GET"),
+            request("/users/assignable", "GET"),
+        ]);
+        customerRows = Array.isArray(customers) ? customers : [];
         setCustomerOptions();
+        const filteredTechnicians = (Array.isArray(users) ? users : [])
+            .filter((row) => !row?.is_directory_mapped_user)
+            .filter((row) => isTechnicianDepartment(row?.department))
+            .sort((left, right) => formatTechnicianLabel(left).localeCompare(formatTechnicianLabel(right)));
+        setTechnicianOptions(filteredTechnicians);
     } catch (_err) {
         customerIdEl.innerHTML = `<option value="">Failed to load customers</option>`;
         setMachineHint("Failed to load customers.");
+        setTechnicianOptions([]);
+        setTechnicianHint("Failed to load technician users.");
     }
 }
 
@@ -198,6 +265,14 @@ serviceSpareEl?.addEventListener("change", () => {
     updateNoteVisibility();
 });
 
+technicianSearchEl?.addEventListener("input", () => {
+    syncTechnicianSelection();
+});
+
+technicianSearchEl?.addEventListener("change", () => {
+    syncTechnicianSelection();
+});
+
 addServiceFormEl.addEventListener("submit", async (event) => {
     event.preventDefault();
 
@@ -206,6 +281,7 @@ addServiceFormEl.addEventListener("submit", async (event) => {
     const service_mode = service_type === "general" ? normalizeServiceMode(serviceModeEl?.value) : "";
     const customer_id = selectedCustomerId();
     const machine_ref_id = Number.parseInt(machineIdEl.value, 10);
+    const technician_user_id = selectedTechnicianId();
     const service_spare = normalizeServiceSpare(serviceSpareEl?.value);
     const counter_value = String(counterValueEl.value || "").trim();
     const service_note = String(noteTextEl?.value || "").trim();
@@ -235,6 +311,10 @@ addServiceFormEl.addEventListener("submit", async (event) => {
         alert("Counter is required.");
         return;
     }
+    if (String(technicianSearchEl?.value || "").trim() && !technician_user_id) {
+        alert("Please select a valid technician from the list.");
+        return;
+    }
 
     const payload = {
         service_date,
@@ -242,6 +322,7 @@ addServiceFormEl.addEventListener("submit", async (event) => {
         service_mode,
         customer_id,
         machine_ref_id,
+        technician_user_id: technician_user_id || null,
         service_spare,
         service_note,
         counter_value,

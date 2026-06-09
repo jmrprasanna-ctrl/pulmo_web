@@ -135,6 +135,7 @@ function applyFilters() {
             row.customer_name,
             row.machine_code,
             row.machine_title,
+            row.technician_name,
             row.counter_value,
             row.comment_text,
             row.service_date,
@@ -162,7 +163,7 @@ function renderRows(rows) {
 
     if (!rows.length) {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td colspan="7">No service entries found.</td>`;
+        tr.innerHTML = `<td colspan="8">No service entries found.</td>`;
         serviceTableBodyEl.appendChild(tr);
         return;
     }
@@ -186,6 +187,7 @@ function renderRows(rows) {
             <td>${modeBadge}</td>
             <td>${escapeHtml(row.customer_name || "-")}</td>
             <td>${escapeHtml(machineText || "-")}</td>
+            <td>${escapeHtml(row.technician_name || "-")}</td>
             <td>${escapeHtml(row.counter_value || "-")}</td>
             <td>${escapeHtml(row.comment_text || "-")}</td>
         `;

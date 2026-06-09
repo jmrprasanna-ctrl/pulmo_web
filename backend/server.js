@@ -692,6 +692,8 @@ async function ensureServiceRecordSchema() {
         machine_ref_id INTEGER,
         machine_code VARCHAR(120),
         machine_title VARCHAR(255),
+        technician_user_id INTEGER,
+        technician_name VARCHAR(255),
         service_spare VARCHAR(80),
         service_note TEXT,
         counter_value VARCHAR(120),
@@ -710,6 +712,8 @@ async function ensureServiceRecordSchema() {
     await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS machine_ref_id INTEGER;`);
     await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS machine_code VARCHAR(120);`);
     await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS machine_title VARCHAR(255);`);
+    await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS technician_user_id INTEGER;`);
+    await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS technician_name VARCHAR(255);`);
     await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS service_spare VARCHAR(80);`);
     await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS service_note TEXT;`);
     await db.query(`ALTER TABLE service_records ADD COLUMN IF NOT EXISTS counter_value VARCHAR(120);`);

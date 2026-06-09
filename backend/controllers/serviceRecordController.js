@@ -3,6 +3,7 @@ const ServiceRecord = require("../models/ServiceRecord");
 const Customer = require("../models/Customer");
 const GeneralMachine = require("../models/GeneralMachine");
 const RentalMachine = require("../models/RentalMachine");
+const User = require("../models/User");
 
 function normalizeServiceType(value) {
   const raw = String(value || "").trim().toLowerCase();
@@ -58,6 +59,15 @@ function parsePositiveInt(value) {
   return Number.isFinite(num) && num > 0 ? num : 0;
 }
 
+function normalizeDepartmentToken(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z]+/g, "");
+}
+
+function isTechnicianDepartment(value) {
+  const token = normalizeDepartmentToken(value);
+  return token === "technician" || token === "tech";
+}
+
 async function ensureServiceRecordColumns() {
   const queryInterface = ServiceRecord.sequelize?.getQueryInterface?.();
   if (!queryInterface) return;
@@ -83,6 +93,18 @@ async function ensureServiceRecordColumns() {
         allowNull: true,
       });
     }
+    if (!columns.technician_user_id) {
+      await queryInterface.addColumn(tableName, "technician_user_id", {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      });
+    }
+    if (!columns.technician_name) {
+      await queryInterface.addColumn(tableName, "technician_name", {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+      });
+    }
   } catch (_err) {
     // Ignore schema-guard errors; normal API errors will still be returned by handlers.
   }
@@ -96,6 +118,22 @@ async function resolveMachineRecord(serviceType, machineId) {
     return RentalMachine.findByPk(machineId);
   }
   return null;
+}
+
+async function resolveTechnicianUser(technicianUserId) {
+  const normalizedId = parsePositiveInt(technicianUserId);
+  if (!normalizedId) return null;
+
+  const user = await User.findByPk(normalizedId, {
+    attributes: ["id", "username", "email", "department"],
+  });
+  if (!user) {
+    throw new Error("Selected technician user not found.");
+  }
+  if (!isTechnicianDepartment(user.department)) {
+    throw new Error("Selected user is not a technician.");
+  }
+  return user;
 }
 
 exports.getServiceRecords = async (req, res) => {
@@ -166,6 +204,7 @@ exports.createServiceRecord = async (req, res) => {
     const service_spare = normalizeServiceSpare(raw_service_spare);
     const customer_id = parsePositiveInt(req.body.customer_id);
     const machine_ref_id = parsePositiveInt(req.body.machine_ref_id);
+    const technician_user_id = parsePositiveInt(req.body.technician_user_id);
     const service_note = String(req.body.service_note || "").trim();
     const counter_value = String(req.body.counter_value || "").trim();
     const comment_text = String(req.body.comment_text || "").trim();
@@ -214,6 +253,13 @@ exports.createServiceRecord = async (req, res) => {
       return res.status(400).json({ message: "Selected machine does not belong to selected customer." });
     }
 
+    let technician = null;
+    try {
+      technician = await resolveTechnicianUser(technician_user_id);
+    } catch (techErr) {
+      return res.status(400).json({ message: techErr.message || "Invalid technician user." });
+    }
+
     const payload = {
       service_date,
       service_type,
@@ -223,6 +269,10 @@ exports.createServiceRecord = async (req, res) => {
       machine_ref_id,
       machine_code: String(machine.machine_id || "").trim(),
       machine_title: String(machine.machine_title || "").trim(),
+      technician_user_id: technician ? Number(technician.id || 0) : null,
+      technician_name: technician
+        ? (String(technician.username || "").trim() || String(technician.email || "").trim() || `User #${Number(technician.id || 0)}`)
+        : null,
       service_spare: service_spare || null,
       service_note: service_note.slice(0, 2000),
       counter_value: counter_value.slice(0, 120),
@@ -258,6 +308,7 @@ exports.updateServiceRecord = async (req, res) => {
     const service_spare = normalizeServiceSpare(raw_service_spare);
     const customer_id = parsePositiveInt(req.body.customer_id);
     const machine_ref_id = parsePositiveInt(req.body.machine_ref_id);
+    const technician_user_id = parsePositiveInt(req.body.technician_user_id);
     const counter_value = String(req.body.counter_value || "").trim();
     const comment_text = String(req.body.comment_text || "").trim();
 
@@ -305,6 +356,13 @@ exports.updateServiceRecord = async (req, res) => {
       return res.status(400).json({ message: "Selected machine does not belong to selected customer." });
     }
 
+    let technician = null;
+    try {
+      technician = await resolveTechnicianUser(technician_user_id);
+    } catch (techErr) {
+      return res.status(400).json({ message: techErr.message || "Invalid technician user." });
+    }
+
     await row.update({
       service_date,
       service_type,
@@ -314,6 +372,10 @@ exports.updateServiceRecord = async (req, res) => {
       machine_ref_id,
       machine_code: String(machine.machine_id || "").trim(),
       machine_title: String(machine.machine_title || "").trim(),
+      technician_user_id: technician ? Number(technician.id || 0) : null,
+      technician_name: technician
+        ? (String(technician.username || "").trim() || String(technician.email || "").trim() || `User #${Number(technician.id || 0)}`)
+        : null,
       service_spare: service_spare || null,
       counter_value: counter_value.slice(0, 120),
       comment_text: comment_text.slice(0, 2000),

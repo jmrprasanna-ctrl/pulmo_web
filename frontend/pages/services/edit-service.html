@@ -78,6 +78,13 @@
                     <small id="machineHelpText">Select customer first.</small>
                 </div>
                 <div>
+                    <label for="technicianSearch">Technician</label>
+                    <input type="text" id="technicianSearch" list="technicianOptions" placeholder="Search Technician (Optional)" autocomplete="off">
+                    <datalist id="technicianOptions"></datalist>
+                    <input type="hidden" id="technicianUserId">
+                    <small id="technicianHelpText">Search technician users to assign this visit.</small>
+                </div>
+                <div>
                     <label for="serviceSpare">Spares</label>
                     <select id="serviceSpare" required>
                         <option value="">Select Spare</option>
@@ -130,6 +137,6 @@
 </div>
 
 <script src="../../assets/js/api.js"></script>
-<script src="../../assets/extracted/pages/services/edit-service.inline-script-1.js"></script>
+<script src="../../assets/extracted/pages/services/edit-service.inline-script-1.js?v=20260610tech1"></script>
 </body>
 </html>
