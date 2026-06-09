@@ -18,6 +18,7 @@ const userSelectEl = document.getElementById("userSelect");
             { key: "quotation", label: "Quotation", source: "Preference > Quotation PDF" },
             { key: "quotation2", label: "Quotation 2", source: "Preference > Quotation 2 PDF" },
             { key: "quotation3", label: "Quotation 3", source: "Preference > Quotation 3 PDF" },
+            { key: "invoice_formatting", label: "Invoice Formatting", source: "Invoice Details > Edit" },
             { key: "sign_q2", label: "Sign Q2", source: "Preference > SIGN Q2" },
             { key: "seal_q2", label: "Seal Q2", source: "Preference > SEAL Q2" },
             { key: "sign_q3", label: "Sign Q3", source: "Preference > SIGN Q3" },

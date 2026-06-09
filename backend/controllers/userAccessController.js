@@ -644,6 +644,7 @@ async function ensureUserInvoiceMappingTable(client) {
       seal_q2_enabled BOOLEAN NOT NULL DEFAULT FALSE,
       sign_q3_enabled BOOLEAN NOT NULL DEFAULT FALSE,
       seal_q3_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+      invoice_formatting_enabled BOOLEAN NOT NULL DEFAULT FALSE,
       theme_enabled BOOLEAN NOT NULL DEFAULT FALSE,
       is_verified BOOLEAN NOT NULL DEFAULT FALSE,
       created_by INTEGER,
@@ -667,6 +668,10 @@ async function ensureUserInvoiceMappingTable(client) {
   await client.query(`
     ALTER TABLE ${USER_INVOICE_MAPPING_TABLE}
     ADD COLUMN IF NOT EXISTS seal_q3_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+  `);
+  await client.query(`
+    ALTER TABLE ${USER_INVOICE_MAPPING_TABLE}
+    ADD COLUMN IF NOT EXISTS invoice_formatting_enabled BOOLEAN NOT NULL DEFAULT FALSE;
   `);
 }
 
@@ -1407,6 +1412,7 @@ function normalizeInvMapFlags(raw) {
     quotation: Boolean(source.quotation),
     quotation2: Boolean(source.quotation2),
     quotation3: Boolean(source.quotation3),
+    invoice_formatting: Boolean(source.invoice_formatting),
     sign_c: Boolean(source.sign_c),
     sign_v: Boolean(source.sign_v),
     seal_c: Boolean(source.seal_c),
@@ -1518,6 +1524,7 @@ async function getPreferenceAvailability(databaseName, userId) {
     quotation: Boolean(quotationPath),
     quotation2: Boolean(quotation2Path),
     quotation3: Boolean(quotation3Path),
+    invoice_formatting: true,
     sign_c: Boolean(signCPath),
     sign_v: Boolean(signVPath),
     seal_c: Boolean(sealCPath),
@@ -2629,6 +2636,7 @@ exports.listInvMapEntries = async (req, res) => {
         quotation: Boolean(row.quotation_enabled),
         quotation2: Boolean(row.quotation2_enabled),
         quotation3: Boolean(row.quotation3_enabled),
+        invoice_formatting: Boolean(row.invoice_formatting_enabled),
         sign_c: Boolean(row.sign_c_enabled),
         sign_v: Boolean(row.sign_v_enabled),
         seal_c: Boolean(row.seal_c_enabled),
@@ -2780,6 +2788,7 @@ exports.getInvMapByUser = async (req, res) => {
           quotation: Boolean(row.quotation_enabled),
           quotation2: Boolean(row.quotation2_enabled),
           quotation3: Boolean(row.quotation3_enabled),
+          invoice_formatting: Boolean(row.invoice_formatting_enabled),
           sign_c: Boolean(row.sign_c_enabled),
           sign_v: Boolean(row.sign_v_enabled),
           seal_c: Boolean(row.seal_c_enabled),
@@ -2888,8 +2897,8 @@ exports.saveInvMap = async (req, res) => {
     await mainDbClient.query(
       `INSERT INTO ${USER_INVOICE_MAPPING_TABLE}
        (user_id, database_name, logo_enabled, invoice_enabled, quotation_enabled, quotation2_enabled, quotation3_enabled,
-        sign_c_enabled, sign_v_enabled, seal_c_enabled, seal_v_enabled, sign_q2_enabled, seal_q2_enabled, sign_q3_enabled, seal_q3_enabled, theme_enabled, is_verified, created_by, "createdAt", "updatedAt")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, TRUE, $17, NOW(), NOW())
+        sign_c_enabled, sign_v_enabled, seal_c_enabled, seal_v_enabled, sign_q2_enabled, seal_q2_enabled, sign_q3_enabled, seal_q3_enabled, invoice_formatting_enabled, theme_enabled, is_verified, created_by, "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, TRUE, $18, NOW(), NOW())
        ON CONFLICT (user_id, database_name)
        DO UPDATE SET logo_enabled = EXCLUDED.logo_enabled,
                      invoice_enabled = EXCLUDED.invoice_enabled,
@@ -2904,6 +2913,7 @@ exports.saveInvMap = async (req, res) => {
                      seal_q2_enabled = EXCLUDED.seal_q2_enabled,
                      sign_q3_enabled = EXCLUDED.sign_q3_enabled,
                      seal_q3_enabled = EXCLUDED.seal_q3_enabled,
+                     invoice_formatting_enabled = EXCLUDED.invoice_formatting_enabled,
                      theme_enabled = EXCLUDED.theme_enabled,
                      is_verified = TRUE,
                      "updatedAt" = NOW()`,
@@ -2923,6 +2933,7 @@ exports.saveInvMap = async (req, res) => {
         featureFlags.seal_q2,
         featureFlags.sign_q3,
         featureFlags.seal_q3,
+        featureFlags.invoice_formatting,
         featureFlags.theme,
         Number(req.user?.id || 0) || null,
       ]
@@ -3039,6 +3050,7 @@ exports.getMyInvMap = async (req, res) => {
         quotation: Boolean(row.quotation_enabled),
         quotation2: Boolean(row.quotation2_enabled),
         quotation3: Boolean(row.quotation3_enabled),
+        invoice_formatting: Boolean(row.invoice_formatting_enabled),
         sign_c: Boolean(row.sign_c_enabled),
         sign_v: Boolean(row.sign_v_enabled),
         seal_c: Boolean(row.seal_c_enabled),

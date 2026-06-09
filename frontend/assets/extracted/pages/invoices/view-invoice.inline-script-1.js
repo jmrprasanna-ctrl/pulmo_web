@@ -1006,7 +1006,17 @@ function updateNavigationTileByEditToggle(){
 function initEditModeControl(){
     const editChk = document.getElementById("editModeChk");
     if(!editChk) return;
+    const editLabel = editChk.closest("label");
+    const allowed = hasMappedFeature("invoice_formatting");
     editChk.checked = false;
+    editChk.disabled = !allowed;
+    if(editLabel){
+        editLabel.style.display = allowed ? "flex" : "none";
+    }
+    if(!allowed){
+        updateNavigationTileByEditToggle();
+        return;
+    }
     editChk.addEventListener("change", () => {
         updateNavigationTileByEditToggle();
     });
