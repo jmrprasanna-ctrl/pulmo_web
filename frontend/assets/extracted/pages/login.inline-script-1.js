@@ -17,6 +17,8 @@ let companyCodeTimer = null;
 let companyLogoCandidates = [];
 let companyLogoCandidateIndex = 0;
 let companyLogoDisplayName = "Company";
+let companyLogoLoadToken = 0;
+let companyLogoPreloader = null;
 let savedCompanyCodes = [];
 let companyCodeDropdownOpen = false;
 let companyCodeDropdownForceAll = false;
@@ -253,6 +255,12 @@ function setCompanyLogoWrapState(hidden, loading){
 
 function resetCompanyLogoImage(){
     if(!companyLogo) return;
+    companyLogoLoadToken += 1;
+    if(companyLogoPreloader){
+        companyLogoPreloader.onload = null;
+        companyLogoPreloader.onerror = null;
+        companyLogoPreloader = null;
+    }
     companyLogo.removeAttribute("src");
     companyLogo.alt = "Company Logo";
 }
@@ -281,8 +289,34 @@ function loadCurrentCompanyLogoCandidate(){
         return;
     }
     companyLogo.alt = `${companyLogoDisplayName} Logo`;
+    companyLogo.removeAttribute("src");
     setCompanyLogoWrapState(false, true);
-    companyLogo.src = nextUrl;
+    const currentLoadToken = companyLogoLoadToken + 1;
+    companyLogoLoadToken = currentLoadToken;
+    const preloadImage = new Image();
+    companyLogoPreloader = preloadImage;
+    preloadImage.onload = () => {
+        if(currentLoadToken !== companyLogoLoadToken){
+            return;
+        }
+        companyLogoPreloader = null;
+        companyLogo.src = nextUrl;
+        setCompanyLogoWrapState(false, false);
+    };
+    preloadImage.onerror = () => {
+        if(currentLoadToken !== companyLogoLoadToken){
+            return;
+        }
+        companyLogoPreloader = null;
+        companyLogoCandidateIndex += 1;
+        if(companyLogoCandidateIndex < companyLogoCandidates.length){
+            loadCurrentCompanyLogoCandidate();
+            return;
+        }
+        resetCompanyLogoImage();
+        setCompanyLogoWrapState(true, false);
+    };
+    preloadImage.src = nextUrl;
 }
 
 function resetCompanyPreview(){
@@ -536,20 +570,6 @@ document.addEventListener("click", (event) => {
         hideCompanyCodeDropdown();
     }
 });
-if(companyLogo){
-    companyLogo.addEventListener("load", () => {
-        setCompanyLogoWrapState(false, false);
-    });
-    companyLogo.addEventListener("error", () => {
-        companyLogoCandidateIndex += 1;
-        if(companyLogoCandidateIndex < companyLogoCandidates.length){
-            loadCurrentCompanyLogoCandidate();
-            return;
-        }
-        resetCompanyLogoImage();
-        setCompanyLogoWrapState(true, false);
-    });
-}
 ["companyCode", "email", "User", "user", "password"].forEach((id) => {
     const el = document.getElementById(id);
     if(!el) return;
