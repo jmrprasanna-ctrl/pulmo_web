@@ -37,7 +37,7 @@
 }
 
 #counterValue{
-    width:min(100%, 320px);
+    width:min(100%, 240px);
 }
 
 @media (max-width: 900px){
