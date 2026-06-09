@@ -261,6 +261,7 @@ function resetCompanyLogoImage(){
         companyLogoPreloader.onerror = null;
         companyLogoPreloader = null;
     }
+    companyLogo.hidden = true;
     companyLogo.removeAttribute("src");
     companyLogo.alt = "Company Logo";
 }
@@ -289,6 +290,7 @@ function loadCurrentCompanyLogoCandidate(){
         return;
     }
     companyLogo.alt = `${companyLogoDisplayName} Logo`;
+    companyLogo.hidden = true;
     companyLogo.removeAttribute("src");
     setCompanyLogoWrapState(false, true);
     const currentLoadToken = companyLogoLoadToken + 1;
@@ -301,6 +303,7 @@ function loadCurrentCompanyLogoCandidate(){
         }
         companyLogoPreloader = null;
         companyLogo.src = nextUrl;
+        companyLogo.hidden = false;
         setCompanyLogoWrapState(false, false);
     };
     preloadImage.onerror = () => {
