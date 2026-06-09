@@ -134,16 +134,11 @@ function setTechnicianHint(message) {
 }
 
 function updateCommentVisibility() {
-    const spare = normalizeServiceSpare(serviceSpareEl?.value);
-    const shouldShow = COMMENT_SPARE_SET.has(String(spare || "").toLowerCase());
     if (commentWrapEl) {
-        commentWrapEl.style.display = shouldShow ? "" : "none";
+        commentWrapEl.style.display = "";
     }
     if (commentTextEl) {
-        commentTextEl.disabled = !shouldShow || !canEditService;
-        if (!shouldShow) {
-            commentTextEl.value = "";
-        }
+        commentTextEl.disabled = !canEditService;
     }
 }
 
