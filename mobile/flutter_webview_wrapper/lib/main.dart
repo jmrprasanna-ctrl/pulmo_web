@@ -193,6 +193,11 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
   bool _skipAndroidPublicDownloadPath = false;
   List<Directory>? _cachedDownloadSaveDirectories;
 
+  Color get _refreshStatusColor =>
+      _hasMainFrameError
+          ? const Color(0xFFD84F4F)
+          : const Color(0xFF2FA968);
+
   @override
   void initState() {
     super.initState();
@@ -1626,7 +1631,15 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
             IconButton(
               tooltip: 'Refresh',
               onPressed: _reload,
-              icon: const Icon(Icons.refresh),
+              icon: Container(
+                padding: const EdgeInsets.only(right: 6),
+                decoration: BoxDecoration(
+                  border: Border(
+                    right: BorderSide(color: _refreshStatusColor, width: 3),
+                  ),
+                ),
+                child: const Icon(Icons.refresh),
+              ),
             ),
           ],
           bottom: PreferredSize(
