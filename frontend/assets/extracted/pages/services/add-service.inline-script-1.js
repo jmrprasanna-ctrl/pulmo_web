@@ -15,6 +15,9 @@ const noteTextEl = document.getElementById("noteText");
 const noteWrapEl = document.getElementById("noteWrap");
 const commentTextEl = document.getElementById("commentText");
 const machineHelpTextEl = document.getElementById("machineHelpText");
+const servicePageTitleEl = document.getElementById("servicePageTitle");
+const serviceBackLinkEl = document.getElementById("serviceBackLink");
+const saveServiceBtn = document.getElementById("saveServiceBtn");
 
 const SPARE_OPTIONS = [
     "Copier",
@@ -38,6 +41,23 @@ const NOTE_SPARE_SET = new Set(["copier", "printer", "other"]);
 
 const today = new Date();
 serviceDateEl.value = today.toISOString().slice(0, 10);
+const requestedMode = normalizeServiceMode(new URLSearchParams(window.location.search).get("mode"));
+const addServiceRawRole = String(localStorage.getItem("role") || "").toLowerCase();
+const addServiceRole = ["coordinator", "cordinator", "co-ordinator", "co ordinator", "co_ordinator"].includes(addServiceRawRole) ? "user" : addServiceRawRole;
+const addServiceSelectedDb = String(localStorage.getItem("selectedDatabaseName") || "").toLowerCase();
+const addServiceIsTrainingUser = addServiceRole === "user" && addServiceSelectedDb === "demo";
+const addServiceCanManage = addServiceRole === "admin" || addServiceRole === "manager" || addServiceIsTrainingUser;
+const canCreateService = addServiceCanManage
+    ? true
+    : (addServiceRole === "user"
+        ? (typeof hasUserActionPermission === "function"
+            ? (
+                hasUserActionPermission("/services/service-list.html", "add")
+                || hasUserActionPermission("/services/breakdown-list.html", "add")
+                || hasUserActionPermission("/services/add-service.html", "add")
+            )
+            : false)
+        : false);
 
 let customerRows = [];
 let technicianRows = [];
@@ -60,6 +80,29 @@ function normalizeServiceMode(value) {
 function normalizeServiceSpare(value) {
     const raw = String(value || "").trim().toLowerCase();
     return raw && SPARE_LOOKUP[raw] ? SPARE_LOOKUP[raw] : "";
+}
+
+function resolveServiceReturnPage(serviceType, serviceMode) {
+    return normalizeServiceType(serviceType) === "general" && normalizeServiceMode(serviceMode) === "breakdown"
+        ? "breakdown-list.html"
+        : "service-list.html";
+}
+
+function applyAddPageContext() {
+    const returnPage = resolveServiceReturnPage(serviceTypeEl?.value, serviceModeEl?.value);
+    const isBreakdown = returnPage === "breakdown-list.html";
+    const pageTitle = isBreakdown ? "Create Breakdown" : "Add Visit";
+    const backLabel = isBreakdown ? "Back to breakdown page" : "Back to customer visits";
+
+    if (servicePageTitleEl) {
+        servicePageTitleEl.innerText = pageTitle;
+    }
+    document.title = `${pageTitle} - AXIS CMS SYSTEM`;
+    if (serviceBackLinkEl) {
+        serviceBackLinkEl.href = returnPage;
+        serviceBackLinkEl.setAttribute("aria-label", backLabel);
+        serviceBackLinkEl.setAttribute("title", backLabel);
+    }
 }
 
 function normalizeDepartmentToken(value) {
@@ -111,6 +154,7 @@ function updateModeVisibility() {
             serviceModeEl.value = "";
         }
     }
+    applyAddPageContext();
 }
 
 function selectedCustomerId() {
@@ -275,6 +319,10 @@ technicianSearchEl?.addEventListener("change", () => {
 
 addServiceFormEl.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (!canCreateService) {
+        alert("You do not have permission to create this entry.");
+        return;
+    }
 
     const service_date = String(serviceDateEl.value || "").trim();
     const service_type = normalizeServiceType(serviceTypeEl.value);
@@ -331,14 +379,26 @@ addServiceFormEl.addEventListener("submit", async (event) => {
 
     try {
         await request("/services", "POST", payload);
-        showMessageBox("Service added successfully.");
+        showMessageBox(resolveServiceReturnPage(service_type, service_mode) === "breakdown-list.html"
+            ? "Breakdown created successfully."
+            : "Visit added successfully.");
+        const nextPage = resolveServiceReturnPage(service_type, service_mode);
         setTimeout(() => {
-            window.location.href = "service-list.html";
+            window.location.href = nextPage;
         }, 500);
     } catch (err) {
         alert(err.message || "Failed to add service.");
     }
 });
+
+if (requestedMode === "breakdown") {
+    serviceTypeEl.value = "general";
+    serviceModeEl.value = "breakdown";
+}
+
+if (saveServiceBtn && !canCreateService) {
+    saveServiceBtn.style.display = "none";
+}
 
 updateModeVisibility();
 updateNoteVisibility();

@@ -366,7 +366,8 @@ function renderSidebarMenuByAccess(){
             path: "/services/service-list.html",
             label: "Task's",
             children: [
-                { path: "/services/service-list.html", label: "Visits" }
+                { path: "/services/service-list.html", label: "Visits" },
+                { path: "/services/breakdown-list.html", label: "Breakdown" }
             ]
         },
         {

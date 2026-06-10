@@ -20,7 +20,10 @@ const canAddService = canManage
     ? true
     : (role === "user"
         ? (typeof hasUserActionPermission === "function"
-            ? (hasUserActionPermission("/services/service-list.html", "add") || hasUserActionPermission("/services/add-service.html", "add"))
+            ? (
+                hasUserActionPermission("/services/service-list.html", "add")
+                || hasUserActionPermission("/services/add-service.html", "add")
+            )
             : false)
         : false);
 const canEditService = canManage
@@ -29,7 +32,6 @@ const canEditService = canManage
         ? (typeof hasUserActionPermission === "function"
             ? (
                 hasUserActionPermission("/services/service-list.html", "edit")
-                || hasUserActionPermission("/services/edit-service.html", "view")
                 || hasUserActionPermission("/services/edit-service.html", "edit")
             )
             : false)
@@ -205,7 +207,7 @@ function renderRows(rows) {
 
 async function loadServiceRows() {
     try {
-        const rows = await request("/services", "GET");
+        const rows = await request("/services?scope=visits", "GET");
         allServiceRows = Array.isArray(rows) ? rows : [];
         applyFilters();
     } catch (err) {

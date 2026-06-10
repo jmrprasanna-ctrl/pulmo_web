@@ -188,9 +188,10 @@ const ACCESS_MODULE_OPTIONS = [
   {
     module: "Visit",
     items: [
-      { path: "/services/service-list.html", label: "Task's", actions: ["view", "add", "edit"] },
-      { path: "/services/add-service.html", label: "Add Task", actions: ["view", "add"] },
-      { path: "/services/edit-service.html", label: "Edit Task", actions: ["view", "edit", "delete"] },
+      { path: "/services/service-list.html", label: "Visits", actions: ["view", "add", "edit"] },
+      { path: "/services/breakdown-list.html", label: "Breakdown", actions: ["view", "add", "edit"] },
+      { path: "/services/add-service.html", label: "Add Visit", actions: ["view", "add"] },
+      { path: "/services/edit-service.html", label: "Edit Visit", actions: ["view", "edit", "delete"] },
     ],
   },
   {
@@ -359,9 +360,11 @@ function expandImplicitActionDependencies(actionKeys) {
     add("/users/add-technician.html", "view");
     add("/users/add-technician.html", "add");
   }
-  if (set.has(toActionKey("/services/service-list.html", "add"))) {
+  if (
+    set.has(toActionKey("/services/service-list.html", "add")) ||
+    set.has(toActionKey("/services/breakdown-list.html", "add"))
+  ) {
     add("/services/add-service.html", "view");
-    add("/services/add-service.html", "add");
   }
   if (
     set.has(toActionKey("/users/technician-list.html", "add")) ||
@@ -378,9 +381,17 @@ function expandImplicitActionDependencies(actionKeys) {
   ) {
     add("/services/service-list.html", "view");
   }
-  if (set.has(toActionKey("/services/service-list.html", "edit"))) {
+  if (
+    set.has(toActionKey("/services/breakdown-list.html", "add")) ||
+    set.has(toActionKey("/services/breakdown-list.html", "edit"))
+  ) {
+    add("/services/breakdown-list.html", "view");
+  }
+  if (
+    set.has(toActionKey("/services/service-list.html", "edit")) ||
+    set.has(toActionKey("/services/breakdown-list.html", "edit"))
+  ) {
     add("/services/edit-service.html", "view");
-    add("/services/edit-service.html", "edit");
   }
   if (set.has(toActionKey("/services/edit-service.html", "delete"))) {
     add("/services/edit-service.html", "view");

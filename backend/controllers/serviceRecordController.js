@@ -59,6 +59,22 @@ function parsePositiveInt(value) {
   return Number.isFinite(num) && num > 0 ? num : 0;
 }
 
+function getRequesterRole(req) {
+  return String(req?.user?.role || "").trim().toLowerCase();
+}
+
+function getRequesterUserId(req) {
+  return parsePositiveInt(req?.user?.id || req?.user?.userId || 0);
+}
+
+function appendWhereCondition(where, condition) {
+  if (!condition || typeof condition !== "object") return;
+  if (!Array.isArray(where[Op.and])) {
+    where[Op.and] = [];
+  }
+  where[Op.and].push(condition);
+}
+
 function normalizeDepartmentToken(value) {
   return String(value || "").trim().toLowerCase().replace(/[^a-z]+/g, "");
 }
@@ -140,17 +156,56 @@ exports.getServiceRecords = async (req, res) => {
   try {
     await ensureServiceRecordColumns();
 
+    const scope = String(req.query.scope || "").trim().toLowerCase();
     const serviceType = normalizeServiceType(req.query.service_type);
     const serviceMode = normalizeServiceMode(req.query.service_mode);
     const customerId = parsePositiveInt(req.query.customer_id);
+    const technicianUserId = parsePositiveInt(req.query.technician_user_id);
     const fromDate = parseDateOnly(req.query.from_date);
     const toDate = parseDateOnly(req.query.to_date);
     const where = {};
+    const requesterRole = getRequesterRole(req);
+    const requesterUserId = getRequesterUserId(req);
 
-    if (serviceType) where.service_type = serviceType;
-    if (serviceMode) {
-      where.service_mode = serviceMode;
-      if (!serviceType) where.service_type = "general";
+    if (scope === "breakdowns") {
+      appendWhereCondition(where, { service_type: "general" });
+      appendWhereCondition(where, { service_mode: "breakdown" });
+      if (technicianUserId && (requesterRole === "admin" || requesterRole === "manager")) {
+        appendWhereCondition(where, { technician_user_id: technicianUserId });
+      }
+      if (requesterRole !== "admin" && requesterRole !== "manager" && requesterUserId) {
+        appendWhereCondition(where, {
+          [Op.or]: [
+            { technician_user_id: requesterUserId },
+            { created_by: requesterUserId },
+          ],
+        });
+      }
+    } else {
+      if (serviceType) appendWhereCondition(where, { service_type: serviceType });
+      if (serviceMode) {
+        appendWhereCondition(where, { service_mode: serviceMode });
+        if (!serviceType) appendWhereCondition(where, { service_type: "general" });
+      }
+      if (scope === "visits") {
+        appendWhereCondition(where, {
+          [Op.or]: [
+            { service_type: "rental" },
+            {
+              [Op.and]: [
+                { service_type: "general" },
+                {
+                  [Op.or]: [
+                    { service_mode: { [Op.ne]: "breakdown" } },
+                    { service_mode: { [Op.is]: null } },
+                    { service_mode: "" },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+      }
     }
     if (customerId) where.customer_id = customerId;
     if (fromDate && toDate) {

@@ -16,6 +16,8 @@ const commentWrapEl = document.getElementById("commentWrap");
 const machineHelpTextEl = document.getElementById("machineHelpText");
 const saveServiceBtn = document.getElementById("saveServiceBtn");
 const deleteServiceBtn = document.getElementById("deleteServiceBtn");
+const servicePageTitleEl = document.getElementById("servicePageTitle");
+const serviceBackLinkEl = document.getElementById("serviceBackLink");
 
 const SPARE_OPTIONS = [
     "Copier",
@@ -48,6 +50,7 @@ const canEditService = canManage
         ? (typeof hasUserActionPermission === "function"
             ? (
                 hasUserActionPermission("/services/service-list.html", "edit")
+                || hasUserActionPermission("/services/breakdown-list.html", "edit")
                 || hasUserActionPermission("/services/edit-service.html", "edit")
             )
             : false)
@@ -70,6 +73,8 @@ if (!Number.isFinite(serviceId) || serviceId <= 0) {
     throw new Error("Invalid visit id.");
 }
 
+let currentServiceReturnPage = "service-list.html";
+
 let customerRows = [];
 let technicianRows = [];
 const machineCache = {
@@ -91,6 +96,29 @@ function normalizeServiceMode(value) {
 function normalizeServiceSpare(value) {
     const raw = String(value || "").trim().toLowerCase();
     return raw && SPARE_LOOKUP[raw] ? SPARE_LOOKUP[raw] : "";
+}
+
+function resolveServiceReturnPage(serviceType, serviceMode) {
+    return normalizeServiceType(serviceType) === "general" && normalizeServiceMode(serviceMode) === "breakdown"
+        ? "breakdown-list.html"
+        : "service-list.html";
+}
+
+function applyEditPageContext(serviceType, serviceMode) {
+    currentServiceReturnPage = resolveServiceReturnPage(serviceType, serviceMode);
+    const isBreakdown = currentServiceReturnPage === "breakdown-list.html";
+    const pageTitle = isBreakdown ? "Edit Breakdown" : "Edit Visit";
+    const backLabel = isBreakdown ? "Back to breakdown page" : "Back to customer visits";
+
+    if (servicePageTitleEl) {
+        servicePageTitleEl.innerText = pageTitle;
+    }
+    document.title = `${pageTitle} - AXIS CMS SYSTEM`;
+    if (serviceBackLinkEl) {
+        serviceBackLinkEl.href = currentServiceReturnPage;
+        serviceBackLinkEl.setAttribute("aria-label", backLabel);
+        serviceBackLinkEl.setAttribute("title", backLabel);
+    }
 }
 
 function normalizeDepartmentToken(value) {
@@ -156,6 +184,7 @@ function updateModeVisibility() {
             serviceModeEl.value = "";
         }
     }
+    applyEditPageContext(serviceTypeEl.value, serviceModeEl.value);
 }
 
 function setMachineOptions(rows, preferredMachineId = 0) {
@@ -339,6 +368,10 @@ customerIdEl.addEventListener("change", async () => {
     await refreshMachineOptions();
 });
 
+serviceModeEl?.addEventListener("change", () => {
+    applyEditPageContext(serviceTypeEl.value, serviceModeEl.value);
+});
+
 serviceSpareEl?.addEventListener("change", () => {
     updateCommentVisibility();
 });
@@ -408,9 +441,12 @@ editServiceFormEl.addEventListener("submit", async (event) => {
 
     try {
         await request(`/services/${serviceId}`, "PUT", payload);
-        showMessageBox("Visit updated successfully.");
+        showMessageBox(resolveServiceReturnPage(service_type, service_mode) === "breakdown-list.html"
+            ? "Breakdown updated successfully."
+            : "Visit updated successfully.");
+        const nextPage = resolveServiceReturnPage(service_type, service_mode);
         setTimeout(() => {
-            window.location.href = "service-list.html";
+            window.location.href = nextPage;
         }, 500);
     } catch (err) {
         alert(err.message || "Failed to update visit.");
@@ -423,9 +459,11 @@ deleteServiceBtn?.addEventListener("click", async () => {
 
     try {
         await request(`/services/${serviceId}`, "DELETE");
-        showMessageBox("Visit deleted successfully.");
+        showMessageBox(currentServiceReturnPage === "breakdown-list.html"
+            ? "Breakdown deleted successfully."
+            : "Visit deleted successfully.");
         setTimeout(() => {
-            window.location.href = "service-list.html";
+            window.location.href = currentServiceReturnPage;
         }, 500);
     } catch (err) {
         alert(err.message || "Failed to delete visit.");
@@ -446,6 +484,6 @@ deleteServiceBtn?.addEventListener("click", async () => {
         await loadServiceEntry();
     } catch (err) {
         alert(err.message || "Failed to load visit entry.");
-        window.location.href = "service-list.html";
+        window.location.href = currentServiceReturnPage;
     }
 })();
