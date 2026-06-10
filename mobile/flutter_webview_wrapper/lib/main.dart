@@ -23,6 +23,7 @@ const String _credentialsListStorageKey = 'axis_saved_credentials_v1';
 const String _legacyUsernameStorageKey = 'axis_saved_username';
 const String _legacyPasswordStorageKey = 'axis_saved_password';
 const String _androidPublicDownloadsPath = '/storage/emulated/0/Download';
+const String _loginScreenVersion = 'V26.6.015';
 
 String _normalizeCompanyCode(String value) {
   final String normalized = value
@@ -155,6 +156,8 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
+  final TextEditingController _offlineCompanyCodeController =
+      TextEditingController();
   final TextEditingController _offlineUsernameController =
       TextEditingController();
   final TextEditingController _offlinePasswordController =
@@ -165,7 +168,6 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
 
   int _loadingProgress = 0;
   bool _hasMainFrameError = false;
-  String _errorText = '';
   String _currentUrl = '';
   bool _credentialPromptShownForCurrentLogin = false;
   bool _isShowingCredentialPrompt = false;
@@ -238,7 +240,6 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
           onPageStarted: (String url) {
             setState(() {
               _hasMainFrameError = false;
-              _errorText = '';
               _currentUrl = url;
               _loadingProgress = 0;
               _pendingPdfTransfers.clear();
@@ -256,7 +257,6 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
             if (error.isForMainFrame ?? true) {
               setState(() {
                 _hasMainFrameError = true;
-                _errorText = error.description;
                 _isOfflineRetryInProgress = false;
               });
             }
@@ -290,6 +290,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
 
   @override
   void dispose() {
+    _offlineCompanyCodeController.dispose();
     _offlineUsernameController.dispose();
     _offlinePasswordController.dispose();
     super.dispose();
@@ -340,6 +341,19 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
       }
 
       _savedCredentials.sort((a, b) => b.updatedAtMs.compareTo(a.updatedAtMs));
+      if (_savedCredentials.isNotEmpty) {
+        final _SavedCredential latest = _savedCredentials.first;
+        _preferredLoginCompanyCode = latest.normalizedCompanyCode;
+        if (_offlineCompanyCodeController.text.trim().isEmpty) {
+          _offlineCompanyCodeController.text = latest.normalizedCompanyCode;
+        }
+        if (_offlineUsernameController.text.trim().isEmpty) {
+          _offlineUsernameController.text = latest.username;
+        }
+        if (_offlinePasswordController.text.isEmpty) {
+          _offlinePasswordController.text = latest.password;
+        }
+      }
       if (mounted) {
         setState(() {});
       }
@@ -800,7 +814,16 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
 
     _isShowingCredentialPrompt = false;
     if (picked != null) {
-      await _applyCredentialToLoginForm(picked);
+      if (mounted) {
+        setState(() {
+          _fillOfflineControllersFromCredential(picked);
+        });
+      } else {
+        _fillOfflineControllersFromCredential(picked);
+      }
+      if (!_hasMainFrameError) {
+        await _applyCredentialToLoginForm(picked);
+      }
     }
   }
 
@@ -1445,6 +1468,15 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     return null;
   }
 
+  void _fillOfflineControllersFromCredential(_SavedCredential credential) {
+    _offlineCompanyCodeController.text = credential.normalizedCompanyCode;
+    _offlineUsernameController.text = credential.username;
+    _offlinePasswordController.text = credential.password;
+    _preferredLoginUsername = credential.username;
+    _preferredLoginPassword = credential.password;
+    _preferredLoginCompanyCode = credential.normalizedCompanyCode;
+  }
+
   void _onOfflineSavedUserPicked(String? credentialKey) {
     if (credentialKey == null || credentialKey.trim().isEmpty) return;
     final int credentialIndex = _savedCredentials.indexWhere(
@@ -1458,39 +1490,47 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     if (credentialIndex < 0) return;
     final _SavedCredential credential = _savedCredentials[credentialIndex];
     setState(() {
-      _offlineUsernameController.text = credential.username;
-      _offlinePasswordController.text = credential.password;
-      _preferredLoginCompanyCode = credential.normalizedCompanyCode;
+      _fillOfflineControllersFromCredential(credential);
     });
   }
 
   Future<void> _retryOnlineLoginFromOffline() async {
     if (_isOfflineRetryInProgress) return;
+    final String companyCode = _normalizeCompanyCode(
+      _offlineCompanyCodeController.text,
+    );
     final String username = _offlineUsernameController.text.trim();
     final String password = _offlinePasswordController.text;
     final _SavedCredential? matchedCredential = _findSavedCredential(
       username,
-      companyCode: _preferredLoginCompanyCode,
+      companyCode: companyCode,
     );
-    final String companyCode = matchedCredential?.normalizedCompanyCode ??
-        _preferredLoginCompanyCode;
-    if (username.isEmpty || password.isEmpty) {
+    final String resolvedCompanyCode =
+        matchedCredential?.normalizedCompanyCode.isNotEmpty == true
+            ? matchedCredential!.normalizedCompanyCode
+            : companyCode;
+    if (companyCode.isEmpty || username.isEmpty || password.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter username and password.')),
+        const SnackBar(
+          content: Text('Enter company code, email and password.'),
+        ),
       );
       return;
     }
 
-    _setPendingCredentials(username, password, companyCode: companyCode);
+    _setPendingCredentials(
+      username,
+      password,
+      companyCode: resolvedCompanyCode,
+    );
     _preferredLoginUsername = username;
     _preferredLoginPassword = password;
-    _preferredLoginCompanyCode = companyCode;
+    _preferredLoginCompanyCode = resolvedCompanyCode;
 
     if (mounted) {
       setState(() {
         _hasMainFrameError = false;
-        _errorText = '';
         _isOfflineRetryInProgress = true;
       });
     }
@@ -1502,7 +1542,6 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
       setState(() {
         _hasMainFrameError = true;
         _isOfflineRetryInProgress = false;
-        _errorText = error.toString();
       });
     }
   }
@@ -1570,7 +1609,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           actions: [
-            if (_isLoginPageUrl(_currentUrl))
+            if (_hasMainFrameError || _isLoginPageUrl(_currentUrl))
               IconButton(
                 tooltip: 'Saved Accounts',
                 onPressed: _openSavedAccountsFromKeyButton,
@@ -1600,7 +1639,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
         body: SafeArea(
           child: _hasMainFrameError
               ? _OfflineLoginView(
-                  message: _errorText,
+                  companyCodeController: _offlineCompanyCodeController,
                   usernameController: _offlineUsernameController,
                   passwordController: _offlinePasswordController,
                   passwordVisible: _offlinePasswordVisible,
@@ -1614,6 +1653,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
                   onSavedCredentialSelected: _onOfflineSavedUserPicked,
                   onRetryOnlineLogin: _retryOnlineLoginFromOffline,
                   onTryAgain: _reload,
+                  versionLabel: _loginScreenVersion,
                 )
               : WebViewWidget(controller: _controller),
         ),
@@ -1624,7 +1664,7 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
 
 class _OfflineLoginView extends StatelessWidget {
   const _OfflineLoginView({
-    required this.message,
+    required this.companyCodeController,
     required this.usernameController,
     required this.passwordController,
     required this.passwordVisible,
@@ -1634,9 +1674,10 @@ class _OfflineLoginView extends StatelessWidget {
     required this.onSavedCredentialSelected,
     required this.onRetryOnlineLogin,
     required this.onTryAgain,
+    required this.versionLabel,
   });
 
-  final String message;
+  final TextEditingController companyCodeController;
   final TextEditingController usernameController;
   final TextEditingController passwordController;
   final bool passwordVisible;
@@ -1646,111 +1687,312 @@ class _OfflineLoginView extends StatelessWidget {
   final ValueChanged<String?> onSavedCredentialSelected;
   final Future<void> Function() onRetryOnlineLogin;
   final Future<void> Function() onTryAgain;
+  final String versionLabel;
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
     return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 16),
-            const Icon(Icons.cloud_off, size: 56),
-            const SizedBox(height: 12),
-            const Text(
-              'Offline Login',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-              textAlign: TextAlign.center,
+      child: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: <Color>[
+              Color(0xFF5E8FBE),
+              Color(0xFF2F5C84),
+            ],
+          ),
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight:
+                  MediaQuery.of(context).size.height -
+                  MediaQuery.of(context).padding.top -
+                  MediaQuery.of(context).padding.bottom -
+                  40,
             ),
-            const SizedBox(height: 8),
-            Text(
-              message.isEmpty ? 'Server is unreachable right now.' : message,
-              style: const TextStyle(fontSize: 14),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            if (savedCredentials.isNotEmpty)
-              DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                  labelText: 'Saved Accounts',
-                  border: OutlineInputBorder(),
-                ),
-                items: savedCredentials
-                    .map(
-                      (item) => DropdownMenuItem<String>(
-                        value: _savedCredentialStorageKey(
-                          item.username,
-                          companyCode: item.companyCode,
-                        ),
-                        child: Text(item.displayLabel),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: double.infinity,
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  padding: const EdgeInsets.fromLTRB(22, 28, 22, 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x260A2744),
+                        blurRadius: 28,
+                        offset: Offset(0, 16),
                       ),
-                    )
-                    .toList(),
-                onChanged: onSavedCredentialSelected,
-              ),
-            if (savedCredentials.isNotEmpty) const SizedBox(height: 14),
-            TextField(
-              controller: usernameController,
-              autocorrect: false,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Username',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: passwordController,
-              obscureText: !passwordVisible,
-              textInputAction: TextInputAction.done,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                border: const OutlineInputBorder(),
-                suffixIcon: IconButton(
-                  onPressed: onTogglePasswordVisible,
-                  icon: Icon(
-                    passwordVisible ? Icons.visibility_off : Icons.visibility,
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 10),
+                      const Text(
+                        'User Login',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1D2430),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'AXIS CMS SYSTEM',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 17,
+                          color: Color(0xFF6F7E8E),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'Offline mode. Connect internet and tap Login.',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: const Color(0xFF6F7E8E),
+                          height: 1.35,
+                        ),
+                      ),
+                      if (savedCredentials.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        TextButton.icon(
+                          onPressed: () {
+                            final _SavedCredential item = savedCredentials.first;
+                            onSavedCredentialSelected(
+                              _savedCredentialStorageKey(
+                                item.username,
+                                companyCode: item.companyCode,
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.key_outlined, size: 18),
+                          label: const Text('Use last saved account'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFF4F7EAB),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                      const _OfflineFieldLabel(label: 'Company Code'),
+                      const SizedBox(height: 8),
+                      _OfflineTextField(
+                        controller: companyCodeController,
+                        hintText: 'Company Code',
+                        autocorrect: false,
+                        textCapitalization: TextCapitalization.characters,
+                        textInputAction: TextInputAction.next,
+                      ),
+                      const SizedBox(height: 14),
+                      const _OfflineFieldLabel(label: 'Email'),
+                      const SizedBox(height: 8),
+                      _OfflineTextField(
+                        controller: usernameController,
+                        hintText: 'Email',
+                        autocorrect: false,
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
+                      ),
+                      const SizedBox(height: 14),
+                      const _OfflineFieldLabel(label: 'Password'),
+                      const SizedBox(height: 8),
+                      _OfflineTextField(
+                        controller: passwordController,
+                        hintText: 'Password',
+                        obscureText: !passwordVisible,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) {
+                          unawaited(onRetryOnlineLogin());
+                        },
+                        suffixIcon: IconButton(
+                          onPressed: onTogglePasswordVisible,
+                          icon: Icon(
+                            passwordVisible
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: const Color(0xFF8E98A7),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: retryInProgress
+                              ? null
+                              : () {
+                                  unawaited(onRetryOnlineLogin());
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF4F7EAB),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          child: retryInProgress
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Login'),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Center(
+                        child: TextButton(
+                          onPressed: retryInProgress
+                              ? null
+                              : () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Forgot password needs internet connection.',
+                                      ),
+                                    ),
+                                  );
+                                },
+                          child: const Text('Forgot password?'),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          versionLabel,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF6F7E8E),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              onSubmitted: (_) {
-                unawaited(onRetryOnlineLogin());
-              },
+                const SizedBox(height: 18),
+                OutlinedButton.icon(
+                  onPressed: retryInProgress
+                      ? null
+                      : () {
+                          unawaited(onTryAgain());
+                        },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white70),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    minimumSize: const Size(220, 50),
+                  ),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Try Again'),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: retryInProgress
-                  ? null
-                  : () {
-                      unawaited(onRetryOnlineLogin());
-                    },
-              icon: retryInProgress
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.login),
-              label: Text(
-                retryInProgress ? 'Opening Login...' : 'Login When Online',
-              ),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: retryInProgress
-                  ? null
-                  : () {
-                      unawaited(onTryAgain());
-                    },
-              icon: const Icon(Icons.refresh),
-              label: const Text('Try Again'),
-            ),
-          ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _OfflineFieldLabel extends StatelessWidget {
+  const _OfflineFieldLabel({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w700,
+        color: Color(0xFF37475A),
+      ),
+    );
+  }
+}
+
+class _OfflineTextField extends StatelessWidget {
+  const _OfflineTextField({
+    required this.controller,
+    required this.hintText,
+    this.obscureText = false,
+    this.autocorrect = false,
+    this.keyboardType,
+    this.textInputAction,
+    this.textCapitalization = TextCapitalization.none,
+    this.suffixIcon,
+    this.onSubmitted,
+  });
+
+  final TextEditingController controller;
+  final String hintText;
+  final bool obscureText;
+  final bool autocorrect;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final TextCapitalization textCapitalization;
+  final Widget? suffixIcon;
+  final ValueChanged<String>? onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      obscureText: obscureText,
+      autocorrect: autocorrect,
+      keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      textCapitalization: textCapitalization,
+      onSubmitted: onSubmitted,
+      style: const TextStyle(
+        fontSize: 16,
+        color: Color(0xFF1D2430),
+      ),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: const TextStyle(color: Color(0xFF8F98A5)),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 18,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: Color(0xFFD3D9E2)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: Color(0xFFD3D9E2)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: Color(0xFF4F7EAB), width: 1.3),
+        ),
+        suffixIcon: suffixIcon,
       ),
     );
   }
