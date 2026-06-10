@@ -1,11 +1,15 @@
 const filterBreakdownMonthEl = document.getElementById("filterBreakdownMonth");
 const breakdownSearchEl = document.getElementById("breakdownSearch");
 const breakdownTableBodyEl = document.getElementById("breakdownTableBody");
-const addBreakdownBtn = document.getElementById("addBreakdownBtn");
+const breakdownQueryParams = new URLSearchParams(window.location.search);
+const requestedBreakdownMonth = String(breakdownQueryParams.get("month") || "").trim();
+const highlightedBreakdownId = Number.parseInt(breakdownQueryParams.get("highlight") || "", 10);
 
 const breakdownToday = new Date();
 if (filterBreakdownMonthEl) {
-    filterBreakdownMonthEl.value = `${breakdownToday.getFullYear()}-${String(breakdownToday.getMonth() + 1).padStart(2, "0")}`;
+    filterBreakdownMonthEl.value = /^\d{4}-\d{2}$/.test(requestedBreakdownMonth)
+        ? requestedBreakdownMonth
+        : `${breakdownToday.getFullYear()}-${String(breakdownToday.getMonth() + 1).padStart(2, "0")}`;
 }
 
 const breakdownRawRole = String(localStorage.getItem("role") || "").toLowerCase();
@@ -13,13 +17,6 @@ const breakdownRole = ["coordinator", "cordinator", "co-ordinator", "co ordinato
 const breakdownSelectedDb = String(localStorage.getItem("selectedDatabaseName") || "").toLowerCase();
 const breakdownIsTrainingUser = breakdownRole === "user" && breakdownSelectedDb === "demo";
 const breakdownCanManage = breakdownRole === "admin" || breakdownRole === "manager" || breakdownIsTrainingUser;
-const canAddBreakdown = breakdownCanManage
-    ? true
-    : (breakdownRole === "user"
-        ? (typeof hasUserActionPermission === "function"
-            ? hasUserActionPermission("/services/breakdown-list.html", "add")
-            : false)
-        : false);
 const canEditBreakdown = breakdownCanManage
     ? true
     : (breakdownRole === "user"
@@ -27,10 +24,6 @@ const canEditBreakdown = breakdownCanManage
             ? hasUserActionPermission("/services/breakdown-list.html", "edit")
             : false)
         : false);
-
-if (addBreakdownBtn && !canAddBreakdown) {
-    addBreakdownBtn.style.display = "none";
-}
 
 let allBreakdownRows = [];
 
@@ -102,6 +95,11 @@ function renderBreakdownRows(rows) {
             <td>${escapeBreakdownHtml(row.counter_value || "-")}</td>
             <td>${escapeBreakdownHtml(row.comment_text || "-")}</td>
         `;
+
+        if (Number.isFinite(highlightedBreakdownId) && highlightedBreakdownId > 0 && rowId === highlightedBreakdownId) {
+            tr.style.background = "rgba(34, 130, 228, 0.10)";
+            tr.style.boxShadow = "inset 0 0 0 1px rgba(34, 130, 228, 0.28)";
+        }
 
         if (canEditBreakdown && Number.isFinite(rowId) && rowId > 0) {
             tr.classList.add("service-row-clickable");

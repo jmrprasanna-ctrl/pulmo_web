@@ -88,6 +88,27 @@ function resolveServiceReturnPage(serviceType, serviceMode) {
         : "service-list.html";
 }
 
+function buildServiceReturnUrl(serviceType, serviceMode, createdRow = null) {
+    const returnPage = resolveServiceReturnPage(serviceType, serviceMode);
+    if (returnPage !== "breakdown-list.html") {
+        return returnPage;
+    }
+
+    const params = new URLSearchParams();
+    const rowId = Number.parseInt(createdRow?.id, 10);
+    const rowDate = String(createdRow?.service_date || serviceDateEl?.value || "").trim();
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(rowDate)) {
+        params.set("month", rowDate.slice(0, 7));
+    }
+    if (Number.isFinite(rowId) && rowId > 0) {
+        params.set("highlight", String(rowId));
+    }
+
+    const query = params.toString();
+    return query ? `${returnPage}?${query}` : returnPage;
+}
+
 function applyAddPageContext() {
     const returnPage = resolveServiceReturnPage(serviceTypeEl?.value, serviceModeEl?.value);
     const isBreakdown = returnPage === "breakdown-list.html";
@@ -317,6 +338,10 @@ technicianSearchEl?.addEventListener("change", () => {
     syncTechnicianSelection();
 });
 
+serviceModeEl?.addEventListener("change", () => {
+    applyAddPageContext();
+});
+
 addServiceFormEl.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!canCreateService) {
@@ -378,11 +403,11 @@ addServiceFormEl.addEventListener("submit", async (event) => {
     };
 
     try {
-        await request("/services", "POST", payload);
+        const createdRow = await request("/services", "POST", payload);
         showMessageBox(resolveServiceReturnPage(service_type, service_mode) === "breakdown-list.html"
             ? "Breakdown created successfully."
             : "Visit added successfully.");
-        const nextPage = resolveServiceReturnPage(service_type, service_mode);
+        const nextPage = buildServiceReturnUrl(service_type, service_mode, createdRow);
         setTimeout(() => {
             window.location.href = nextPage;
         }, 500);
