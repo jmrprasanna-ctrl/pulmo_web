@@ -125,7 +125,7 @@ function formatMonthKey(value){
 
 function populateYearOptions(){
     const currentYear = new Date().getFullYear();
-    const options = ['<option value="">Snapshot Year</option>'];
+    const options = ['<option value="">Finance Year</option>'];
     for(let year = currentYear + 1; year >= currentYear - 7; year -= 1){
         options.push(`<option value="${year}">${year}</option>`);
     }
@@ -135,7 +135,7 @@ function populateYearOptions(){
 }
 
 function populateMonthOptions(){
-    const options = ['<option value="">Snapshot Month</option>', '<option value="all">All Months</option>'];
+    const options = ['<option value="">Finance Month</option>', '<option value="all">All Months</option>'];
     for(let month = 1; month <= 12; month += 1){
         const value = String(month).padStart(2, "0");
         options.push(`<option value="${value}">${monthNameFromNumber(month)}</option>`);
@@ -197,7 +197,7 @@ function getExpenseFocusLabel(){
     if(expenseYear && /^\d{2}$/.test(expenseMonth)){
         return `${monthNameFromNumber(expenseMonth)} ${expenseYear}`;
     }
-    return `Snapshot Month (${formatMonthKey(snapshotDate.slice(0, 7))})`;
+    return `Finance Month (${formatMonthKey(snapshotDate.slice(0, 7))})`;
 }
 
 function getSelectedExpenseMonthKey(){
@@ -809,7 +809,7 @@ function exportFinancePDF(){
     doc.setFontSize(14);
     doc.text("Finance Overview", 14, 18);
     doc.setFontSize(10);
-    doc.text(`Snapshot Date: ${selectedSnapshotLabelEl?.innerText || "--"}`, 14, 26);
+    doc.text(`Finance Date: ${selectedSnapshotLabelEl?.innerText || "--"}`, 14, 26);
     doc.text(`Expense Focus: ${selectedExpenseFocusLabelEl?.innerText || "--"}`, 14, 32);
 
     let y = 40;
