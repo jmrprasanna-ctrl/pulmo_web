@@ -282,6 +282,12 @@ function renderHeaderMeta(){
     if(lastRefreshLabelEl){
         lastRefreshLabelEl.innerText = new Date().toLocaleString();
     }
+    if(periodChartMetaEl){
+        periodChartMetaEl.innerText = "";
+    }
+    if(expenseChartMetaEl){
+        expenseChartMetaEl.innerText = "";
+    }
 }
 
 function renderKpis(data){
@@ -337,8 +343,8 @@ function renderHighlights(data){
         },
         {
             label: "Top Expense Category",
-            value: topExpenseCategory ? `${topExpenseCategory.category} • ${fmt(topExpenseCategory.total)}` : "No expense category data",
-            note: "Largest cost category inside the selected expense focus."
+            value: topExpenseCategory ? `${topExpenseCategory.category} • ${fmt(topExpenseCategory.total)}` : "No category records",
+            note: "Top cost category by amount."
         },
         {
             label: "Top Vendor",
@@ -444,7 +450,7 @@ function renderPeriodChart(data){
     const canvas = document.getElementById("financePeriodChart");
     if(!canvas || typeof Chart === "undefined"){
         if(periodChartMetaEl){
-            periodChartMetaEl.innerText = "Chart library unavailable. Finance graph could not load.";
+            periodChartMetaEl.innerText = "";
         }
         return;
     }
@@ -508,16 +514,13 @@ function renderPeriodChart(data){
         }
     });
 
-    if(periodChartMetaEl){
-        periodChartMetaEl.innerText = `Snapshot comparison for ${formatDateLabel(String(financeSnapshotDateEl?.value || todayIso()))}.`;
-    }
 }
 
 function renderExpenseChart(data){
     const canvas = document.getElementById("financeExpenseChart");
     if(!canvas || typeof Chart === "undefined"){
         if(expenseChartMetaEl){
-            expenseChartMetaEl.innerText = "Chart library unavailable. Expense chart could not load.";
+            expenseChartMetaEl.innerText = "";
         }
         return;
     }
@@ -530,9 +533,6 @@ function renderExpenseChart(data){
             expenseChartEmptyEl.classList.remove("is-hidden");
         }
         canvas.classList.add("is-hidden");
-        if(expenseChartMetaEl){
-            expenseChartMetaEl.innerText = `No expense category data for ${getExpenseFocusLabel()}.`;
-        }
         return;
     }
 
@@ -577,9 +577,6 @@ function renderExpenseChart(data){
         }
     });
 
-    if(expenseChartMetaEl){
-        expenseChartMetaEl.innerText = `${categories.length} category group(s) in ${getExpenseFocusLabel()}.`;
-    }
 }
 
 function renderFinanceOverview(data){
@@ -622,10 +619,10 @@ async function loadFinanceOverview(){
             `;
         }
         if(periodChartMetaEl){
-            periodChartMetaEl.innerText = "Unable to build period chart right now.";
+            periodChartMetaEl.innerText = "";
         }
         if(expenseChartMetaEl){
-            expenseChartMetaEl.innerText = "Unable to build expense chart right now.";
+            expenseChartMetaEl.innerText = "";
         }
         if(expenseChartEmptyEl){
             expenseChartEmptyEl.classList.remove("is-hidden");
