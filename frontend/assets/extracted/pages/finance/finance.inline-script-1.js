@@ -213,6 +213,12 @@ function getSummaryRow(data, key){
         period: PERIOD_LABELS[key] || key,
         total_sales: 0,
         total_expenses: 0,
+        received_payment: 0,
+        rental_counts_revenue: 0,
+        rental_consumable_cost: 0,
+        gross_profit: 0,
+        technician_paid: 0,
+        vendor_paid: 0,
         net_profit: 0
     };
 }
@@ -294,26 +300,32 @@ function renderKpis(data){
     const weekSummary = getSummaryRow(data, "week");
     const monthSummary = getSummaryRow(data, "month");
     const yearSummary = getSummaryRow(data, "year");
-    const vendorMonthCost = findPeriodAmount(data?.vendor_dealer_price_by_period, "month");
-    const profitMargin = monthSummary.total_sales > 0
-        ? ((monthSummary.net_profit / monthSummary.total_sales) * 100)
+    const monthReceivedPayment = asNumber(monthSummary.received_payment);
+    const monthGrossProfit = asNumber(monthSummary.gross_profit);
+    const monthVendorPaid = asNumber(monthSummary.vendor_paid);
+    const profitMargin = monthReceivedPayment > 0
+        ? ((monthSummary.net_profit / monthReceivedPayment) * 100)
         : 0;
     const topVendor = (data?.vendor_dealer_details_by_period?.month || [])[0] || null;
     const expenseRows = Array.isArray(data?.month_expense_rows) ? data.month_expense_rows : [];
 
     setCardValue("totalSales", fmt(monthSummary.total_sales), monthSummary.total_sales < 0);
+    setCardValue("receivedPayment", fmt(monthReceivedPayment), monthReceivedPayment < 0);
     setCardValue("totalExpense", fmt(monthSummary.total_expenses), false);
+    setCardValue("grossProfit", fmt(monthGrossProfit), monthGrossProfit < 0);
     setCardValue("netProfit", fmt(monthSummary.net_profit), monthSummary.net_profit < 0);
     setCardValue("yearNetProfit", fmt(yearSummary.net_profit), yearSummary.net_profit < 0);
     setCardValue("profitMargin", fmtPercent(profitMargin), profitMargin < 0);
-    setCardValue("vendorCost", fmt(vendorMonthCost), false);
+    setCardValue("vendorCost", fmt(monthVendorPaid), monthVendorPaid < 0);
 
     setText("salesMeta", `Week ${fmt(weekSummary.total_sales)} • Year ${fmt(yearSummary.total_sales)}`);
+    setText("receivedMeta", `Year ${fmt(yearSummary.received_payment)} collected`);
     setText("expenseMeta", `${expenseRows.length} expense entr${expenseRows.length === 1 ? "y" : "ies"} in focus`);
-    setText("profitMeta", monthSummary.net_profit >= 0 ? "Positive monthly profit" : "Monthly profit needs attention");
-    setText("yearProfitMeta", `Year sales ${fmt(yearSummary.total_sales)} • Expenses ${fmt(yearSummary.total_expenses)}`);
-    setText("profitMarginMeta", monthSummary.total_sales > 0 ? "Net profit against monthly sales" : "No sales recorded in snapshot");
-    setText("vendorCostMeta", topVendor ? `Top vendor: ${topVendor.vendor || "N/A"}` : "No vendor cost detail found");
+    setText("grossProfitMeta", "Before vendor and technician deductions");
+    setText("profitMeta", monthSummary.net_profit >= 0 ? "Dashboard-aligned final profit" : "Dashboard-aligned final loss");
+    setText("yearProfitMeta", `Gross ${fmt(yearSummary.gross_profit)} • Received ${fmt(yearSummary.received_payment)}`);
+    setText("profitMarginMeta", monthReceivedPayment > 0 ? "Net profit against received payment" : "No received payment in snapshot");
+    setText("vendorCostMeta", topVendor ? `Top vendor: ${topVendor.vendor || "N/A"}` : "Deducted in net profit");
 }
 
 function renderHighlights(data){
@@ -378,11 +390,17 @@ function renderSummaryTable(data){
         return `
             <td>${escapeHtml(row.period || PERIOD_LABELS[key])}</td>
             <td>${fmt(row.total_sales)}</td>
+            <td>${fmt(row.received_payment)}</td>
+            <td>${fmt(row.rental_counts_revenue)}</td>
+            <td>${fmt(row.rental_consumable_cost)}</td>
             <td>${fmt(row.total_expenses)}</td>
+            <td>${fmt(row.gross_profit)}</td>
+            <td>${fmt(row.technician_paid)}</td>
+            <td>${fmt(row.vendor_paid)}</td>
             <td>${fmt(row.net_profit)}</td>
         `;
     });
-    putRows("summaryBody", summaryRows, 4);
+    putRows("summaryBody", summaryRows, 10);
 }
 
 function renderExpenseTable(data){
@@ -472,6 +490,17 @@ function renderPeriodChart(data){
                     data: rows.map((row) => asNumber(row.total_expenses)),
                     backgroundColor: "rgba(223, 91, 87, 0.75)",
                     borderRadius: 10
+                },
+                {
+                    type: "line",
+                    label: "Gross Profit",
+                    data: rows.map((row) => asNumber(row.gross_profit)),
+                    borderColor: "#14b8a6",
+                    backgroundColor: "rgba(20, 184, 166, 0.16)",
+                    tension: 0.35,
+                    pointRadius: 4,
+                    pointHoverRadius: 5,
+                    fill: false
                 },
                 {
                     type: "line",

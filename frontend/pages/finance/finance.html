@@ -102,10 +102,20 @@
             <strong class="kpi-value" id="totalSales">0.00</strong>
             <span class="kpi-meta" id="salesMeta">Week and year comparison</span>
         </article>
+        <article class="kpi-card is-payment">
+            <span class="kpi-label">Received Payment (Month)</span>
+            <strong class="kpi-value" id="receivedPayment">0.00</strong>
+            <span class="kpi-meta" id="receivedMeta">Collected invoice amount</span>
+        </article>
         <article class="kpi-card is-expense">
             <span class="kpi-label">Monthly Expenses</span>
             <strong class="kpi-value" id="totalExpense">0.00</strong>
             <span class="kpi-meta" id="expenseMeta">Expense focus and entries</span>
+        </article>
+        <article class="kpi-card is-gross">
+            <span class="kpi-label">Gross Profit (Month)</span>
+            <strong class="kpi-value" id="grossProfit">0.00</strong>
+            <span class="kpi-meta" id="grossProfitMeta">Before vendor and technician deductions</span>
         </article>
         <article class="kpi-card is-profit">
             <span class="kpi-label">Monthly Net Profit</span>
@@ -120,12 +130,12 @@
         <article class="kpi-card is-margin">
             <span class="kpi-label">Profit Margin</span>
             <strong class="kpi-value" id="profitMargin">0.00%</strong>
-            <span class="kpi-meta" id="profitMarginMeta">Based on monthly sales</span>
+            <span class="kpi-meta" id="profitMarginMeta">Based on received payment</span>
         </article>
         <article class="kpi-card is-cost">
-            <span class="kpi-label">Vendor Cost (Month)</span>
+            <span class="kpi-label">Vendor Paid (Month)</span>
             <strong class="kpi-value" id="vendorCost">0.00</strong>
-            <span class="kpi-meta" id="vendorCostMeta">Top vendor cost driver</span>
+            <span class="kpi-meta" id="vendorCostMeta">Deducted in net profit</span>
         </article>
     </section>
 
@@ -184,7 +194,13 @@
                         <tr>
                             <th>Period</th>
                             <th>Total Sales</th>
+                            <th>Received Payment</th>
+                            <th>Rental Count Income</th>
+                            <th>Rental Consumable Cost</th>
                             <th>Total Expenses</th>
+                            <th>Gross Profit</th>
+                            <th>Technician Paid</th>
+                            <th>Vendor Paid</th>
                             <th>Net Profit</th>
                         </tr>
                     </thead>

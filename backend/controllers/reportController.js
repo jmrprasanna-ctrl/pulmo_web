@@ -48,6 +48,50 @@ function computeTechnicianPayableAmount(totalAmount, vendorProductValue, percent
     return balance * (pct / 100);
 }
 
+function getReceivedPaymentStatusFilter(){
+    return {
+        [Op.or]: [
+            { [Op.iLike]: "%received%" },
+            { [Op.iLike]: "%recieved%" }
+        ]
+    };
+}
+
+function getGeneralCustomerInclude(){
+    return {
+        model: Customer,
+        required: true,
+        attributes: [],
+        where: {
+            customer_mode: {
+                [Op.iLike]: "general"
+            }
+        }
+    };
+}
+
+function sumRentalCountPrice(rows){
+    return (Array.isArray(rows) ? rows : []).reduce((sum, row) => {
+        const input = Number(row?.input_count || 0);
+        const updated = Number(row?.updated_count || 0);
+        if(!Number.isFinite(input) || !Number.isFinite(updated)){
+            return sum;
+        }
+        return sum + ((updated - input) * 1);
+    }, 0);
+}
+
+function sumRentalConsumableAmount(rows){
+    return (Array.isArray(rows) ? rows : []).reduce((sum, row) => {
+        const qty = Number(row?.quantity || 0);
+        const dealer = Number(row?.Product?.dealer_price || 0);
+        if(!Number.isFinite(qty) || !Number.isFinite(dealer) || qty <= 0 || dealer <= 0){
+            return sum;
+        }
+        return sum + (qty * dealer);
+    }, 0);
+}
+
 function getRange(period, rawDate){
     const now = rawDate ? new Date(rawDate) : new Date();
     if(Number.isNaN(now.getTime())){
@@ -858,11 +902,108 @@ exports.financeOverview = async (req,res)=>{
             const expenses = Number(await Expense.sum("amount", {
                 where: { date: { [Op.between]: [range.start, range.end] } }
             }) || 0);
+            const receivedPayment = Number(await Invoice.sum("total_amount", {
+                include: [getGeneralCustomerInclude()],
+                where: {
+                    [Op.and]: [
+                        { invoice_date: { [Op.between]: [range.start, range.end] } },
+                        { payment_status: getReceivedPaymentStatusFilter() }
+                    ]
+                }
+            }) || 0);
+            const technicianInvoices = await Invoice.findAll({
+                where: {
+                    [Op.and]: [
+                        { invoice_date: { [Op.between]: [range.start, range.end] } },
+                        { support_technician: { [Op.not]: null } }
+                    ]
+                },
+                attributes: ["id", "total_amount", "support_technician", "support_technician_percentage"],
+                include: [
+                    {
+                        model: InvoiceItem,
+                        required: false,
+                        attributes: ["qty"],
+                        include: [{ model: Product, required: false, attributes: ["dealer_price"] }]
+                    }
+                ]
+            });
+            const technicianPaid = Number(technicianInvoices.reduce((sum, invoice) => {
+                const technician = String(invoice?.support_technician || "").trim();
+                if(!technician){
+                    return sum;
+                }
+                const vendorProductValue = sumVendorProductValueFromInvoiceItems(invoice?.InvoiceItems || []);
+                return sum + computeTechnicianPayableAmount(
+                    Number(invoice?.total_amount || 0),
+                    vendorProductValue,
+                    invoice?.support_technician_percentage
+                );
+            }, 0) || 0);
+            const vendorItemsForProfit = await InvoiceItem.findAll({
+                include: [
+                    {
+                        model: Invoice,
+                        required: true,
+                        attributes: ["id", "invoice_date", "payment_status"],
+                        where: {
+                            [Op.and]: [
+                                { invoice_date: { [Op.between]: [range.start, range.end] } },
+                                { payment_status: getReceivedPaymentStatusFilter() }
+                            ]
+                        },
+                        include: [getGeneralCustomerInclude()]
+                    },
+                    {
+                        model: Product,
+                        required: false,
+                        attributes: ["id", "dealer_price"]
+                    }
+                ],
+                attributes: ["qty"]
+            });
+            const vendorPaid = Number(sumVendorProductValueFromInvoiceItems(vendorItemsForProfit) || 0);
+            const rentalCountRows = await RentalMachineCount.findAll({
+                where: {
+                    [Op.or]: [
+                        { entry_date: { [Op.between]: [range.start, range.end] } },
+                        {
+                            entry_date: { [Op.is]: null },
+                            createdAt: { [Op.between]: [range.start, range.end] }
+                        }
+                    ]
+                },
+                attributes: ["input_count", "updated_count"]
+            });
+            const rentalCountsRevenue = Number(sumRentalCountPrice(rentalCountRows) || 0);
+            const rentalConsumableRowsForProfit = await RentalMachineConsumable.findAll({
+                where: {
+                    [Op.or]: [
+                        { entry_date: { [Op.between]: [range.start, range.end] } },
+                        {
+                            entry_date: { [Op.is]: null },
+                            createdAt: { [Op.between]: [range.start, range.end] }
+                        }
+                    ]
+                },
+                include: [{ model: Product, required: false, attributes: ["id", "dealer_price"] }],
+                attributes: ["quantity"]
+            });
+            const rentalConsumableCost = Number(sumRentalConsumableAmount(rentalConsumableRowsForProfit) || 0);
+            const grossProfit = receivedPayment + rentalCountsRevenue - rentalConsumableCost - expenses;
+            const netProfit = grossProfit - technicianPaid - vendorPaid;
+
             summaryByPeriod[key] = {
                 period: periodLabel(key),
                 total_sales: Number(sales.toFixed(2)),
+                received_payment: Number(receivedPayment.toFixed(2)),
+                rental_counts_revenue: Number(rentalCountsRevenue.toFixed(2)),
+                rental_consumable_cost: Number(rentalConsumableCost.toFixed(2)),
                 total_expenses: Number(expenses.toFixed(2)),
-                net_profit: Number((sales - expenses).toFixed(2))
+                gross_profit: Number(grossProfit.toFixed(2)),
+                technician_paid: Number(technicianPaid.toFixed(2)),
+                vendor_paid: Number(vendorPaid.toFixed(2)),
+                net_profit: Number(netProfit.toFixed(2))
             };
         }
 

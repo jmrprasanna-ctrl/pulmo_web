@@ -184,7 +184,9 @@
     background:#0f6abf;
 }
 .kpi-card.is-sales::before{ background:#0f6abf; }
+.kpi-card.is-payment::before{ background:#2d8cff; }
 .kpi-card.is-expense::before{ background:#df5b57; }
+.kpi-card.is-gross::before{ background:#14b8a6; }
 .kpi-card.is-profit::before{ background:#2fa968; }
 .kpi-card.is-year::before{ background:#8457e3; }
 .kpi-card.is-margin::before{ background:#f59e0b; }
