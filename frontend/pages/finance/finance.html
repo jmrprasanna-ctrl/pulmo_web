@@ -1,6 +1,6 @@
 <!--
-  System: PULMO WEB SYSTEM 
-  Owner : CRONIT SOLLUTIONS 
+  System: PULMO WEB SYSTEM
+  Owner : CRONIT SOLLUTIONS
   Author: JMR Prasanna
 -->
 <!DOCTYPE html>
@@ -8,10 +8,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finance - PULMO TECHNOLOGIES</title>
+<title>Finance - AXIS CMS SYSTEM</title>
 <link rel="stylesheet" href="../../assets/css/style.css">
 <link rel="stylesheet" href="../../assets/css/dashboard.css">
-<link rel="stylesheet" href="../../assets/extracted/pages/finance/finance.inline-style-1.css">
+<link rel="stylesheet" href="../../assets/extracted/pages/finance/finance.inline-style-1.css?v=20260612finance1">
 </head>
 <body>
 
@@ -37,7 +37,11 @@
 
 <div class="main-content">
     <header class="page-head">
-        <h2>Finance</h2>
+        <div class="page-head-copy">
+            <span class="page-eyebrow">Finance Dashboard</span>
+            <h2>Finance Control Center</h2>
+            <p>Overall finance detail with profitability, cost movement, operational graphs, and performance statistics.</p>
+        </div>
         <a class="icon-btn" href="../dashboard.html" aria-label="Back to Dashboard" title="Back to Dashboard">
             <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
@@ -45,113 +49,317 @@
         </a>
     </header>
 
-    <div class="toolbar">
-        <button class="icon-btn" type="button" onclick="loadFinanceOverview()" aria-label="Refresh finance data" title="Refresh finance data">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                <path d="M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-        </button>
-    </div>
+    <section class="finance-hero">
+        <div class="finance-hero-copy">
+            <span class="hero-badge">Professional Overview</span>
+            <h3>See revenue, expenses, profit, procurement cost, and rental activity in one clean page.</h3>
+            <p>Use the filters to review snapshot performance, monitor finance health, and export summary data when needed.</p>
+            <div class="hero-meta-grid">
+                <div class="hero-meta-item">
+                    <span>Snapshot Date</span>
+                    <strong id="selectedSnapshotLabel">--</strong>
+                </div>
+                <div class="hero-meta-item">
+                    <span>Expense Focus</span>
+                    <strong id="selectedExpenseFocusLabel">--</strong>
+                </div>
+                <div class="hero-meta-item">
+                    <span>Last Refresh</span>
+                    <strong id="lastRefreshLabel">--</strong>
+                </div>
+            </div>
+        </div>
 
-    <div class="grid-3">
-        <div class="card-block">
-            <h3>Total Sales (Month)</h3>
-            <p class="finance-value" id="totalSales">0.00</p>
-        </div>
-        <div class="card-block">
-            <h3>Total Expenses (Month)</h3>
-            <p class="finance-value" id="totalExpense">0.00</p>
-        </div>
-        <div class="card-block">
-            <h3>Net Profit (Month)</h3>
-            <p class="finance-value" id="netProfit">0.00</p>
-        </div>
-    </div>
+        <div class="finance-hero-actions">
+            <div class="filter-grid">
+                <label class="filter-field" for="financeSnapshotDate">
+                    <span>Snapshot Date</span>
+                    <input type="date" id="financeSnapshotDate">
+                </label>
+                <label class="filter-field" for="expenseYearFilter">
+                    <span>Expense Year</span>
+                    <select id="expenseYearFilter"></select>
+                </label>
+                <label class="filter-field" for="expenseMonthFilter">
+                    <span>Expense Month</span>
+                    <select id="expenseMonthFilter"></select>
+                </label>
+            </div>
 
-    <div class="form-container section">
-        <div class="section-head">
-            <h3>Total Sales / Expenses / Net Profit</h3>
+            <div class="toolbar">
+                <a class="toolbar-btn toolbar-btn--ghost" id="paymentsBtn" href="payments.html">Payments</a>
+                <a class="toolbar-btn toolbar-btn--ghost" id="pendingsBtn" href="pendings.html">Pendings</a>
+                <button class="toolbar-btn toolbar-btn--ghost" id="exportFinanceExcelBtn" type="button">Export Excel</button>
+                <button class="toolbar-btn toolbar-btn--ghost" id="exportFinancePdfBtn" type="button">Export PDF</button>
+                <button class="icon-btn" id="refreshFinanceBtn" type="button" aria-label="Refresh finance data" title="Refresh finance data">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        <path d="M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
         </div>
-        <table id="summaryTable">
-            <thead>
-                <tr>
-                    <th>Period</th>
-                    <th>Total Sales</th>
-                    <th>Total Expenses</th>
-                    <th>Net Profit</th>
-                </tr>
-            </thead>
-            <tbody id="summaryBody"></tbody>
-        </table>
-    </div>
+    </section>
 
-    <div class="form-container section">
-        <div class="section-head">
-            <h3>Sold Product Price</h3>
+    <section class="kpi-grid">
+        <article class="kpi-card is-sales">
+            <span class="kpi-label">Monthly Sales</span>
+            <strong class="kpi-value" id="totalSales">0.00</strong>
+            <span class="kpi-meta" id="salesMeta">Week and year comparison</span>
+        </article>
+        <article class="kpi-card is-expense">
+            <span class="kpi-label">Monthly Expenses</span>
+            <strong class="kpi-value" id="totalExpense">0.00</strong>
+            <span class="kpi-meta" id="expenseMeta">Expense focus and entries</span>
+        </article>
+        <article class="kpi-card is-profit">
+            <span class="kpi-label">Monthly Net Profit</span>
+            <strong class="kpi-value" id="netProfit">0.00</strong>
+            <span class="kpi-meta" id="profitMeta">Monthly profitability status</span>
+        </article>
+        <article class="kpi-card is-year">
+            <span class="kpi-label">Yearly Net Profit</span>
+            <strong class="kpi-value" id="yearNetProfit">0.00</strong>
+            <span class="kpi-meta" id="yearProfitMeta">Year performance snapshot</span>
+        </article>
+        <article class="kpi-card is-margin">
+            <span class="kpi-label">Profit Margin</span>
+            <strong class="kpi-value" id="profitMargin">0.00%</strong>
+            <span class="kpi-meta" id="profitMarginMeta">Based on monthly sales</span>
+        </article>
+        <article class="kpi-card is-cost">
+            <span class="kpi-label">Vendor Cost (Month)</span>
+            <strong class="kpi-value" id="vendorCost">0.00</strong>
+            <span class="kpi-meta" id="vendorCostMeta">Top vendor cost driver</span>
+        </article>
+    </section>
+
+    <section class="analytics-grid">
+        <article class="finance-panel finance-panel--wide">
+            <div class="panel-head">
+                <div>
+                    <h3>Performance by Period</h3>
+                    <p>Compare sales, expenses, and net profit across weekly, monthly, and yearly views.</p>
+                </div>
+            </div>
+            <div class="chart-meta" id="periodChartMeta">Loading period performance...</div>
+            <div class="chart-wrap">
+                <canvas id="financePeriodChart"></canvas>
+            </div>
+        </article>
+
+        <div class="analytics-side-stack">
+            <article class="finance-panel">
+                <div class="panel-head">
+                    <div>
+                        <h3>Expense Category Split</h3>
+                        <p>See where the selected expense focus is being spent.</p>
+                    </div>
+                </div>
+                <div class="chart-meta" id="expenseChartMeta">Loading expense category split...</div>
+                <div class="chart-wrap chart-wrap--compact">
+                    <div class="chart-empty is-hidden" id="expenseChartEmpty">No expense records for the selected focus.</div>
+                    <canvas id="financeExpenseChart"></canvas>
+                </div>
+            </article>
+
+            <article class="finance-panel">
+                <div class="panel-head">
+                    <div>
+                        <h3>Highlights</h3>
+                        <p>Quick finance insights from the current dataset.</p>
+                    </div>
+                </div>
+                <ul class="highlight-list" id="financeHighlights"></ul>
+            </article>
         </div>
-        <table id="soldPriceTable">
-            <thead>
-                <tr>
-                    <th>Period</th>
-                    <th>Total Amount</th>
-                </tr>
-            </thead>
-            <tbody id="soldPriceBody"></tbody>
-        </table>
-    </div>
+    </section>
 
-    <div class="form-container section">
-        <div class="section-head">
-            <h3>Vendor Products Dealer Price</h3>
+    <section class="finance-table-grid">
+        <article class="finance-panel">
+            <div class="panel-head">
+                <div>
+                    <h3>Finance Summary by Period</h3>
+                    <p>Quick comparison of total sales, expenses, and net profit.</p>
+                </div>
+                <div class="section-actions">
+                    <button class="toolbar-btn toolbar-btn--ghost" id="summaryPdfBtn" type="button">PDF</button>
+                    <button class="toolbar-btn toolbar-btn--ghost" id="summaryXlsxBtn" type="button">Excel</button>
+                </div>
+            </div>
+            <div class="table-scroll">
+                <table id="summaryTable" class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Period</th>
+                            <th>Total Sales</th>
+                            <th>Total Expenses</th>
+                            <th>Net Profit</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summaryBody"></tbody>
+                </table>
+            </div>
+        </article>
+
+        <article class="finance-panel">
+            <div class="panel-head">
+                <div>
+                    <h3>Recent Expense Entries</h3>
+                    <p>Latest expense rows inside the selected expense focus.</p>
+                </div>
+            </div>
+            <div class="table-scroll">
+                <table id="expenseTable" class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Category</th>
+                            <th>Title</th>
+                            <th>Customer</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expenseBody"></tbody>
+                </table>
+            </div>
+        </article>
+    </section>
+
+    <section class="finance-table-grid">
+        <article class="finance-panel">
+            <div class="panel-head">
+                <div>
+                    <h3>Sold Product Revenue</h3>
+                    <p>Sales amount generated by sold products across available periods.</p>
+                </div>
+                <div class="section-actions">
+                    <button class="toolbar-btn toolbar-btn--ghost" id="soldPdfBtn" type="button">PDF</button>
+                    <button class="toolbar-btn toolbar-btn--ghost" id="soldXlsxBtn" type="button">Excel</button>
+                </div>
+            </div>
+            <div class="table-scroll">
+                <table id="soldPriceTable" class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Period</th>
+                            <th>Total Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="soldPriceBody"></tbody>
+                </table>
+            </div>
+        </article>
+
+        <article class="finance-panel">
+            <div class="panel-head">
+                <div>
+                    <h3>Vendor Procurement</h3>
+                    <p>Dealer-cost totals and the top vendor breakdown for the monthly view.</p>
+                </div>
+                <div class="section-actions">
+                    <button class="toolbar-btn toolbar-btn--ghost" id="vendorPdfBtn" type="button">PDF</button>
+                    <button class="toolbar-btn toolbar-btn--ghost" id="vendorXlsxBtn" type="button">Excel</button>
+                </div>
+            </div>
+            <div class="table-stack">
+                <div class="table-subsection">
+                    <h4>Vendor Cost by Period</h4>
+                    <div class="table-scroll">
+                        <table id="vendorTotalTable" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Period</th>
+                                    <th>Total Dealer Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vendorTotalBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="table-subsection">
+                    <h4>Top Vendors (Month)</h4>
+                    <div class="table-scroll">
+                        <table id="vendorDetailTable" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Vendor</th>
+                                    <th>Qty</th>
+                                    <th>Total Dealer Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vendorDetailBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </article>
+    </section>
+
+    <section class="finance-panel">
+        <div class="panel-head">
+            <div>
+                <h3>Rental Consumables Performance</h3>
+                <p>Track rental consumable amounts by month, year, and top customers.</p>
+            </div>
+            <div class="section-actions">
+                <button class="toolbar-btn toolbar-btn--ghost" id="rentalPdfBtn" type="button">PDF</button>
+                <button class="toolbar-btn toolbar-btn--ghost" id="rentalXlsxBtn" type="button">Excel</button>
+            </div>
         </div>
-        <table id="vendorTotalTable">
-            <thead>
-                <tr>
-                    <th>Period</th>
-                    <th>Total Dealer Amount</th>
-                </tr>
-            </thead>
-            <tbody id="vendorTotalBody"></tbody>
-        </table>
-        <h3 style="margin-top:10px;">Vendor Detail</h3>
-        <table id="vendorDetailTable">
-            <thead>
-                <tr>
-                    <th>Vendor</th>
-                    <th>Qty</th>
-                    <th>Total Dealer Amount</th>
-                </tr>
-            </thead>
-            <tbody id="vendorDetailBody"></tbody>
-        </table>
-    </div>
+        <div class="triple-table-grid">
+            <div class="table-subsection">
+                <h4>Month Wise</h4>
+                <div class="table-scroll">
+                    <table id="rcMonthTable" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Month</th>
+                                <th>Total Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rcMonthBody"></tbody>
+                    </table>
+                </div>
+            </div>
 
-    <div class="form-container section">
-        <div class="section-head">
-            <h3>Rental Consumables</h3>
+            <div class="table-subsection">
+                <h4>Annual Wise</h4>
+                <div class="table-scroll">
+                    <table id="rcYearTable" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Year</th>
+                                <th>Total Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rcYearBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="table-subsection">
+                <h4>Top Customers</h4>
+                <div class="table-scroll">
+                    <table id="rcCustomerTable" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Customer</th>
+                                <th>Total Qty</th>
+                                <th>Total Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rcCustomerBody"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-        <h3>Month Wise</h3>
-        <table id="rcMonthTable">
-            <thead><tr><th>Month</th><th>Total Amount</th></tr></thead>
-            <tbody id="rcMonthBody"></tbody>
-        </table>
-        <h3 style="margin-top:10px;">Annual Wise</h3>
-        <table id="rcYearTable">
-            <thead><tr><th>Year</th><th>Total Amount</th></tr></thead>
-            <tbody id="rcYearBody"></tbody>
-        </table>
-        <h3 style="margin-top:10px;">Customer Wise</h3>
-        <table id="rcCustomerTable">
-            <thead><tr><th>Customer</th><th>Total Qty</th><th>Total Amount</th></tr></thead>
-            <tbody id="rcCustomerBody"></tbody>
-        </table>
-    </div>
-
+    </section>
 </div>
 
 <script src="../../assets/js/api.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="../../assets/extracted/pages/finance/finance.inline-script-1.js"></script>
+<script src="../../assets/extracted/pages/finance/finance.inline-script-1.js?v=20260612finance1"></script>
 </body>
 </html>
