@@ -3,28 +3,15 @@ package com.example.flutter_webview_wrapper
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
-import androidx.activity.result.contract.ActivityResultContracts
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 private const val FILE_SELECTOR_CHANNEL = "AxisAndroidFileSelectorBridge"
+private const val FILE_PICKER_REQUEST_CODE = 9025
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     private var pendingFilePickerResult: MethodChannel.Result? = null
-
-    private val filePickerLauncher =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { activityResult ->
-            val pendingResult = pendingFilePickerResult ?: return@registerForActivityResult
-            pendingFilePickerResult = null
-
-            if (activityResult.resultCode != Activity.RESULT_OK) {
-                pendingResult.success(emptyList<String>())
-                return@registerForActivityResult
-            }
-
-            pendingResult.success(collectSelectedUris(activityResult.data))
-        }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -87,7 +74,7 @@ class MainActivity : FlutterActivity() {
 
         pendingFilePickerResult = result
         try {
-            filePickerLauncher.launch(Intent.createChooser(intent, "Choose file"))
+            startActivityForResult(Intent.createChooser(intent, "Choose file"), FILE_PICKER_REQUEST_CODE)
         } catch (err: Exception) {
             pendingFilePickerResult = null
             result.error(
@@ -96,6 +83,24 @@ class MainActivity : FlutterActivity() {
                 null,
             )
         }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != FILE_PICKER_REQUEST_CODE) {
+            return
+        }
+
+        val pendingResult = pendingFilePickerResult ?: return
+        pendingFilePickerResult = null
+
+        if (resultCode != Activity.RESULT_OK) {
+            pendingResult.success(emptyList<String>())
+            return
+        }
+
+        pendingResult.success(collectSelectedUris(data))
     }
 
     private fun collectSelectedUris(data: Intent?): List<String> {
