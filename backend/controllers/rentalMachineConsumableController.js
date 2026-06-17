@@ -3,6 +3,7 @@ const RentalMachine = require("../models/RentalMachine");
 const Product = require("../models/Product");
 const Customer = require("../models/Customer");
 const db = require("../config/database");
+const { getRequesterRentalCustomerScope } = require("../utils/requestUserScope");
 const INVENTORY_DB_NAME = "inventory";
 const ADD_RENTAL_CONSUMABLE_PATH = "/products/add-rental-consumable.html";
 const EDIT_ADDED_CONSUMABLE_PATH = "/products/edit-added-consumable.html";
@@ -148,10 +149,13 @@ exports.getConsumables = async (req, res) => {
     const where = {};
     const machineId = Number(req.query.rental_machine_id);
     const customerId = Number(req.query.customer_id);
+    const requesterScope = await getRequesterRentalCustomerScope(req);
     if (Number.isFinite(machineId) && machineId > 0) {
       where.rental_machine_id = machineId;
     }
-    if (Number.isFinite(customerId) && customerId > 0) {
+    if (requesterScope?.customer_id) {
+      where.customer_id = requesterScope.customer_id;
+    } else if (Number.isFinite(customerId) && customerId > 0) {
       where.customer_id = customerId;
     }
 
@@ -174,15 +178,19 @@ exports.getConsumableEntry = async (req, res) => {
       return res.status(400).json({ message: "Entry id is required." });
     }
 
-    let where = null;
+    const requesterScope = await getRequesterRentalCustomerScope(req);
+    const where = {};
     if (entryKey.startsWith("ROW-")) {
       const rowId = Number(entryKey.slice(4));
       if (!Number.isFinite(rowId) || rowId <= 0) {
         return res.status(400).json({ message: "Invalid entry id." });
       }
-      where = { id: rowId };
+      where.id = rowId;
     } else {
-      where = { save_batch_id: entryKey };
+      where.save_batch_id = entryKey;
+    }
+    if (requesterScope?.customer_id) {
+      where.customer_id = requesterScope.customer_id;
     }
 
     const rows = await loadConsumableRows(where);
@@ -227,6 +235,11 @@ exports.createConsumable = async (req, res) => {
     }
     if (String(customer.customer_mode || "").toLowerCase() !== "rental") {
       return res.status(400).json({ message: "Selected customer is not Rental mode." });
+    }
+
+    const requesterScope = await getRequesterRentalCustomerScope(req);
+    if (requesterScope?.customer_id && Number(customer.id || 0) !== Number(requesterScope.customer_id)) {
+      return res.status(403).json({ message: "Forbidden: You can only save consumables for your mapped rental customer." });
     }
 
     let linkedMachineId = null;
@@ -300,6 +313,12 @@ exports.createConsumablesBatch = async (req, res) => {
     if (String(customer.customer_mode || "").toLowerCase() !== "rental") {
       await transaction.rollback();
       return res.status(400).json({ message: "Selected customer is not Rental mode." });
+    }
+
+    const requesterScope = await getRequesterRentalCustomerScope(req);
+    if (requesterScope?.customer_id && Number(customer.id || 0) !== Number(requesterScope.customer_id)) {
+      await transaction.rollback();
+      return res.status(403).json({ message: "Forbidden: You can only save consumables for your mapped rental customer." });
     }
 
     let linkedMachineId = null;

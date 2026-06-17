@@ -3,6 +3,7 @@ const db = require("../config/database");
 const RentalMachineCount = require("../models/RentalMachineCount");
 const RentalMachine = require("../models/RentalMachine");
 const Customer = require("../models/Customer");
+const { getRequesterRentalCustomerScope } = require("../utils/requestUserScope");
 
 exports.getLastTransactionId = async (_req, res) => {
   try {
@@ -26,6 +27,11 @@ exports.getMachineNextCount = async (req, res) => {
     const machine = await RentalMachine.findByPk(rentalMachineId);
     if (!machine) {
       return res.status(404).json({ message: "Rental machine not found." });
+    }
+
+    const requesterScope = await getRequesterRentalCustomerScope(req);
+    if (requesterScope?.customer_id && Number(machine.customer_id || 0) !== Number(requesterScope.customer_id)) {
+      return res.status(403).json({ message: "Forbidden: You can only access counts for your mapped customer machines." });
     }
 
     const lastCount = await RentalMachineCount.findOne({
@@ -53,11 +59,14 @@ exports.getRentalMachineCounts = async (req, res) => {
     const where = {};
     const rentalMachineId = Number(req.query.rental_machine_id);
     const customerId = Number(req.query.customer_id);
+    const requesterScope = await getRequesterRentalCustomerScope(req);
 
     if (Number.isFinite(rentalMachineId) && rentalMachineId > 0) {
       where.rental_machine_id = rentalMachineId;
     }
-    if (Number.isFinite(customerId) && customerId > 0) {
+    if (requesterScope?.customer_id) {
+      where.customer_id = requesterScope.customer_id;
+    } else if (Number.isFinite(customerId) && customerId > 0) {
       where.customer_id = customerId;
     }
 
@@ -99,6 +108,12 @@ exports.createRentalMachineCount = async (req, res) => {
     if (!machine) {
       await transaction.rollback();
       return res.status(404).json({ message: "Rental machine not found." });
+    }
+
+    const requesterScope = await getRequesterRentalCustomerScope(req);
+    if (requesterScope?.customer_id && Number(machine.customer_id || 0) !== Number(requesterScope.customer_id)) {
+      await transaction.rollback();
+      return res.status(403).json({ message: "Forbidden: You can only save counts for your mapped customer machines." });
     }
 
     const customer = await Customer.findByPk(machine.customer_id, { transaction });

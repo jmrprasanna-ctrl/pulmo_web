@@ -4,6 +4,7 @@ const RentalMachine = require("../models/RentalMachine");
 const RentalMachineCount = require("../models/RentalMachineCount");
 const RentalMachineConsumable = require("../models/RentalMachineConsumable");
 const Customer = require("../models/Customer");
+const { getRequesterRentalCustomerScope } = require("../utils/requestUserScope");
 
 function toUpperSafe(value) {
   return String(value || "").trim().toUpperCase();
@@ -19,7 +20,19 @@ function parseDateOnly(value) {
 
 exports.getRentalMachines = async (req, res) => {
   try {
+    const requesterScope = await getRequesterRentalCustomerScope(req);
+    const where = {};
+    if (requesterScope?.customer_id) {
+      where.customer_id = requesterScope.customer_id;
+    } else {
+      const customerId = Number(req.query.customer_id);
+      if (Number.isFinite(customerId) && customerId > 0) {
+        where.customer_id = customerId;
+      }
+    }
+
     const rows = await RentalMachine.findAll({
+      where,
       include: [{ model: Customer, attributes: ["id", "name", "address", "customer_mode"] }],
       order: [["createdAt", "DESC"], ["id", "DESC"]],
     });
@@ -92,6 +105,11 @@ exports.createRentalMachine = async (req, res) => {
       return res.status(400).json({ message: "Selected customer is not a Rental customer." });
     }
 
+    const requesterScope = await getRequesterRentalCustomerScope(req);
+    if (requesterScope?.customer_id && Number(requesterScope.customer_id) !== parsedCustomerId) {
+      return res.status(403).json({ message: "Forbidden: You can only create rental machines for your mapped customer." });
+    }
+
     const exists = await RentalMachine.findOne({ where: { machine_id } });
     if (exists) {
       return res.status(400).json({ message: "Machine ID already exists." });
@@ -125,6 +143,10 @@ exports.getRentalMachineById = async (req, res) => {
     });
     if (!row) {
       return res.status(404).json({ message: "Rental machine not found." });
+    }
+    const requesterScope = await getRequesterRentalCustomerScope(req);
+    if (requesterScope?.customer_id && Number(row.customer_id || 0) !== Number(requesterScope.customer_id)) {
+      return res.status(403).json({ message: "Forbidden: You can only access rental machines for your mapped customer." });
     }
     res.json(row);
   } catch (err) {
@@ -189,6 +211,11 @@ exports.updateRentalMachine = async (req, res) => {
       return res.status(400).json({ message: "Selected customer is not a Rental customer." });
     }
 
+    const requesterScope = await getRequesterRentalCustomerScope(req);
+    if (requesterScope?.customer_id && Number(requesterScope.customer_id) !== parsedCustomerId) {
+      return res.status(403).json({ message: "Forbidden: You can only update rental machines for your mapped customer." });
+    }
+
     const duplicate = await RentalMachine.findOne({
       where: {
         machine_id,
@@ -230,6 +257,10 @@ exports.deleteRentalMachine = async (req, res) => {
     const row = await RentalMachine.findByPk(id);
     if (!row) {
       return res.status(404).json({ message: "Rental machine not found." });
+    }
+    const requesterScope = await getRequesterRentalCustomerScope(req);
+    if (requesterScope?.customer_id && Number(row.customer_id || 0) !== Number(requesterScope.customer_id)) {
+      return res.status(403).json({ message: "Forbidden: You can only delete rental machines for your mapped customer." });
     }
 
     await db.transaction(async (transaction) => {
