@@ -184,6 +184,13 @@ function hasDashboardHrSectionAccess(){
 }
 window.hasDashboardHrSectionAccess = hasDashboardHrSectionAccess;
 
+function getDashboardChartAccessState(){
+    return {
+        canViewSalesChart: hasDashboardTilePermission(DASHBOARD_MONTHLY_SALES_ACCESS_PATH),
+        canViewProfitChart: hasDashboardTilePermission(DASHBOARD_MONTHLY_PROFIT_ACCESS_PATH)
+    };
+}
+
 function syncDashboardChartAccess(){
     const chartsWrap = document.getElementById("dashboardChartsWrap");
     const salesWrap = document.getElementById("dashboardMonthlySalesWrap");
@@ -192,9 +199,9 @@ function syncDashboardChartAccess(){
         return;
     }
 
-    const canViewSalesChart = hasDashboardTilePermission(DASHBOARD_MONTHLY_SALES_ACCESS_PATH);
-    const canViewProfitChart = hasDashboardTilePermission(DASHBOARD_MONTHLY_PROFIT_ACCESS_PATH);
+    const { canViewSalesChart, canViewProfitChart } = getDashboardChartAccessState();
 
+    chartsWrap.classList.remove("charts-access-pending");
     salesWrap.style.display = canViewSalesChart ? "" : "none";
     profitWrap.style.display = canViewProfitChart ? "" : "none";
     chartsWrap.style.display = (canViewSalesChart || canViewProfitChart) ? "" : "none";
@@ -799,8 +806,19 @@ async function fetchSummary(){
             ? summary.months
             : ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
+        if(typeof window.__waitForUserAccessPermissions === "function"){
+            await window.__waitForUserAccessPermissions();
+        }
+        syncDashboardChartAccess();
+        const { canViewSalesChart, canViewProfitChart } = getDashboardChartAccessState();
+
         const salesChartEl = document.getElementById("salesChart");
-        if(salesChartEl){
+        if(!canViewSalesChart){
+            if(salesChartInstance){
+                salesChartInstance.destroy();
+                salesChartInstance = null;
+            }
+        }else if(salesChartEl){
             const salesCtx = salesChartEl.getContext("2d");
             if(salesChartInstance){
                 salesChartInstance.destroy();
@@ -815,7 +833,12 @@ async function fetchSummary(){
         }
 
         const profitChartEl = document.getElementById("profitChart");
-        if(profitChartEl){
+        if(!canViewProfitChart){
+            if(profitChartInstance){
+                profitChartInstance.destroy();
+                profitChartInstance = null;
+            }
+        }else if(profitChartEl){
             const profitCtx = profitChartEl.getContext("2d");
             if(profitChartInstance){
                 profitChartInstance.destroy();

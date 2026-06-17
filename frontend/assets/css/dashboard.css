@@ -593,6 +593,10 @@ body {
   gap: 14px;
 }
 
+.charts.charts-access-pending {
+  display: none !important;
+}
+
 .chart-container h3 {
   margin-bottom: 10px;
 }
