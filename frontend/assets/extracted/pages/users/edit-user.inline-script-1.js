@@ -12,7 +12,31 @@ function getUserId(){
             return raw;
         }
 
-        const USER_DEPARTMENTS = new Set(["Manager", "IT", "Finance", "Admin", "Cordinater", "Technician"]);
+        const USER_DEPARTMENTS = new Set(["Manager", "IT", "Finance", "Admin", "Cordinater", "Technician", "Customer"]);
+        const CUSTOMER_USER_TYPES = new Set(["general", "rental"]);
+
+        function normalizeCustomerTypeValue(value){
+            const raw = String(value || "").trim().toLowerCase();
+            if(raw === "general" || raw === "genaral") return "general";
+            if(raw === "rental") return "rental";
+            return "";
+        }
+
+        function updateCustomerTypeVisibility(){
+            const departmentEl = document.getElementById('department');
+            const customerTypeWrapEl = document.getElementById('customerTypeWrap');
+            const customerTypeEl = document.getElementById('customerType');
+            const showCustomerType = String(departmentEl?.value || "").trim() === "Customer";
+            if(customerTypeWrapEl){
+                customerTypeWrapEl.style.display = showCustomerType ? "" : "none";
+            }
+            if(customerTypeEl){
+                customerTypeEl.required = showCustomerType;
+                if(!showCustomerType){
+                    customerTypeEl.value = "";
+                }
+            }
+        }
 
         function ensureDepartmentOption(value){
             const select = document.getElementById('department');
@@ -46,9 +70,11 @@ function getUserId(){
                 document.getElementById('username').value = user.username || "";
                 document.getElementById('company').value = user.company || "";
                 document.getElementById('department').value = ensureDepartmentOption(user.department) || "";
+                document.getElementById('customerType').value = normalizeCustomerTypeValue(user.customer_type);
                 document.getElementById('tel').value = user.telephone || "";
                 document.getElementById('email').value = user.email || "";
                 document.getElementById('role').value = user.role || "";
+                updateCustomerTypeVisibility();
             }catch(err){
                 alert(err.message || "Failed to load user");
                 window.location.href = "user-list.html";
@@ -58,6 +84,9 @@ function getUserId(){
         window.addEventListener("load", () => {
             const form = document.getElementById('editUserForm');
             const companyInput = document.getElementById('company');
+            const departmentEl = document.getElementById('department');
+            const customerTypeWrapEl = document.getElementById('customerTypeWrap');
+            const customerTypeEl = document.getElementById('customerType');
             const togglePassword = document.getElementById('togglePassword');
             const passwordInput = document.getElementById('password');
             const eyeIcon = document.getElementById('eyeIcon');
@@ -75,12 +104,19 @@ function getUserId(){
                 companyInput.setSelectionRange(pos, pos);
             });
 
+            departmentEl?.addEventListener("change", updateCustomerTypeVisibility);
+
             form.addEventListener('submit', async e => {
                 e.preventDefault();
                 const id = getUserId();
-                const selectedDepartment = String(document.getElementById('department').value || "").trim();
+                const selectedDepartment = String(departmentEl?.value || "").trim();
+                const selectedCustomerType = normalizeCustomerTypeValue(customerTypeEl?.value);
                 if(!USER_DEPARTMENTS.has(selectedDepartment)){
                     alert("Please select a valid department.");
+                    return;
+                }
+                if(selectedDepartment === "Customer" && !CUSTOMER_USER_TYPES.has(selectedCustomerType)){
+                    alert("Please select a valid customer type.");
                     return;
                 }
                 const payload = {
@@ -89,6 +125,7 @@ function getUserId(){
                     role: document.getElementById('role').value,
                     company: document.getElementById('company').value.trim(),
                     department: selectedDepartment,
+                    customer_type: selectedDepartment === "Customer" ? selectedCustomerType : "",
                     telephone: document.getElementById('tel').value.trim()
                 };
                 const password = document.getElementById('password').value;
@@ -138,6 +175,7 @@ function getUserId(){
             }
 
             loadUser();
+            updateCustomerTypeVisibility();
             const id = getUserId();
             if(deleteUserBtn && canDeleteUser && isCurrentLoggedInUser(id)){
                 deleteUserBtn.style.display = "none";

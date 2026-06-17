@@ -10,7 +10,15 @@ const User = db.define("User", {
         allowNull: false,
         defaultValue: "Cordinater",
         validate: {
-            isIn: [["Manager", "IT", "Finance", "Admin", "Cordinater", "Technician"]],
+            isIn: [["Manager", "IT", "Finance", "Admin", "Cordinater", "Technician", "Customer"]],
+        },
+    },
+    customer_type: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: null,
+        validate: {
+            isIn: [["general", "rental"]],
         },
     },
     telephone: { type: DataTypes.STRING },

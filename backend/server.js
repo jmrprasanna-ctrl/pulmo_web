@@ -1159,17 +1159,33 @@ async function ensureUserDepartmentSchema() {
       ADD COLUMN IF NOT EXISTS department VARCHAR(100);
     `);
     await db.query(`
+      ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS customer_type VARCHAR(20);
+    `);
+    await db.query(`
       UPDATE users
       SET department = CASE
         WHEN department IS NULL OR TRIM(department) = '' THEN 'Cordinater'
-        WHEN department IN ('Manager', 'IT', 'Finance', 'Admin', 'Cordinater', 'Technician') THEN department
+        WHEN department IN ('Manager', 'IT', 'Finance', 'Admin', 'Cordinater', 'Technician', 'Customer') THEN department
         WHEN REGEXP_REPLACE(LOWER(TRIM(department)), '[^a-z]+', '', 'g') = 'manager' THEN 'Manager'
         WHEN REGEXP_REPLACE(LOWER(TRIM(department)), '[^a-z]+', '', 'g') IN ('it', 'informationtechnology', 'informationtech') THEN 'IT'
         WHEN REGEXP_REPLACE(LOWER(TRIM(department)), '[^a-z]+', '', 'g') IN ('finance', 'finances', 'accounts', 'accounting') THEN 'Finance'
         WHEN REGEXP_REPLACE(LOWER(TRIM(department)), '[^a-z]+', '', 'g') IN ('admin', 'administrator') THEN 'Admin'
         WHEN REGEXP_REPLACE(LOWER(TRIM(department)), '[^a-z]+', '', 'g') IN ('cordinater', 'coordinator', 'coordinater', 'cordinator') THEN 'Cordinater'
         WHEN REGEXP_REPLACE(LOWER(TRIM(department)), '[^a-z]+', '', 'g') IN ('technician', 'tech') THEN 'Technician'
+        WHEN REGEXP_REPLACE(LOWER(TRIM(department)), '[^a-z]+', '', 'g') IN ('customer', 'customers') THEN 'Customer'
         ELSE 'Cordinater'
+      END;
+    `);
+    await db.query(`
+      UPDATE users
+      SET customer_type = CASE
+        WHEN department = 'Customer'
+          AND REGEXP_REPLACE(LOWER(TRIM(COALESCE(customer_type, ''))), '[^a-z]+', '', 'g') = 'rental' THEN 'rental'
+        WHEN department = 'Customer'
+          AND REGEXP_REPLACE(LOWER(TRIM(COALESCE(customer_type, ''))), '[^a-z]+', '', 'g') IN ('general', 'genaral') THEN 'general'
+        WHEN department = 'Customer' THEN 'general'
+        ELSE NULL
       END;
     `);
     // One-time safety backfill: restore likely intended departments for legacy rows
@@ -1222,7 +1238,27 @@ async function ensureUserDepartmentSchema() {
 
         ALTER TABLE users
         ADD CONSTRAINT users_department_allowed_chk
-        CHECK (department IN ('Manager', 'IT', 'Finance', 'Admin', 'Cordinater', 'Technician'));
+        CHECK (department IN ('Manager', 'IT', 'Finance', 'Admin', 'Cordinater', 'Technician', 'Customer'));
+      END $$;
+    `);
+    await db.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conname = 'users_customer_type_allowed_chk'
+            AND conrelid = 'users'::regclass
+        ) THEN
+          ALTER TABLE users DROP CONSTRAINT users_customer_type_allowed_chk;
+        END IF;
+
+        ALTER TABLE users
+        ADD CONSTRAINT users_customer_type_allowed_chk
+        CHECK (
+          (department = 'Customer' AND customer_type IN ('general', 'rental'))
+          OR (department <> 'Customer' AND customer_type IS NULL)
+        );
       END $$;
     `);
   });

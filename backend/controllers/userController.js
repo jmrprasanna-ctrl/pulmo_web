@@ -22,8 +22,10 @@ const USER_PROFILE_STORAGE_ROOT = path.resolve(__dirname, "../storage/user-profi
 const PROFILE_IMAGE_ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".bmp", ".gif", ".png", ".tif", ".tiff", ".webp"]);
 
 const ensuredUserProfileSchemaDbs = new Set();
-const ALLOWED_USER_DEPARTMENTS = ["Manager", "IT", "Finance", "Admin", "Cordinater", "Technician"];
+const ALLOWED_USER_DEPARTMENTS = ["Manager", "IT", "Finance", "Admin", "Cordinater", "Technician", "Customer"];
 const ALLOWED_USER_DEPARTMENT_SET = new Set(ALLOWED_USER_DEPARTMENTS);
+const ALLOWED_CUSTOMER_USER_TYPES = ["general", "rental"];
+const ALLOWED_CUSTOMER_USER_TYPE_SET = new Set(ALLOWED_CUSTOMER_USER_TYPES);
 const USER_DIRECTORY_DB = db.normalizeDatabaseName(process.env.DB_NAME || "inventory") || "inventory";
 const DEPARTMENT_ACCESS_TEMPLATE_TOKENS = {
   Manager: ["pulmo"],
@@ -49,7 +51,18 @@ function normalizeUserDepartment(value) {
   if (token === "admin" || token === "administrator") return "Admin";
   if (token === "cordinater" || token === "coordinator" || token === "coordinater" || token === "cordinator") return "Cordinater";
   if (token === "technician" || token === "tech") return "Technician";
+  if (token === "customer" || token === "customers") return "Customer";
 
+  return "";
+}
+
+function normalizeCustomerUserType(value) {
+  const token = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z]+/g, "");
+  if (token === "general" || token === "genaral") return "general";
+  if (token === "rental") return "rental";
   return "";
 }
 
@@ -471,7 +484,7 @@ exports.getUsers = async (req, res) => {
     try {
       await ensureUserSuperColumn();
       const users = await User.findAll({
-        attributes: ["id", "username", "company", "department", "telephone", "email", "role", "is_super_user", "createdAt"],
+        attributes: ["id", "username", "company", "department", "customer_type", "telephone", "email", "role", "is_super_user", "createdAt"],
         order: [["id", "DESC"]],
       });
       const requesterId = Number(req?.user?.id || req?.user?.userId || 0);
@@ -486,7 +499,7 @@ exports.getUsers = async (req, res) => {
       }));
       if (activeDatabaseName !== USER_DIRECTORY_DB) {
         const requesterDirectoryUser = await findDirectoryScopedRequesterUser(req, {
-          attributes: ["id", "username", "company", "department", "telephone", "email", "role", "is_super_user", "createdAt"],
+          attributes: ["id", "username", "company", "department", "customer_type", "telephone", "email", "role", "is_super_user", "createdAt"],
         });
         if (
           requesterDirectoryUser
@@ -522,7 +535,7 @@ exports.getUserById = async (req, res) => {
       let user = null;
       if (!targetRef.is_directory_self) {
         user = await User.findByPk(targetUserId, {
-          attributes: ["id", "username", "company", "department", "telephone", "email", "role", "is_super_user"],
+          attributes: ["id", "username", "company", "department", "customer_type", "telephone", "email", "role", "is_super_user"],
         });
       }
       let usedDirectoryFallback = false;
@@ -534,7 +547,7 @@ exports.getUserById = async (req, res) => {
         && requesterId === targetUserId
       ) {
         user = await findDirectoryScopedRequesterUser(req, {
-          attributes: ["id", "username", "company", "department", "telephone", "email", "role", "is_super_user"],
+          attributes: ["id", "username", "company", "department", "customer_type", "telephone", "email", "role", "is_super_user"],
         });
         usedDirectoryFallback = Boolean(user);
       }
@@ -559,6 +572,7 @@ exports.addUser = async (req, res) => {
   const username = String(req.body?.username || "").trim();
   const company = String(req.body?.company || "").trim();
   const department = normalizeUserDepartment(req.body?.department);
+  const customerType = normalizeCustomerUserType(req.body?.customer_type);
   const telephone = String(req.body?.telephone || "").trim();
   const email = String(req.body?.email || "").trim();
   const password = String(req.body?.password || "");
@@ -576,6 +590,11 @@ exports.addUser = async (req, res) => {
           message: `Department must be one of: ${ALLOWED_USER_DEPARTMENTS.join(", ")}`,
         });
       }
+      if (department === "Customer" && !ALLOWED_CUSTOMER_USER_TYPE_SET.has(customerType)) {
+        return res.status(400).json({
+          message: `Customer type must be one of: ${ALLOWED_CUSTOMER_USER_TYPES.join(", ")}`,
+        });
+      }
 
       const existing = await User.findOne({ where: { email } });
       if (existing) {
@@ -591,6 +610,7 @@ exports.addUser = async (req, res) => {
           username,
           company,
           department,
+          customer_type: department === "Customer" ? customerType : null,
           telephone,
           email,
           password: hashedPassword,
@@ -611,6 +631,7 @@ exports.addUser = async (req, res) => {
         email: user.email,
         role: user.role,
         department: user.department,
+        customer_type: user.customer_type,
         database_name: activeDatabaseName,
         access_template: templateAccessResult,
       });
@@ -627,6 +648,8 @@ exports.updateUser = async (req, res) => {
   const company = typeof req.body?.company === "undefined" ? undefined : String(req.body.company || "").trim();
   const departmentRaw = typeof req.body?.department === "undefined" ? undefined : req.body.department;
   const department = typeof departmentRaw === "undefined" ? undefined : normalizeUserDepartment(departmentRaw);
+  const customerTypeRaw = typeof req.body?.customer_type === "undefined" ? undefined : req.body.customer_type;
+  const customerType = typeof customerTypeRaw === "undefined" ? undefined : normalizeCustomerUserType(customerTypeRaw);
   const telephone = typeof req.body?.telephone === "undefined" ? undefined : String(req.body.telephone || "").trim();
   const email = typeof req.body?.email === "undefined" ? undefined : String(req.body.email || "").trim();
   const password = typeof req.body?.password === "undefined" ? "" : String(req.body.password || "");
@@ -685,6 +708,20 @@ exports.updateUser = async (req, res) => {
       user.telephone = telephone ?? user.telephone;
       user.email = email ?? user.email;
       user.role = role ?? user.role;
+      const nextDepartment = String(user.department || "").trim();
+      if (nextDepartment === "Customer") {
+        const resolvedCustomerType = typeof customerType !== "undefined"
+          ? customerType
+          : normalizeCustomerUserType(user.customer_type);
+        if (!ALLOWED_CUSTOMER_USER_TYPE_SET.has(resolvedCustomerType)) {
+          return res.status(400).json({
+            message: `Customer type must be one of: ${ALLOWED_CUSTOMER_USER_TYPES.join(", ")}`,
+          });
+        }
+        user.customer_type = resolvedCustomerType;
+      } else {
+        user.customer_type = null;
+      }
 
       if (password) {
         user.password = await bcrypt.hash(password, 10);
@@ -695,7 +732,7 @@ exports.updateUser = async (req, res) => {
 
       const persisted = await db.withDatabase(storageDatabaseName, async () => {
         return User.findByPk(user.id, {
-          attributes: ["id", "username", "company", "department", "telephone", "email", "role"],
+          attributes: ["id", "username", "company", "department", "customer_type", "telephone", "email", "role"],
         });
       });
       if (!persisted) {
@@ -707,6 +744,7 @@ exports.updateUser = async (req, res) => {
         username: persisted.username,
         company: persisted.company,
         department: persisted.department,
+        customer_type: persisted.customer_type,
         telephone: persisted.telephone,
         email: persisted.email,
         role: persisted.role,

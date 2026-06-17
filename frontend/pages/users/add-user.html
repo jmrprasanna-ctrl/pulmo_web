@@ -35,11 +35,6 @@
     <div class="main-content">
         <header class="page-head">
             <h2>Add User</h2>
-            <a class="icon-btn" href="user-list.html" aria-label="Back to user list" title="Back to user list">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </a>
         </header>
         <div class="form-container">
             <form id="addUserForm">
@@ -58,7 +53,17 @@
                     <option value="Admin">Admin</option>
                     <option value="Cordinater">Cordinater</option>
                     <option value="Technician">Technician</option>
+                    <option value="Customer">Customer</option>
                 </select>
+
+                <div id="customerTypeWrap" style="display:none;">
+                    <label for="customerType">Type</label>
+                    <select id="customerType">
+                        <option value="">Select Type</option>
+                        <option value="general">General</option>
+                        <option value="rental">Rental</option>
+                    </select>
+                </div>
 
                 <label for="tel">Telephone</label>
                 <input type="text" id="tel" placeholder="Enter telephone" required>
@@ -87,13 +92,12 @@
 
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">Add User</button>
-                    <a class="btn btn-secondary" href="user-list.html">Back</a>
                 </div>
             </form>
         </div>
     </div>
 
     <script src="../../assets/js/api.js"></script>
-    <script src="../../assets/extracted/pages/users/add-user.inline-script-1.js"></script>
+    <script src="../../assets/extracted/pages/users/add-user.inline-script-1.js?v=20260617cust1"></script>
 </body>
 </html>
