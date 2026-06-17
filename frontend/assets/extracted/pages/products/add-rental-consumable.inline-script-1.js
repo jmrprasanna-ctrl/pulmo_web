@@ -105,7 +105,6 @@ function renderPending(){
         tr.innerHTML = `
             <td>${item.consumable_name}</td>
             <td>${item.quantity}</td>
-            <td>${Number(item.total_price || 0).toFixed(2)}</td>
             <td>${item.count ?? 0}</td>
             <td>
                 <div class="consumable-action-row">
@@ -196,14 +195,12 @@ async function loadAddedConsumables(){
                     customer: r.Customer ? (r.Customer.name || "") : "",
                     consumables: [],
                     totalQty: 0,
-                    totalPrice: 0,
                     counts: []
                 });
             }
             const g = grouped.get(key);
             g.consumables.push(`${r.consumable_name || ""} (${r.quantity ?? 0})`);
             g.totalQty += Number(r.quantity || 0);
-            g.totalPrice += Number((r.Product ? r.Product.dealer_price : 0) || 0) * Number(r.quantity || 0);
             const c = Number(r.count || 0);
             if(c > 0){
                 g.counts.push(c);
@@ -219,7 +216,6 @@ async function loadAddedConsumables(){
                 <td>${g.customer}</td>
                 <td>${g.consumables.join(", ")}</td>
                 <td>${g.totalQty}</td>
-                <td>${Number(g.totalPrice || 0).toFixed(2)}</td>
                 <td>${g.counts.length ? g.counts.join(", ") : "-"}</td>
                 <td>
                     <div class="consumable-action-row">
@@ -315,7 +311,7 @@ function saveAddedConsumablesPDF(){
     let y = 30;
     const rows = document.querySelectorAll("#consumableTable tbody tr");
     rows.forEach(r => {
-        const cells = Array.from(r.children).slice(0, 7).map(td => td.innerText);
+        const cells = Array.from(r.children).slice(0, 6).map(td => td.innerText);
         doc.text(cells.join(" | "), 14, y);
         y += 8;
     });
