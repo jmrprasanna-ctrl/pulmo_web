@@ -10,8 +10,6 @@ let invMapFlags = null;
 let invMapData = null;
 const LOGO_STORAGE_KEY = "invoice_logo_with_name_data_url";
 const ADDRESS_STORAGE_KEY = "invoice_selected_address_key";
-const INVOICE_SECTION_PATH = "/users/invoice-section.html";
-
 function hasMappedFeature(featureKey){
     if(!invMapFlags) return true;
     return !!invMapFlags[featureKey];
@@ -1208,16 +1206,6 @@ function initLayoutEditor(){
     downBtn.addEventListener("click", async () => moveSelectedLayout(0, LAYOUT_STEP));
 }
 
-function applyInvoiceSectionAccess(){
-    const invoiceSectionBtn = document.getElementById("invoiceSectionSettingsBtn");
-    if(!invoiceSectionBtn) return;
-    if(typeof hasUserGrantedPath === "function" && !hasUserGrantedPath(INVOICE_SECTION_PATH)){
-        invoiceSectionBtn.style.display = "none";
-        return;
-    }
-    invoiceSectionBtn.style.display = "";
-}
-
 async function saveInvoiceRenderInputs(){
     const payload = {
         render_visibility: collectInvoiceRenderVisibility(),
@@ -1565,7 +1553,6 @@ window.addEventListener("DOMContentLoaded", async () => {
     if(saveInvDateBtn){
         saveInvDateBtn.addEventListener("click", updateInvoiceDateFromTile);
     }
-    applyInvoiceSectionAccess();
     applyPreviewAccessByRole();
     if(canConfigurePreview){
         initEditModeControl();
