@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
@@ -19,11 +20,15 @@ const String _credentialsChannelName = 'AxisCredentialsBridge';
 const String _loginStatusChannelName = 'AxisLoginStatusBridge';
 const String _pdfChannelName = 'AxisPdfBridge';
 const String _fileChannelName = 'AxisFileBridge';
+const String _androidFileSelectorChannelName = 'AxisAndroidFileSelectorBridge';
 const String _credentialsListStorageKey = 'axis_saved_credentials_v1';
 const String _legacyUsernameStorageKey = 'axis_saved_username';
 const String _legacyPasswordStorageKey = 'axis_saved_password';
 const String _androidPublicDownloadsPath = '/storage/emulated/0/Download';
 const String _loginScreenVersion = 'V26.6.015';
+const MethodChannel _androidFileSelectorChannel = MethodChannel(
+  _androidFileSelectorChannelName,
+);
 
 String _normalizeCompanyCode(String value) {
   final String normalized = value
@@ -288,6 +293,9 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
         AndroidWebViewController.enableDebugging(true);
       }
       androidController.setMediaPlaybackRequiresUserGesture(false);
+      unawaited(
+        androidController.setOnShowFileSelector(_handleAndroidFileSelector),
+      );
     }
 
     _controller = controller;
@@ -310,6 +318,35 @@ class _WebWrapperPageState extends State<WebWrapperPage> {
     final String lower = url.toLowerCase();
     return lower.contains('/pages/dashboard.html') ||
         lower.endsWith('/dashboard.html');
+  }
+
+  Future<List<String>> _handleAndroidFileSelector(
+    FileSelectorParams params,
+  ) async {
+    final List<String> acceptTypes =
+        params.acceptTypes
+            .map((String type) => type.trim())
+            .where((String type) => type.isNotEmpty)
+            .toList(growable: false);
+    try {
+      final List<String>? selectedUris = await _androidFileSelectorChannel
+          .invokeListMethod<String>('pickFiles', <String, dynamic>{
+            'allowMultiple': params.mode == FileSelectorMode.openMultiple,
+            'acceptTypes': acceptTypes,
+            'isCaptureEnabled': params.isCaptureEnabled,
+            'filenameHint': params.filenameHint,
+          });
+      if (selectedUris == null || selectedUris.isEmpty) {
+        return const <String>[];
+      }
+      return selectedUris
+          .map((String uri) => uri.trim())
+          .where((String uri) => uri.isNotEmpty)
+          .toList(growable: false);
+    } on PlatformException catch (err) {
+      debugPrint('Android file selector failed: ${err.message ?? err.code}');
+      return const <String>[];
+    }
   }
 
   Future<void> _loadSavedCredentials() async {
