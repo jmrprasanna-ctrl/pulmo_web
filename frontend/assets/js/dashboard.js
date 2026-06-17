@@ -160,6 +160,45 @@ function hasDashboardTilePermission(tilePath){
     }
     return hasDashboardAccessFor(tilePath, ["view"]);
 }
+window.hasDashboardAccessFor = hasDashboardAccessFor;
+
+const DASHBOARD_MONTHLY_SALES_ACCESS_PATH = "/dashboard/charts/monthly-sales";
+const DASHBOARD_MONTHLY_PROFIT_ACCESS_PATH = "/dashboard/charts/monthly-profit";
+const DASHBOARD_HR_ACCESS_PATHS = [
+    "/hr/inout.html",
+    "/hr/time-sheet.html",
+    "/hr/sallary.html",
+    "/hr/sallary-detail.html",
+    "/hr/leave.html",
+    "/hr/payslip.html",
+    "/hr/payslip-view.html"
+];
+
+function hasDashboardHrSectionAccess(){
+    const role = (localStorage.getItem("role") || "").toLowerCase();
+    const hasConfiguredAccess = typeof hasAccessConfigRestrictions === "function" && hasAccessConfigRestrictions();
+    if((role === "admin" || role === "manager" || role === "user") && !hasConfiguredAccess){
+        return true;
+    }
+    return DASHBOARD_HR_ACCESS_PATHS.some((path) => hasDashboardAccessFor(path, ["view", "add", "edit", "delete"]));
+}
+window.hasDashboardHrSectionAccess = hasDashboardHrSectionAccess;
+
+function syncDashboardChartAccess(){
+    const chartsWrap = document.getElementById("dashboardChartsWrap");
+    const salesWrap = document.getElementById("dashboardMonthlySalesWrap");
+    const profitWrap = document.getElementById("dashboardMonthlyProfitWrap");
+    if(!chartsWrap || !salesWrap || !profitWrap){
+        return;
+    }
+
+    const canViewSalesChart = hasDashboardTilePermission(DASHBOARD_MONTHLY_SALES_ACCESS_PATH);
+    const canViewProfitChart = hasDashboardTilePermission(DASHBOARD_MONTHLY_PROFIT_ACCESS_PATH);
+
+    salesWrap.style.display = canViewSalesChart ? "" : "none";
+    profitWrap.style.display = canViewProfitChart ? "" : "none";
+    chartsWrap.style.display = (canViewSalesChart || canViewProfitChart) ? "" : "none";
+}
 
 function resolveFirstAccessiblePath(paths, actions = ["view"]){
     const list = Array.isArray(paths) ? paths : [];
@@ -277,6 +316,11 @@ if(window.__userAccessPermissionsLoaded){
     bindDashboardTileAccessLinks();
 }else{
     document.addEventListener("app:user-access-ready", bindDashboardTileAccessLinks, { once: true });
+}
+if(window.__userAccessPermissionsLoaded){
+    syncDashboardChartAccess();
+}else{
+    document.addEventListener("app:user-access-ready", syncDashboardChartAccess, { once: true });
 }
 
 function normalizeAccessPath(path){
@@ -755,29 +799,35 @@ async function fetchSummary(){
             ? summary.months
             : ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-        const salesCtx = document.getElementById("salesChart").getContext("2d");
-        if(salesChartInstance){
-            salesChartInstance.destroy();
-        }
-        salesChartInstance = new Chart(salesCtx,{
-            type:"bar",
-            data:{
-                labels,
-                datasets:[{label:"Sales",data:monthlySales,backgroundColor:"#3498db"}]
+        const salesChartEl = document.getElementById("salesChart");
+        if(salesChartEl){
+            const salesCtx = salesChartEl.getContext("2d");
+            if(salesChartInstance){
+                salesChartInstance.destroy();
             }
-        });
+            salesChartInstance = new Chart(salesCtx,{
+                type:"bar",
+                data:{
+                    labels,
+                    datasets:[{label:"Sales",data:monthlySales,backgroundColor:"#3498db"}]
+                }
+            });
+        }
 
-        const profitCtx = document.getElementById("profitChart").getContext("2d");
-        if(profitChartInstance){
-            profitChartInstance.destroy();
-        }
-        profitChartInstance = new Chart(profitCtx,{
-            type:"bar",
-            data:{
-                labels,
-                datasets:[{label:"Net Profit",data:monthlyProfit,backgroundColor:"#9ad9a6",borderColor:"#6fbd84",borderWidth:1}]
+        const profitChartEl = document.getElementById("profitChart");
+        if(profitChartEl){
+            const profitCtx = profitChartEl.getContext("2d");
+            if(profitChartInstance){
+                profitChartInstance.destroy();
             }
-        });
+            profitChartInstance = new Chart(profitCtx,{
+                type:"bar",
+                data:{
+                    labels,
+                    datasets:[{label:"Net Profit",data:monthlyProfit,backgroundColor:"#9ad9a6",borderColor:"#6fbd84",borderWidth:1}]
+                }
+            });
+        }
 
     }catch(err){
         console.error(err);

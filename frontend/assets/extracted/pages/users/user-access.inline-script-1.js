@@ -164,6 +164,16 @@ const userSelectEl = document.getElementById("userSelect");
                     label: "Warranty Invoice View",
                     actions: ["view"]
                 });
+                ensureMatrixItem("Charts", {
+                    path: "/dashboard/charts/monthly-sales",
+                    label: "Dashboard Monthly Sales",
+                    actions: ["view"]
+                });
+                ensureMatrixItem("Charts", {
+                    path: "/dashboard/charts/monthly-profit",
+                    label: "Dashboard Monthly Profit",
+                    actions: ["view"]
+                });
 
                 renderAccessMatrix();
             }catch(err){

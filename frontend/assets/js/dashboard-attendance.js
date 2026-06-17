@@ -1,11 +1,66 @@
 (function () {
+    const attendanceWrap = document.getElementById("topbarAttendanceWrap");
     const timeInBtn = document.getElementById("topbarTimeInBtn");
     const timeOutBtn = document.getElementById("topbarTimeOutBtn");
-    if (!timeInBtn || !timeOutBtn) return;
+    if (!attendanceWrap || !timeInBtn || !timeOutBtn) return;
+
+    const DASHBOARD_ATTENDANCE_ROLE_ALIASES = new Set([
+        "user",
+        "coordinator",
+        "cordinator",
+        "co-ordinator",
+        "co ordinator",
+        "co_ordinator"
+    ]);
+    const DASHBOARD_ATTENDANCE_HR_PATHS = [
+        "/hr/inout.html",
+        "/hr/time-sheet.html",
+        "/hr/sallary.html",
+        "/hr/sallary-detail.html",
+        "/hr/leave.html",
+        "/hr/payslip.html",
+        "/hr/payslip-view.html"
+    ];
 
     let latestStatus = null;
     timeInBtn.disabled = true;
     timeOutBtn.disabled = true;
+
+    function normalizeDashboardAttendanceRole(value) {
+        const raw = String(value || "").trim().toLowerCase();
+        if (raw === "admin" || raw === "manager") return raw;
+        if (DASHBOARD_ATTENDANCE_ROLE_ALIASES.has(raw)) return "user";
+        return raw;
+    }
+
+    function canShowDashboardAttendance() {
+        if (typeof window.hasDashboardHrSectionAccess === "function") {
+            return window.hasDashboardHrSectionAccess();
+        }
+
+        const role = normalizeDashboardAttendanceRole(localStorage.getItem("role"));
+        const hasConfiguredAccess = typeof window.hasAccessConfigRestrictions === "function"
+            && window.hasAccessConfigRestrictions();
+        if ((role === "admin" || role === "manager" || role === "user") && !hasConfiguredAccess) {
+            return true;
+        }
+
+        const hasAccessForPath = (path) => {
+            if (typeof window.hasUserGrantedPath === "function" && window.hasUserGrantedPath(path)) {
+                return true;
+            }
+            if (typeof window.hasUserActionPermission === "function") {
+                return ["view", "add", "edit", "delete"].some((action) => window.hasUserActionPermission(path, action));
+            }
+            return false;
+        };
+
+        return DASHBOARD_ATTENDANCE_HR_PATHS.some((path) => hasAccessForPath(path));
+    }
+
+    function hideDashboardAttendance() {
+        attendanceWrap.style.display = "none";
+    }
 
     function isMobileDevice() {
         const ua = String(navigator.userAgent || "").toLowerCase();
@@ -122,12 +177,25 @@
         }
     }
 
-    timeInBtn.addEventListener("click", () => submitAttendance("in"));
-    timeOutBtn.addEventListener("click", () => submitAttendance("out"));
+    async function initAttendance() {
+        if (typeof window.__waitForUserAccessPermissions === "function") {
+            await window.__waitForUserAccessPermissions();
+        }
 
-    loadAttendanceStatus(true);
-    window.setInterval(() => {
-        if (timeInBtn.dataset.busy === "1" || timeOutBtn.dataset.busy === "1") return;
+        if (!canShowDashboardAttendance()) {
+            hideDashboardAttendance();
+            return;
+        }
+
+        timeInBtn.addEventListener("click", () => submitAttendance("in"));
+        timeOutBtn.addEventListener("click", () => submitAttendance("out"));
+
         loadAttendanceStatus(true);
-    }, 60000);
+        window.setInterval(() => {
+            if (timeInBtn.dataset.busy === "1" || timeOutBtn.dataset.busy === "1") return;
+            loadAttendanceStatus(true);
+        }, 60000);
+    }
+
+    initAttendance();
 })();

@@ -164,6 +164,13 @@ const ACCESS_MODULE_OPTIONS = [
     ],
   },
   {
+    module: "Charts",
+    items: [
+      { path: "/dashboard/charts/monthly-sales", label: "Dashboard Monthly Sales", actions: ["view"] },
+      { path: "/dashboard/charts/monthly-profit", label: "Dashboard Monthly Profit", actions: ["view"] },
+    ],
+  },
+  {
     module: "Finance",
     items: [
       { path: "/finance/finance.html", label: "Finance", actions: ["view"] },
