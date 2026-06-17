@@ -322,9 +322,6 @@ function expandImplicitActionDependencies(actionKeys) {
     add("/products/edit-rental-machine.html", "view");
     add("/products/edit-rental-machine.html", "edit");
   }
-  if (set.has(toActionKey("/products/add-rental-consumable.html", "edit"))) {
-    add("/products/edit-added-consumable.html", "view");
-  }
   if (set.has(toActionKey("/customers/customer-list.html", "edit"))) {
     add("/customers/edit-customer.html", "view");
     add("/customers/edit-customer.html", "edit");

@@ -3,6 +3,9 @@ const RentalMachine = require("../models/RentalMachine");
 const Product = require("../models/Product");
 const Customer = require("../models/Customer");
 const db = require("../config/database");
+const INVENTORY_DB_NAME = "inventory";
+const ADD_RENTAL_CONSUMABLE_PATH = "/products/add-rental-consumable.html";
+const EDIT_ADDED_CONSUMABLE_PATH = "/products/edit-added-consumable.html";
 
 function upper(value) {
   return String(value || "").trim().toUpperCase();
@@ -22,8 +25,126 @@ function getTodayLocalIso() {
   return new Date(now.getTime() - offset).toISOString().slice(0, 10);
 }
 
+function normalizeAccessRole(role) {
+  const raw = String(role || "").trim().toLowerCase();
+  if (raw === "admin" || raw === "manager") return raw;
+  return "user";
+}
+
+function normalizeUserDatabaseName(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return INVENTORY_DB_NAME;
+  if (!/^[a-z0-9_]+$/.test(normalized)) return INVENTORY_DB_NAME;
+  return normalized;
+}
+
+function toAccessActionKey(path, action) {
+  return `${String(path || "").trim().toLowerCase()}::${String(action || "").trim().toLowerCase()}`;
+}
+
+function parseAllowedPagesFromAccessRow(row) {
+  try {
+    const parsed = JSON.parse(String(row?.allowed_pages_json || "[]"));
+    if (!Array.isArray(parsed)) return [];
+    return Array.from(
+      new Set(
+        parsed
+          .map((entry) => String(entry || "").trim().toLowerCase())
+          .filter(Boolean)
+      )
+    );
+  } catch (_err) {
+    return [];
+  }
+}
+
+function parseAllowedActionsFromAccessRow(row) {
+  try {
+    const parsed = JSON.parse(String(row?.allowed_actions_json || "[]"));
+    if (!Array.isArray(parsed)) return [];
+    return Array.from(
+      new Set(
+        parsed
+          .map((entry) => String(entry || "").trim().toLowerCase())
+          .filter((entry) => entry.includes("::"))
+      )
+    );
+  } catch (_err) {
+    return [];
+  }
+}
+
+async function findAccessRowFromInventory(userId, userDatabase = INVENTORY_DB_NAME) {
+  const normalizedDb = normalizeUserDatabaseName(userDatabase);
+  return db.withDatabase(INVENTORY_DB_NAME, async () => {
+    try {
+      const rs = await db.query(
+        `SELECT id, allowed_pages_json, allowed_actions_json, user_database, "updatedAt", "createdAt"
+         FROM user_accesses
+         WHERE user_id = $1
+           AND LOWER(COALESCE(user_database, $2)) = $2
+         ORDER BY "updatedAt" DESC NULLS LAST, "createdAt" DESC NULLS LAST, id DESC
+         LIMIT 1`,
+        { bind: [userId, normalizedDb] }
+      );
+      const rows = Array.isArray(rs?.[0]) ? rs[0] : [];
+      return rows[0] || null;
+    } catch (_err) {
+      return null;
+    }
+  });
+}
+
+async function canAccessConsumablePage(req, pagePath, action = "view") {
+  const requesterRole = normalizeAccessRole(req.user?.role);
+  const requesterUserId = Number(req.user?.id || req.user?.userId || 0);
+  if (!Number.isFinite(requesterUserId) || requesterUserId <= 0) return false;
+
+  const userDatabase = normalizeUserDatabaseName(
+    req.databaseName || req.user?.user_database || req.user?.database_name || INVENTORY_DB_NAME
+  );
+  if (requesterRole === "user" && userDatabase === "demo") {
+    return true;
+  }
+
+  let accessRow = await findAccessRowFromInventory(requesterUserId, userDatabase);
+  if (!accessRow && userDatabase !== INVENTORY_DB_NAME) {
+    accessRow = await findAccessRowFromInventory(requesterUserId, INVENTORY_DB_NAME);
+  }
+
+  if (!accessRow) {
+    return requesterRole === "admin" || requesterRole === "manager";
+  }
+
+  const requestedAction = String(action || "view").trim().toLowerCase() || "view";
+  const allowedActions = parseAllowedActionsFromAccessRow(accessRow);
+  if (allowedActions.includes(toAccessActionKey(pagePath, requestedAction))) {
+    return true;
+  }
+
+  if (requestedAction === "view") {
+    const allowedPages = parseAllowedPagesFromAccessRow(accessRow);
+    return allowedPages.includes(String(pagePath || "").trim().toLowerCase());
+  }
+
+  return false;
+}
+
+async function loadConsumableRows(where) {
+  return RentalMachineConsumable.findAll({
+    where,
+    include: [{ model: RentalMachine }, { model: Customer }, { model: Product }],
+    order: [["entry_date", "DESC"], ["createdAt", "DESC"], ["id", "DESC"]],
+  });
+}
+
 exports.getConsumables = async (req, res) => {
   try {
+    const canViewList = await canAccessConsumablePage(req, ADD_RENTAL_CONSUMABLE_PATH, "view");
+    if (!canViewList) {
+      return res.status(403).json({ message: "Forbidden: Missing Rental Consumables view permission." });
+    }
+
     const where = {};
     const machineId = Number(req.query.rental_machine_id);
     const customerId = Number(req.query.customer_id);
@@ -34,19 +155,54 @@ exports.getConsumables = async (req, res) => {
       where.customer_id = customerId;
     }
 
-    const rows = await RentalMachineConsumable.findAll({
-      where,
-      include: [{ model: RentalMachine }, { model: Customer }, { model: Product }],
-      order: [["entry_date", "DESC"], ["createdAt", "DESC"], ["id", "DESC"]],
-    });
+    const rows = await loadConsumableRows(where);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ message: err.message || "Failed to load consumables." });
   }
 };
 
+exports.getConsumableEntry = async (req, res) => {
+  try {
+    const canViewEntry = await canAccessConsumablePage(req, EDIT_ADDED_CONSUMABLE_PATH, "view");
+    if (!canViewEntry) {
+      return res.status(403).json({ message: "Forbidden: Missing Edit Added Consumables view permission." });
+    }
+
+    const entryKey = String(req.params.entryKey || "").trim();
+    if (!entryKey) {
+      return res.status(400).json({ message: "Entry id is required." });
+    }
+
+    let where = null;
+    if (entryKey.startsWith("ROW-")) {
+      const rowId = Number(entryKey.slice(4));
+      if (!Number.isFinite(rowId) || rowId <= 0) {
+        return res.status(400).json({ message: "Invalid entry id." });
+      }
+      where = { id: rowId };
+    } else {
+      where = { save_batch_id: entryKey };
+    }
+
+    const rows = await loadConsumableRows(where);
+    if (!rows.length) {
+      return res.status(404).json({ message: "Entry not found." });
+    }
+
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Failed to load consumable entry." });
+  }
+};
+
 exports.createConsumable = async (req, res) => {
   try {
+    const canAddConsumable = await canAccessConsumablePage(req, ADD_RENTAL_CONSUMABLE_PATH, "add");
+    if (!canAddConsumable) {
+      return res.status(403).json({ message: "Forbidden: Missing Rental Consumables add permission." });
+    }
+
     const rental_machine_id = Number(req.body.rental_machine_id);
     const customer_id = Number(req.body.customer_id);
     const product_id = Number(req.body.product_id);
@@ -115,6 +271,12 @@ exports.createConsumable = async (req, res) => {
 exports.createConsumablesBatch = async (req, res) => {
   const transaction = await db.transaction();
   try {
+    const canAddConsumables = await canAccessConsumablePage(req, ADD_RENTAL_CONSUMABLE_PATH, "add");
+    if (!canAddConsumables) {
+      await transaction.rollback();
+      return res.status(403).json({ message: "Forbidden: Missing Rental Consumables add permission." });
+    }
+
     const customer_id = Number(req.body.customer_id);
     const rental_machine_id = Number(req.body.rental_machine_id);
     const items = Array.isArray(req.body.items) ? req.body.items : [];

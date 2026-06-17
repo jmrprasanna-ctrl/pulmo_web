@@ -2,10 +2,76 @@ if(!localStorage.getItem("token")){
     window.location.href = "../login.html";
 }
 
+const EDIT_ADDED_CONSUMABLE_ACCESS_PATH = "/products/edit-added-consumable.html";
+const EDIT_ADDED_CONSUMABLE_USER_ROLE_ALIASES = new Set([
+    "user",
+    "coordinator",
+    "cordinator",
+    "co-ordinator",
+    "co ordinator",
+    "co_ordinator"
+]);
 const entryId = String(new URLSearchParams(window.location.search).get("entry") || "").trim();
+
+function redirectToConsumablesList(){
+    window.location.href = "add-rental-consumable.html";
+}
+
 if(!entryId){
     alert("Entry id is missing.");
-    window.location.href = "add-rental-consumable.html";
+    redirectToConsumablesList();
+}
+
+function normalizeEditAddedConsumableRole(value){
+    const raw = String(value || "").trim().toLowerCase();
+    if(raw === "admin" || raw === "manager"){
+        return raw;
+    }
+    if(EDIT_ADDED_CONSUMABLE_USER_ROLE_ALIASES.has(raw)){
+        return "user";
+    }
+    return raw;
+}
+
+function canViewEditAddedConsumablePage(){
+    const role = normalizeEditAddedConsumableRole(localStorage.getItem("role"));
+    if(!role){
+        return false;
+    }
+
+    const selectedDb = String(localStorage.getItem("selectedDatabaseName") || "").trim().toLowerCase();
+    if(role === "user" && selectedDb === "demo"){
+        return true;
+    }
+
+    if(
+        (role === "admin" || role === "manager")
+        && typeof window.hasAccessConfigRestrictions === "function"
+        && !window.hasAccessConfigRestrictions()
+    ){
+        return true;
+    }
+
+    if(typeof window.hasUserActionPermission === "function" && window.hasUserActionPermission(EDIT_ADDED_CONSUMABLE_ACCESS_PATH, "view")){
+        return true;
+    }
+
+    return typeof window.hasUserGrantedPath === "function"
+        && window.hasUserGrantedPath(EDIT_ADDED_CONSUMABLE_ACCESS_PATH);
+}
+
+async function ensureEditAddedConsumableAccess(){
+    if(typeof window.__waitForUserAccessPermissions === "function"){
+        await window.__waitForUserAccessPermissions();
+    }
+
+    if(canViewEditAddedConsumablePage()){
+        return true;
+    }
+
+    alert("You do not have permission to access Edit Added Consumables.");
+    redirectToConsumablesList();
+    return false;
 }
 
 function money(value){
@@ -14,19 +80,12 @@ function money(value){
 
 async function loadEntry(){
     try{
-        const rows = await request("/rental-machine-consumables", "GET");
-        const allRows = Array.isArray(rows) ? rows : [];
-        let matched = [];
-        if(entryId.startsWith("ROW-")){
-            const rowId = Number(entryId.slice(4));
-            matched = allRows.filter((r) => Number(r.id) === rowId);
-        }else{
-            matched = allRows.filter((r) => String(r.save_batch_id || "") === entryId);
-        }
+        const rows = await request(`/rental-machine-consumables/entry/${encodeURIComponent(entryId)}`, "GET");
+        const matched = Array.isArray(rows) ? rows : [];
 
         if(!matched.length){
             alert("Entry not found.");
-            window.location.href = "add-rental-consumable.html";
+            redirectToConsumablesList();
             return;
         }
 
@@ -65,8 +124,16 @@ async function loadEntry(){
         });
     }catch(err){
         alert(err.message || "Failed to load entry.");
-        window.location.href = "add-rental-consumable.html";
+        redirectToConsumablesList();
     }
 }
 
-loadEntry();
+(async function init(){
+    if(!entryId){
+        return;
+    }
+    if(!(await ensureEditAddedConsumableAccess())){
+        return;
+    }
+    await loadEntry();
+})();

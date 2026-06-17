@@ -1033,12 +1033,6 @@ async function loadUserAccessPermissions(){
             ...(normalizedActionKeys.includes("/users/technician-list.html::edit") ? ["/users/edit-technician.html"] : []),
             ...(normalizedActionKeys.includes("/users/profile-list.html::edit") ? ["/users/edit-profile.html"] : []),
             ...(
-                normalizedAllowedPages.includes("/products/add-rental-consumable.html")
-                || pagesFromActions.includes("/products/add-rental-consumable.html")
-                    ? ["/products/edit-added-consumable.html"]
-                    : []
-            ),
-            ...(
                 normalizedAllowedPages.includes("/support/warranty-invoice-view.html")
                 || pagesFromActions.includes("/support/warranty-invoice-view.html")
                     ? ["/support/warrenty-invoice-view.html"]

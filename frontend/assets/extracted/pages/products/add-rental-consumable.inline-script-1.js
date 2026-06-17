@@ -5,6 +5,15 @@ if(!localStorage.getItem("token")){
 const role = (localStorage.getItem("role") || "").toLowerCase();
 const selectedDb = (localStorage.getItem("selectedDatabaseName") || "").toLowerCase();
 const isTrainingUser = role === "user" && selectedDb === "demo";
+const EDIT_ADDED_CONSUMABLE_ACCESS_PATH = "/products/edit-added-consumable.html";
+const ADD_CONSUMABLE_USER_ROLE_ALIASES = new Set([
+    "user",
+    "coordinator",
+    "cordinator",
+    "co-ordinator",
+    "co ordinator",
+    "co_ordinator"
+]);
 const canDeleteAddedConsumables = role === "admin"
     || role === "manager"
     || isTrainingUser
@@ -13,6 +22,44 @@ const canDeleteAddedConsumables = role === "admin"
 let consumableProducts = [];
 let pendingItems = [];
 let rentalMachines = [];
+
+function normalizeAddConsumableRole(value){
+    const raw = String(value || "").trim().toLowerCase();
+    if(raw === "admin" || raw === "manager"){
+        return raw;
+    }
+    if(ADD_CONSUMABLE_USER_ROLE_ALIASES.has(raw)){
+        return "user";
+    }
+    return raw;
+}
+
+function canViewEditAddedConsumablePage(){
+    const currentRole = normalizeAddConsumableRole(localStorage.getItem("role"));
+    if(!currentRole){
+        return false;
+    }
+
+    const activeDb = String(localStorage.getItem("selectedDatabaseName") || "").trim().toLowerCase();
+    if(currentRole === "user" && activeDb === "demo"){
+        return true;
+    }
+
+    if(
+        (currentRole === "admin" || currentRole === "manager")
+        && typeof window.hasAccessConfigRestrictions === "function"
+        && !window.hasAccessConfigRestrictions()
+    ){
+        return true;
+    }
+
+    if(typeof window.hasUserActionPermission === "function" && window.hasUserActionPermission(EDIT_ADDED_CONSUMABLE_ACCESS_PATH, "view")){
+        return true;
+    }
+
+    return typeof window.hasUserGrantedPath === "function"
+        && window.hasUserGrantedPath(EDIT_ADDED_CONSUMABLE_ACCESS_PATH);
+}
 
 function getTodayLocalIso(){
     const now = new Date();
@@ -209,7 +256,6 @@ async function loadAddedConsumables(){
 
         grouped.forEach(g => {
             const tr = document.createElement("tr");
-            tr.classList.add("added-entry-clickable");
             tr.innerHTML = `
                 <td>${g.entry}</td>
                 <td>${g.machineId || "-"}</td>
@@ -225,11 +271,14 @@ async function loadAddedConsumables(){
                     </div>
                 </td>
             `;
-            tr.addEventListener("click", (event) => {
-                const target = event.target;
-                if(target && target.closest("a, button, input, select, textarea")) return;
-                window.location.href = `edit-added-consumable.html?entry=${encodeURIComponent(String(g.entry || ""))}`;
-            });
+            if(canViewEditAddedConsumablePage()){
+                tr.classList.add("added-entry-clickable");
+                tr.addEventListener("click", (event) => {
+                    const target = event.target;
+                    if(target && target.closest("a, button, input, select, textarea")) return;
+                    window.location.href = `edit-added-consumable.html?entry=${encodeURIComponent(String(g.entry || ""))}`;
+                });
+            }
             tbody.appendChild(tr);
         });
     }catch(err){
@@ -326,6 +375,9 @@ function logout(){
 }
 
 (async function init(){
+    if(typeof window.__waitForUserAccessPermissions === "function"){
+        await window.__waitForUserAccessPermissions();
+    }
     document.getElementById("entryDate").value = getTodayLocalIso();
     await loadRentalMachines();
     await loadConsumableProducts();

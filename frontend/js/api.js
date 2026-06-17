@@ -1019,12 +1019,7 @@ async function loadUserAccessPermissions(){
             ...(normalizedActionKeys.includes("/users/technician-list.html::add") ? ["/users/add-technician.html"] : []),
             ...(normalizedActionKeys.includes("/users/technician-list.html::edit") ? ["/users/edit-technician.html"] : []),
             ...(normalizedActionKeys.includes("/users/profile-list.html::edit") ? ["/users/edit-profile.html"] : []),
-            ...(
-                normalizedAllowedPages.includes("/products/add-rental-consumable.html")
-                || pagesFromActions.includes("/products/add-rental-consumable.html")
-                    ? ["/products/edit-added-consumable.html"]
-                    : []
-            )
+            
         ]));
         if(typeof data?.has_access_config === "boolean"){
             let nextConfigState = data.has_access_config;
