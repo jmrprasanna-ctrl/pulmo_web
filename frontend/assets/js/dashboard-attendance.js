@@ -62,6 +62,11 @@
         attendanceWrap.style.display = "none";
     }
 
+    function showDashboardAttendance() {
+        attendanceWrap.classList.remove("topbar-attendance-access-pending");
+        attendanceWrap.style.display = "";
+    }
+
     function isMobileDevice() {
         const ua = String(navigator.userAgent || "").toLowerCase();
         return /android|iphone|ipad|ipod|windows phone|mobile/.test(ua);
@@ -187,6 +192,7 @@
             return;
         }
 
+        showDashboardAttendance();
         timeInBtn.addEventListener("click", () => submitAttendance("in"));
         timeOutBtn.addEventListener("click", () => submitAttendance("out"));
 

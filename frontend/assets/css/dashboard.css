@@ -178,6 +178,10 @@ body {
   flex: 0 0 auto;
 }
 
+.topbar-attendance.topbar-attendance-access-pending {
+  display: none !important;
+}
+
 .attendance-btn {
   width: 78px;
   min-width: 78px;
