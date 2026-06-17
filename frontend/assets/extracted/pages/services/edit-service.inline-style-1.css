@@ -10,3 +10,17 @@
 .form-actions .icon-btn.btn-danger:hover{
     background:#bb2d3b;
 }
+
+@media (max-width: 900px){
+    #editServiceForm .form-actions{
+        flex-direction:row;
+        align-items:center !important;
+        justify-content:flex-start;
+        flex-wrap:nowrap;
+    }
+
+    #editServiceForm .form-actions > .icon-btn{
+        flex:0 0 auto;
+        align-self:auto;
+    }
+}
