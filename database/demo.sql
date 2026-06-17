@@ -27,6 +27,7 @@ CREATE TABLE users (
     company VARCHAR(100),
     department VARCHAR(100),
     customer_type VARCHAR(20),
+    customer_id INTEGER,
     telephone VARCHAR(50),
     email VARCHAR(100) NOT NULL UNIQUE,
     role VARCHAR(20) DEFAULT 'user',

@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const db = require("../config/database");
 const User = require("../models/User");
+const Customer = require("../models/Customer");
 const UserAccess = require("../models/UserAccess");
 const UserLoginLog = require("../models/UserLoginLog");
 const { Sequelize } = require("sequelize");
@@ -64,6 +65,11 @@ function normalizeCustomerUserType(value) {
   if (token === "general" || token === "genaral") return "general";
   if (token === "rental") return "rental";
   return "";
+}
+
+function normalizeLinkedCustomerId(value) {
+  const parsed = Number.parseInt(String(value || "").trim(), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
 function normalizeDatabaseName(value) {
@@ -484,7 +490,7 @@ exports.getUsers = async (req, res) => {
     try {
       await ensureUserSuperColumn();
       const users = await User.findAll({
-        attributes: ["id", "username", "company", "department", "customer_type", "telephone", "email", "role", "is_super_user", "createdAt"],
+        attributes: ["id", "username", "company", "department", "customer_type", "customer_id", "telephone", "email", "role", "is_super_user", "createdAt"],
         order: [["id", "DESC"]],
       });
       const requesterId = Number(req?.user?.id || req?.user?.userId || 0);
@@ -499,7 +505,7 @@ exports.getUsers = async (req, res) => {
       }));
       if (activeDatabaseName !== USER_DIRECTORY_DB) {
         const requesterDirectoryUser = await findDirectoryScopedRequesterUser(req, {
-          attributes: ["id", "username", "company", "department", "customer_type", "telephone", "email", "role", "is_super_user", "createdAt"],
+          attributes: ["id", "username", "company", "department", "customer_type", "customer_id", "telephone", "email", "role", "is_super_user", "createdAt"],
         });
         if (
           requesterDirectoryUser
@@ -535,7 +541,7 @@ exports.getUserById = async (req, res) => {
       let user = null;
       if (!targetRef.is_directory_self) {
         user = await User.findByPk(targetUserId, {
-          attributes: ["id", "username", "company", "department", "customer_type", "telephone", "email", "role", "is_super_user"],
+          attributes: ["id", "username", "company", "department", "customer_type", "customer_id", "telephone", "email", "role", "is_super_user"],
         });
       }
       let usedDirectoryFallback = false;
@@ -547,7 +553,7 @@ exports.getUserById = async (req, res) => {
         && requesterId === targetUserId
       ) {
         user = await findDirectoryScopedRequesterUser(req, {
-          attributes: ["id", "username", "company", "department", "customer_type", "telephone", "email", "role", "is_super_user"],
+          attributes: ["id", "username", "company", "department", "customer_type", "customer_id", "telephone", "email", "role", "is_super_user"],
         });
         usedDirectoryFallback = Boolean(user);
       }
@@ -573,6 +579,7 @@ exports.addUser = async (req, res) => {
   const company = String(req.body?.company || "").trim();
   const department = normalizeUserDepartment(req.body?.department);
   const customerType = normalizeCustomerUserType(req.body?.customer_type);
+  const customerId = normalizeLinkedCustomerId(req.body?.customer_id);
   const telephone = String(req.body?.telephone || "").trim();
   const email = String(req.body?.email || "").trim();
   const password = String(req.body?.password || "");
@@ -595,6 +602,20 @@ exports.addUser = async (req, res) => {
           message: `Customer type must be one of: ${ALLOWED_CUSTOMER_USER_TYPES.join(", ")}`,
         });
       }
+      let linkedCustomerId = null;
+      if (department === "Customer" && customerType === "rental") {
+        if (!customerId) {
+          return res.status(400).json({ message: "Rental customer is required." });
+        }
+        const linkedCustomer = await Customer.findByPk(customerId);
+        if (!linkedCustomer) {
+          return res.status(400).json({ message: "Selected rental customer was not found." });
+        }
+        if (String(linkedCustomer.customer_mode || "").trim().toLowerCase() !== "rental") {
+          return res.status(400).json({ message: "Selected customer is not a Rental customer." });
+        }
+        linkedCustomerId = Number(linkedCustomer.id || 0) || null;
+      }
 
       const existing = await User.findOne({ where: { email } });
       if (existing) {
@@ -611,6 +632,7 @@ exports.addUser = async (req, res) => {
           company,
           department,
           customer_type: department === "Customer" ? customerType : null,
+          customer_id: linkedCustomerId,
           telephone,
           email,
           password: hashedPassword,
@@ -632,6 +654,7 @@ exports.addUser = async (req, res) => {
         role: user.role,
         department: user.department,
         customer_type: user.customer_type,
+        customer_id: user.customer_id,
         database_name: activeDatabaseName,
         access_template: templateAccessResult,
       });
@@ -650,6 +673,8 @@ exports.updateUser = async (req, res) => {
   const department = typeof departmentRaw === "undefined" ? undefined : normalizeUserDepartment(departmentRaw);
   const customerTypeRaw = typeof req.body?.customer_type === "undefined" ? undefined : req.body.customer_type;
   const customerType = typeof customerTypeRaw === "undefined" ? undefined : normalizeCustomerUserType(customerTypeRaw);
+  const customerIdRaw = typeof req.body?.customer_id === "undefined" ? undefined : req.body.customer_id;
+  const customerId = typeof customerIdRaw === "undefined" ? undefined : normalizeLinkedCustomerId(customerIdRaw);
   const telephone = typeof req.body?.telephone === "undefined" ? undefined : String(req.body.telephone || "").trim();
   const email = typeof req.body?.email === "undefined" ? undefined : String(req.body.email || "").trim();
   const password = typeof req.body?.password === "undefined" ? "" : String(req.body.password || "");
@@ -719,8 +744,27 @@ exports.updateUser = async (req, res) => {
           });
         }
         user.customer_type = resolvedCustomerType;
+        if (resolvedCustomerType === "rental") {
+          const resolvedCustomerId = typeof customerId !== "undefined"
+            ? customerId
+            : normalizeLinkedCustomerId(user.customer_id);
+          if (!resolvedCustomerId) {
+            return res.status(400).json({ message: "Rental customer is required." });
+          }
+          const linkedCustomer = await Customer.findByPk(resolvedCustomerId);
+          if (!linkedCustomer) {
+            return res.status(400).json({ message: "Selected rental customer was not found." });
+          }
+          if (String(linkedCustomer.customer_mode || "").trim().toLowerCase() !== "rental") {
+            return res.status(400).json({ message: "Selected customer is not a Rental customer." });
+          }
+          user.customer_id = Number(linkedCustomer.id || 0) || null;
+        } else {
+          user.customer_id = null;
+        }
       } else {
         user.customer_type = null;
+        user.customer_id = null;
       }
 
       if (password) {
@@ -732,7 +776,7 @@ exports.updateUser = async (req, res) => {
 
       const persisted = await db.withDatabase(storageDatabaseName, async () => {
         return User.findByPk(user.id, {
-          attributes: ["id", "username", "company", "department", "customer_type", "telephone", "email", "role"],
+          attributes: ["id", "username", "company", "department", "customer_type", "customer_id", "telephone", "email", "role"],
         });
       });
       if (!persisted) {
@@ -745,6 +789,7 @@ exports.updateUser = async (req, res) => {
         company: persisted.company,
         department: persisted.department,
         customer_type: persisted.customer_type,
+        customer_id: persisted.customer_id,
         telephone: persisted.telephone,
         email: persisted.email,
         role: persisted.role,

@@ -1163,6 +1163,10 @@ async function ensureUserDepartmentSchema() {
       ADD COLUMN IF NOT EXISTS customer_type VARCHAR(20);
     `);
     await db.query(`
+      ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL;
+    `);
+    await db.query(`
       UPDATE users
       SET department = CASE
         WHEN department IS NULL OR TRIM(department) = '' THEN 'Cordinater'
@@ -1187,6 +1191,12 @@ async function ensureUserDepartmentSchema() {
         WHEN department = 'Customer' THEN 'general'
         ELSE NULL
       END;
+    `);
+    await db.query(`
+      UPDATE users
+      SET customer_id = NULL
+      WHERE department <> 'Customer'
+         OR customer_type <> 'rental';
     `);
     // One-time safety backfill: restore likely intended departments for legacy rows
     // that were previously overwritten to "Cordinater".
@@ -1260,6 +1270,10 @@ async function ensureUserDepartmentSchema() {
           OR (department <> 'Customer' AND customer_type IS NULL)
         );
       END $$;
+    `);
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS users_customer_id_idx
+      ON users(customer_id);
     `);
   });
 }

@@ -21,6 +21,7 @@ const User = db.define("User", {
             isIn: [["general", "rental"]],
         },
     },
+    customer_id: { type: DataTypes.INTEGER, allowNull: true, defaultValue: null },
     telephone: { type: DataTypes.STRING },
     email: { type: DataTypes.STRING, unique: true, allowNull: false },
                                                                        

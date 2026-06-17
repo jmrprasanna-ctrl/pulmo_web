@@ -1,5 +1,6 @@
 const USER_DEPARTMENTS = new Set(["Manager", "IT", "Finance", "Admin", "Cordinater", "Technician", "Customer"]);
 const CUSTOMER_USER_TYPES = new Set(["general", "rental"]);
+let rentalCustomers = [];
 
 function normalizeCustomerTypeValue(value){
     const raw = String(value || "").trim().toLowerCase();
@@ -8,18 +9,50 @@ function normalizeCustomerTypeValue(value){
     return "";
 }
 
+function normalizeLinkedCustomerId(value){
+    const parsed = Number.parseInt(String(value || "").trim(), 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function renderRentalCustomerOptions(selectedCustomerId = 0){
+    const linkedCustomerEl = document.getElementById('linkedCustomerId');
+    if(!linkedCustomerEl) return;
+    const options = ['<option value="">Select Rental Customer</option>'];
+    rentalCustomers.forEach((customer) => {
+        const customerId = Number(customer.id || 0);
+        if(!Number.isFinite(customerId) || customerId <= 0) return;
+        const customerCode = String(customer.customer_id || "").trim();
+        const customerName = String(customer.name || "").trim();
+        const customerLabel = customerCode ? `${customerCode} - ${customerName}` : customerName;
+        options.push(`<option value="${customerId}">${customerLabel}</option>`);
+    });
+    linkedCustomerEl.innerHTML = options.join("");
+    linkedCustomerEl.value = selectedCustomerId > 0 ? String(selectedCustomerId) : "";
+}
+
+async function loadRentalCustomers(){
+    const rows = await request("/customers", "GET");
+    rentalCustomers = (Array.isArray(rows) ? rows : [])
+        .filter((customer) => String(customer?.customer_mode || "").trim().toLowerCase() === "rental")
+        .sort((left, right) => String(left?.name || "").localeCompare(String(right?.name || "")));
+    renderRentalCustomerOptions();
+}
+
 window.addEventListener("load", () => {
             const form = document.getElementById('addUserForm');
             const companyInput = document.getElementById('company');
             const departmentEl = document.getElementById('department');
             const customerTypeWrapEl = document.getElementById('customerTypeWrap');
             const customerTypeEl = document.getElementById('customerType');
+            const linkedCustomerWrapEl = document.getElementById('linkedCustomerWrap');
+            const linkedCustomerEl = document.getElementById('linkedCustomerId');
             const togglePassword = document.getElementById('togglePassword');
             const passwordInput = document.getElementById('password');
             const eyeIcon = document.getElementById('eyeIcon');
 
             function updateCustomerTypeVisibility(){
                 const showCustomerType = String(departmentEl?.value || "").trim() === "Customer";
+                const showLinkedCustomer = showCustomerType && normalizeCustomerTypeValue(customerTypeEl?.value) === "rental";
                 if(customerTypeWrapEl){
                     customerTypeWrapEl.style.display = showCustomerType ? "" : "none";
                 }
@@ -27,6 +60,15 @@ window.addEventListener("load", () => {
                     customerTypeEl.required = showCustomerType;
                     if(!showCustomerType){
                         customerTypeEl.value = "";
+                    }
+                }
+                if(linkedCustomerWrapEl){
+                    linkedCustomerWrapEl.style.display = showLinkedCustomer ? "" : "none";
+                }
+                if(linkedCustomerEl){
+                    linkedCustomerEl.required = showLinkedCustomer;
+                    if(!showLinkedCustomer){
+                        linkedCustomerEl.value = "";
                     }
                 }
             }
@@ -38,17 +80,23 @@ window.addEventListener("load", () => {
                 companyInput.setSelectionRange(pos, pos);
             });
             departmentEl?.addEventListener("change", updateCustomerTypeVisibility);
+            customerTypeEl?.addEventListener("change", updateCustomerTypeVisibility);
 
             form.addEventListener('submit', async e => {
                 e.preventDefault();
                 const selectedDepartment = String(departmentEl?.value || "").trim();
                 const selectedCustomerType = normalizeCustomerTypeValue(customerTypeEl?.value);
+                const selectedLinkedCustomerId = normalizeLinkedCustomerId(linkedCustomerEl?.value);
                 if(!USER_DEPARTMENTS.has(selectedDepartment)){
                     alert("Please select a valid department.");
                     return;
                 }
                 if(selectedDepartment === "Customer" && !CUSTOMER_USER_TYPES.has(selectedCustomerType)){
                     alert("Please select a valid customer type.");
+                    return;
+                }
+                if(selectedDepartment === "Customer" && selectedCustomerType === "rental" && selectedLinkedCustomerId <= 0){
+                    alert("Please select a rental customer.");
                     return;
                 }
                 const user = {
@@ -59,6 +107,7 @@ window.addEventListener("load", () => {
                     company: document.getElementById('company').value.trim(),
                     department: selectedDepartment,
                     customer_type: selectedDepartment === "Customer" ? selectedCustomerType : "",
+                    customer_id: selectedDepartment === "Customer" && selectedCustomerType === "rental" ? selectedLinkedCustomerId : "",
                     telephone: document.getElementById('tel').value.trim()
                 };
                 try{
@@ -82,4 +131,7 @@ window.addEventListener("load", () => {
             });
 
             updateCustomerTypeVisibility();
+            loadRentalCustomers().catch((err) => {
+                alert(err.message || "Failed to load rental customers.");
+            });
         });
