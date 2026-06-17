@@ -42,6 +42,7 @@ if (addServiceBtn && !canAddService) {
 }
 
 let allServiceRows = [];
+const MOBILE_COMMENT_LIMIT = 20;
 
 function safeDateOnly(value) {
     const raw = String(value || "").trim();
@@ -88,6 +89,26 @@ function escapeHtml(value) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
+}
+
+function isMobileCommentViewport() {
+    return typeof window !== "undefined"
+        && typeof window.matchMedia === "function"
+        && window.matchMedia("(max-width: 900px)").matches;
+}
+
+function formatCommentCellValue(value) {
+    const raw = String(value || "").trim();
+    if (!raw) {
+        return { text: "-", title: "" };
+    }
+    if (!isMobileCommentViewport() || raw.length <= MOBILE_COMMENT_LIMIT) {
+        return { text: raw, title: raw };
+    }
+    return {
+        text: `${raw.slice(0, MOBILE_COMMENT_LIMIT)}...`,
+        title: raw
+    };
 }
 
 function safeMonthValue(value) {
@@ -177,7 +198,7 @@ function renderRows(rows) {
         const machineText = [String(row.machine_code || "").trim(), String(row.machine_title || "").trim()]
             .filter(Boolean)
             .join(" - ");
-
+        const commentCell = formatCommentCellValue(row.comment_text);
         const rowMode = getRowMode(row);
         const modeBadge = typeValue === "general"
             ? `<span class="service-type-badge ${rowMode === "breakdown" ? "mode-breakdown" : "mode-service"}">${escapeHtml(formatModeValue(rowMode))}</span>`
@@ -191,7 +212,7 @@ function renderRows(rows) {
             <td>${escapeHtml(machineText || "-")}</td>
             <td>${escapeHtml(row.technician_name || "-")}</td>
             <td>${escapeHtml(row.counter_value || "-")}</td>
-            <td>${escapeHtml(row.comment_text || "-")}</td>
+            <td title="${escapeHtml(commentCell.title)}">${escapeHtml(commentCell.text)}</td>
         `;
 
         if (canEditService && Number.isFinite(rowId) && rowId > 0) {
@@ -222,6 +243,7 @@ filterServiceTypeEl.addEventListener("change", () => {
 });
 filterServiceModeEl?.addEventListener("change", applyFilters);
 serviceSearchEl.addEventListener("input", applyFilters);
+window.addEventListener("resize", applyFilters);
 
 updateModeFilterVisibility();
 loadServiceRows();

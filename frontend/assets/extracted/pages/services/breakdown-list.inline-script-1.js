@@ -26,6 +26,7 @@ const canEditBreakdown = breakdownCanManage
         : false);
 
 let allBreakdownRows = [];
+const MOBILE_COMMENT_LIMIT = 20;
 
 function safeBreakdownDateOnly(value) {
     const raw = String(value || "").trim();
@@ -47,6 +48,26 @@ function escapeBreakdownHtml(value) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
+}
+
+function isMobileCommentViewport() {
+    return typeof window !== "undefined"
+        && typeof window.matchMedia === "function"
+        && window.matchMedia("(max-width: 900px)").matches;
+}
+
+function formatBreakdownCommentCellValue(value) {
+    const raw = String(value || "").trim();
+    if (!raw) {
+        return { text: "-", title: "" };
+    }
+    if (!isMobileCommentViewport() || raw.length <= MOBILE_COMMENT_LIMIT) {
+        return { text: raw, title: raw };
+    }
+    return {
+        text: `${raw.slice(0, MOBILE_COMMENT_LIMIT)}...`,
+        title: raw
+    };
 }
 
 function safeBreakdownMonth(value) {
@@ -86,6 +107,7 @@ function renderBreakdownRows(rows) {
         const machineText = [String(row.machine_code || "").trim(), String(row.machine_title || "").trim()]
             .filter(Boolean)
             .join(" - ");
+        const commentCell = formatBreakdownCommentCellValue(row.comment_text);
 
         tr.innerHTML = `
             <td>${escapeBreakdownHtml(formatBreakdownDate(row.service_date))}</td>
@@ -93,7 +115,7 @@ function renderBreakdownRows(rows) {
             <td>${escapeBreakdownHtml(machineText || "-")}</td>
             <td>${escapeBreakdownHtml(row.technician_name || "-")}</td>
             <td>${escapeBreakdownHtml(row.counter_value || "-")}</td>
-            <td>${escapeBreakdownHtml(row.comment_text || "-")}</td>
+            <td title="${escapeBreakdownHtml(commentCell.title)}">${escapeBreakdownHtml(commentCell.text)}</td>
         `;
 
         if (Number.isFinite(highlightedBreakdownId) && highlightedBreakdownId > 0 && rowId === highlightedBreakdownId) {
@@ -148,5 +170,6 @@ async function loadBreakdownRows() {
 
 filterBreakdownMonthEl?.addEventListener("change", applyBreakdownFilters);
 breakdownSearchEl?.addEventListener("input", applyBreakdownFilters);
+window.addEventListener("resize", applyBreakdownFilters);
 
 loadBreakdownRows();
