@@ -3,6 +3,8 @@
     const LOGO_STORAGE_KEY = "invoice_logo_with_name_data_url";
     const ADDRESS_STORAGE_KEY = "invoice_selected_address_key";
     const byId = (id) => document.getElementById(id);
+    const currentRole = String(localStorage.getItem("role") || "").trim().toLowerCase();
+    const isAdminRole = currentRole === "admin";
 
     const mappedDbEl = byId("mappedDatabaseName");
     const mappingStatusEl = byId("mappingStatusText");
@@ -18,6 +20,27 @@
     let currentVisibility = {};
     let currentLayoutState = {};
     let currentLogoDataUrl = "";
+
+    function normalizeDatabaseName(value) {
+        return String(value || "").trim().toLowerCase();
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function buildDatabaseLabel(databaseName, label) {
+        const normalizedDb = normalizeDatabaseName(databaseName);
+        const text = String(label || "").trim();
+        if (text) return text;
+        if (normalizedDb === "inventory") return "SYSTEM DEFAULT (inventory)";
+        return normalizedDb || "inventory";
+    }
 
     function notify(message, type = "success", duration = 2600) {
         const text = String(message || "").trim();
@@ -108,13 +131,19 @@
         });
     }
 
-    async function loadInvoiceSectionSettings() {
-        const res = await request("/users/inv-map/me", "GET");
+    async function loadInvoiceSectionSettings(requestedDatabaseName) {
+        const localDb = normalizeDatabaseName(localStorage.getItem("selectedDatabaseName") || "");
+        const requestedDb = normalizeDatabaseName(requestedDatabaseName || currentDatabaseName || localDb || "inventory");
+        const query = isAdminRole && requestedDb
+            ? `?database_name=${encodeURIComponent(requestedDb)}`
+            : "";
+        const res = await request(`/users/inv-map/me${query}`, "GET");
         const mapping = res?.mapping || null;
-        const mappingDbName = String(mapping?.database_name || "").trim().toLowerCase();
-        const localDb = String(localStorage.getItem("selectedDatabaseName") || "").trim().toLowerCase();
-        currentDatabaseName = mappingDbName || localDb || "inventory";
-        if (mappedDbEl) {
+        const mappingDbName = normalizeDatabaseName(mapping?.database_name);
+        currentDatabaseName = isAdminRole
+            ? (requestedDb || mappingDbName || localDb || "inventory")
+            : (mappingDbName || requestedDb || localDb || "inventory");
+        if (mappedDbEl && mappedDbEl.options.length) {
             mappedDbEl.value = currentDatabaseName;
         }
 
@@ -131,11 +160,58 @@
         currentLogoDataUrl = serverLogoDataUrl || localLogoDataUrl;
         renderLogoPreview();
 
-        if (mapping) {
+        if (mapping && mappingDbName === currentDatabaseName) {
             setMappingStatusText(`Mapped (${currentDatabaseName})`);
         } else {
-            setMappingStatusText("No Inv Map row yet. You can still save invoice section settings.");
+            setMappingStatusText(`No Inv Map row yet for ${currentDatabaseName}. You can still save invoice section settings.`);
         }
+    }
+
+    async function loadDatabaseOptions() {
+        const localDb = normalizeDatabaseName(localStorage.getItem("selectedDatabaseName") || "");
+        const preferredDb = normalizeDatabaseName(currentDatabaseName || localDb || "inventory") || "inventory";
+        let options = [];
+
+        if (isAdminRole) {
+            try {
+                const res = await request("/users/databases", "GET");
+                options = (Array.isArray(res?.databases) ? res.databases : [])
+                    .map((entry) => {
+                        const value = normalizeDatabaseName(entry?.name || entry?.database_name);
+                        if (!value) return null;
+                        return {
+                            value,
+                            label: buildDatabaseLabel(value, entry?.label || entry?.company_name || "")
+                        };
+                    })
+                    .filter(Boolean);
+            } catch (_err) {
+                options = [];
+            }
+        }
+
+        if (!options.length) {
+            options = [{
+                value: preferredDb,
+                label: buildDatabaseLabel(preferredDb, "")
+            }];
+        } else if (!options.some((entry) => entry.value === preferredDb)) {
+            options.unshift({
+                value: preferredDb,
+                label: buildDatabaseLabel(preferredDb, "")
+            });
+        }
+
+        if (mappedDbEl) {
+            mappedDbEl.innerHTML = options
+                .map((entry) => `<option value="${escapeHtml(entry.value)}">${escapeHtml(entry.label)}</option>`)
+                .join("");
+            mappedDbEl.value = options.some((entry) => entry.value === preferredDb)
+                ? preferredDb
+                : String(options[0]?.value || preferredDb);
+        }
+
+        currentDatabaseName = normalizeDatabaseName(mappedDbEl?.value || preferredDb || "inventory") || "inventory";
     }
 
     function buildSavePayload() {
@@ -245,6 +321,14 @@
                 localStorage.setItem(ADDRESS_STORAGE_KEY, normalizeAddressKey(addressProfileEl.value));
             });
         }
+        if (mappedDbEl) {
+            mappedDbEl.addEventListener("change", async () => {
+                const nextDb = normalizeDatabaseName(mappedDbEl.value);
+                if (!nextDb || nextDb === currentDatabaseName) return;
+                currentDatabaseName = nextDb;
+                await loadInvoiceSectionSettings(nextDb);
+            });
+        }
         if (saveBtnEl) {
             saveBtnEl.addEventListener("click", saveInvoiceSectionSettings);
         }
@@ -255,5 +339,9 @@
         const allowed = await applyPermissionState();
         if (!allowed) return;
         await loadInvoiceSectionSettings();
+        await loadDatabaseOptions();
+        if (mappedDbEl) {
+            mappedDbEl.value = currentDatabaseName;
+        }
     })();
 })();

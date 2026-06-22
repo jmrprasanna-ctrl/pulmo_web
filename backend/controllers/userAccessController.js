@@ -2981,7 +2981,11 @@ exports.getMyInvMap = async (req, res) => {
   }
 
   const requesterDatabase = normalizeDatabaseName(req.databaseName || req.user?.database_name || req.headers["x-database-name"]) || INVENTORY_DB_NAME;
-  const databaseName = requesterDatabase;
+  const requesterRole = normalizeAccessRole(req.user?.role);
+  const requestedDatabaseName = normalizeDatabaseName(req.query?.database_name);
+  const databaseName = requesterRole === "admin"
+    ? (requestedDatabaseName || requesterDatabase)
+    : requesterDatabase;
   const cfg = getDbConfig();
   const mainDbClient = new Client({
     host: cfg.host,
@@ -3007,19 +3011,13 @@ exports.getMyInvMap = async (req, res) => {
        LIMIT 1`,
       [canonicalUserId, databaseName]
     );
-    if (!rs.rowCount) {
-      return res.json({
-        mapping: null,
-        feature_flags: null,
-      });
-    }
-    const row = rs.rows[0];
+    const row = rs.rowCount ? rs.rows[0] : null;
     const visibilityRs = await mainDbClient.query(
       `SELECT render_visibility_json, render_overrides_json
        FROM ${USER_QUOTATION_RENDER_TABLE}
        WHERE user_id = $1 AND LOWER(database_name) = LOWER($2) AND quotation_type = 'quotation2'
        LIMIT 1`,
-      [Number(canonicalUserId || row.user_id || 0), databaseName]
+      [Number(canonicalUserId || row?.user_id || 0), databaseName]
     );
     const quotation2RenderVisibility = visibilityRs.rowCount
       ? parseQuotationRenderVisibility(visibilityRs.rows[0], QUOTATION2_RENDER_KEYS)
@@ -3032,7 +3030,7 @@ exports.getMyInvMap = async (req, res) => {
        FROM ${USER_QUOTATION_RENDER_TABLE}
        WHERE user_id = $1 AND LOWER(database_name) = LOWER($2) AND quotation_type = 'quotation3'
        LIMIT 1`,
-      [Number(canonicalUserId || row.user_id || 0), databaseName]
+      [Number(canonicalUserId || row?.user_id || 0), databaseName]
     );
     const quotation3RenderVisibility = quotation3Rs.rowCount
       ? parseQuotationRenderVisibility(quotation3Rs.rows[0], QUOTATION3_RENDER_KEYS)
@@ -3045,7 +3043,7 @@ exports.getMyInvMap = async (req, res) => {
        FROM ${USER_QUOTATION_RENDER_TABLE}
        WHERE user_id = $1 AND LOWER(database_name) = LOWER($2) AND quotation_type = 'invoice'
        LIMIT 1`,
-      [Number(canonicalUserId || row.user_id || 0), databaseName]
+      [Number(canonicalUserId || row?.user_id || 0), databaseName]
     );
     const invoiceRenderVisibility = invoiceRs.rowCount
       ? parseQuotationRenderVisibility(invoiceRs.rows[0], INVOICE_RENDER_KEYS)
@@ -3054,12 +3052,12 @@ exports.getMyInvMap = async (req, res) => {
       ? parseInvoiceRenderOverrides(invoiceRs.rows[0])
       : { layout_state: {}, selected_address_key: "v", logo_with_name_data_url: "" };
     res.json({
-      mapping: {
+      mapping: row ? {
         user_id: Number(canonicalUserId || row.user_id || 0),
         database_name: normalizeDatabaseName(row.database_name),
         is_verified: Boolean(row.is_verified),
-      },
-      feature_flags: {
+      } : null,
+      feature_flags: row ? {
         logo: Boolean(row.logo_enabled),
         invoice: Boolean(row.invoice_enabled),
         quotation: Boolean(row.quotation_enabled),
@@ -3075,7 +3073,7 @@ exports.getMyInvMap = async (req, res) => {
         sign_q3: Boolean(row.sign_q3_enabled),
         seal_q3: Boolean(row.seal_q3_enabled),
         theme: Boolean(row.theme_enabled),
-      },
+      } : null,
       quotation2_render_visibility: quotation2RenderVisibility,
       quotation2_render_overrides: quotation2RenderOverrides,
       quotation3_render_visibility: quotation3RenderVisibility,
