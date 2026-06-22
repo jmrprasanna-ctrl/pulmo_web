@@ -9,6 +9,8 @@
     display:flex;
     flex-direction:column;
     gap:6px;
+    min-width:0;
+    flex:1 1 auto;
 }
 .page-eyebrow{
     display:inline-flex;
@@ -487,11 +489,13 @@
 }
 @media (max-width: 760px){
     .page-head{
-        flex-direction:column;
+        flex-direction:row;
         align-items:flex-start;
+        justify-content:space-between;
     }
     .page-head .icon-btn{
-        margin-left:0;
+        margin-left:auto;
+        align-self:flex-start;
     }
     .kpi-grid{
         grid-template-columns:1fr;
