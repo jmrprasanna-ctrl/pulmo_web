@@ -998,8 +998,13 @@ async function loadUserAccessPermissions(){
         return;
     }
     try{
+        const selectedDb = String(localStorage.getItem("selectedDatabaseName") || "").trim().toLowerCase();
+        const headers = { "Authorization": `Bearer ${token}` };
+        if(selectedDb){
+            headers["X-Database-Name"] = selectedDb;
+        }
         const res = await fetch(`${BASE_URL}/users/access/me`, {
-            headers: { "Authorization": `Bearer ${token}` }
+            headers
         });
         if(!res.ok){
             return;
