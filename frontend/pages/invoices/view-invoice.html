@@ -150,11 +150,19 @@
         <img id="invoicePreview" class="invoice-image" alt="Invoice preview">
     </div>
     <div class="invoice-actions">
-        <button class="icon-btn" onclick="printPDF()" aria-label="Print PDF" title="Print PDF">
+        <button class="icon-btn" onclick="printInvoiceDirect()" aria-label="Print invoice" title="Print invoice">
             <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M7 9V4.5h10V9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
                 <rect x="5" y="9" width="14" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/>
                 <path d="M8 14.5h8V20H8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+            </svg>
+        </button>
+        <button class="icon-btn" onclick="printPDF()" aria-label="Export PDF" title="Export PDF">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8 3.5h6l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 7 19V5A1.5 1.5 0 0 1 8.5 3.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                <path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                <path d="M12 10.5v5.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                <path d="m9.8 13.8 2.2 2.2 2.2-2.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
         </button>
         <button class="icon-btn" onclick="emailInvoice()" aria-label="Email invoice" title="Email invoice">
@@ -172,7 +180,7 @@
 <script src="../../assets/js/api.js?v=20260327qemail1"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="../../assets/extracted/pages/invoices/view-invoice.inline-script-1.js?v=20260623invdef2"></script>
+<script src="../../assets/extracted/pages/invoices/view-invoice.inline-script-1.js?v=20260623printer1"></script>
 </body>
 </html>
 

@@ -414,6 +414,7 @@ const DASHBOARD_MENU_ENTRIES = [
             { path: "/users/user-logged.html", label: "Logged" },
             { path: "/users/user-access.html", label: "Access" },
             { path: "/users/backup.html", label: "Backup" },
+            { path: "/users/printer-connect.html", label: "Printer Connect" },
             {
                 path: "/users/mapped.html",
                 label: "Mapped",

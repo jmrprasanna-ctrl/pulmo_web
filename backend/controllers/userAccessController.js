@@ -19,8 +19,10 @@ const COMPANY_STORAGE_ROOT = path.resolve(__dirname, "../storage/companies");
 const COMPANY_LOGO_EXTENSIONS = new Set([".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".tif", ".png"]);
 const USER_INVOICE_MAPPING_TABLE = "user_invoice_mappings";
 const USER_QUOTATION_RENDER_TABLE = "user_quotation_render_settings";
+const USER_PRINTER_CONNECTION_TABLE = "user_printer_connections";
 const INV_MAP_PATH = "/users/inv-map.html";
 const INVOICE_SECTION_PATH = "/users/invoice-section.html";
+const PRINTER_CONNECT_PATH = "/users/printer-connect.html";
 const QUOTATION2_RENDER_KEYS = new Set([
   "customerName",
   "customerAddress",
@@ -236,6 +238,7 @@ const ACCESS_MODULE_OPTIONS = [
       { path: "/users/mapped.html", label: "Mapped", actions: ["view", "add", "delete"] },
       { path: "/users/inv-map.html", label: "Inv Map", actions: ["view", "add", "delete"] },
       { path: "/users/invoice-section.html", label: "Invoice Section", actions: ["view", "edit"] },
+      { path: "/users/printer-connect.html", label: "Printer Connect", actions: ["view", "edit"] },
       { path: "/users/user-preference.html", label: "User Preference", actions: ["view", "edit"] },
       { path: "/users/preference.html", label: "System Preference", actions: ["view", "edit"] },
       { path: "/users/user-logged.html", label: "User Logged Times", actions: ["view"] },
@@ -403,6 +406,9 @@ function expandImplicitActionDependencies(actionKeys) {
   }
   if (set.has(toActionKey("/users/invoice-section.html", "edit"))) {
     add("/users/invoice-section.html", "view");
+  }
+  if (set.has(toActionKey(PRINTER_CONNECT_PATH, "edit"))) {
+    add(PRINTER_CONNECT_PATH, "view");
   }
 
   return normalizeActions(Array.from(set));
@@ -712,6 +718,46 @@ async function ensureUserQuotationRenderTable(client) {
   `);
 }
 
+async function ensureUserPrinterConnectionTable(client) {
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS ${USER_PRINTER_CONNECTION_TABLE} (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      database_name VARCHAR(120) NOT NULL,
+      printer_name VARCHAR(200) NOT NULL DEFAULT '',
+      printer_alias VARCHAR(200) NOT NULL DEFAULT '',
+      station_name VARCHAR(160) NOT NULL DEFAULT '',
+      print_mode VARCHAR(32) NOT NULL DEFAULT 'browser_dialog',
+      notes VARCHAR(500) NOT NULL DEFAULT '',
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_by INTEGER,
+      "createdAt" TIMESTAMP DEFAULT NOW(),
+      "updatedAt" TIMESTAMP DEFAULT NOW(),
+      UNIQUE(user_id, database_name)
+    );
+  `);
+  await client.query(`
+    ALTER TABLE ${USER_PRINTER_CONNECTION_TABLE}
+    ADD COLUMN IF NOT EXISTS printer_alias VARCHAR(200) NOT NULL DEFAULT '';
+  `);
+  await client.query(`
+    ALTER TABLE ${USER_PRINTER_CONNECTION_TABLE}
+    ADD COLUMN IF NOT EXISTS station_name VARCHAR(160) NOT NULL DEFAULT '';
+  `);
+  await client.query(`
+    ALTER TABLE ${USER_PRINTER_CONNECTION_TABLE}
+    ADD COLUMN IF NOT EXISTS print_mode VARCHAR(32) NOT NULL DEFAULT 'browser_dialog';
+  `);
+  await client.query(`
+    ALTER TABLE ${USER_PRINTER_CONNECTION_TABLE}
+    ADD COLUMN IF NOT EXISTS notes VARCHAR(500) NOT NULL DEFAULT '';
+  `);
+  await client.query(`
+    ALTER TABLE ${USER_PRINTER_CONNECTION_TABLE}
+    ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
+  `);
+}
+
 function normalizeQuotationRenderVisibility(raw, allowedKeys) {
   const source = raw && typeof raw === "object" ? raw : {};
   const out = {};
@@ -887,6 +933,63 @@ function parseInvoiceRenderOverrides(row) {
   } catch (_err) {
     return emptyInvoiceRenderOverrides();
   }
+}
+
+function normalizePrinterConnectMode(value) {
+  return String(value || "").trim().toLowerCase() === "local_bridge"
+    ? "local_bridge"
+    : "browser_dialog";
+}
+
+function normalizePrinterConnectSettings(raw) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  const printerName = String(source.printer_name || "").trim().slice(0, 200);
+  const printerAlias = String(source.printer_alias || "").trim().slice(0, 200);
+  const stationName = String(source.station_name || "").trim().slice(0, 160);
+  const notes = String(source.notes || "").trim().slice(0, 500);
+  return {
+    printer_name: printerName,
+    printer_alias: printerAlias,
+    station_name: stationName,
+    print_mode: normalizePrinterConnectMode(source.print_mode),
+    notes,
+    is_active: Boolean(printerName || printerAlias),
+  };
+}
+
+function emptyPrinterConnectSettings() {
+  return {
+    id: 0,
+    user_id: 0,
+    database_name: "",
+    printer_name: "",
+    printer_alias: "",
+    station_name: "",
+    print_mode: "browser_dialog",
+    notes: "",
+    is_active: false,
+    updated_at: null,
+    username: "",
+    email: "",
+  };
+}
+
+function parsePrinterConnectRow(row) {
+  if (!row) return emptyPrinterConnectSettings();
+  return {
+    id: Number(row.id || 0),
+    user_id: Number(row.user_id || 0),
+    database_name: normalizeDatabaseName(row.database_name),
+    printer_name: String(row.printer_name || "").trim(),
+    printer_alias: String(row.printer_alias || "").trim(),
+    station_name: String(row.station_name || "").trim(),
+    print_mode: normalizePrinterConnectMode(row.print_mode),
+    notes: String(row.notes || "").trim(),
+    is_active: Boolean(row.is_active),
+    updated_at: row.updatedAt || null,
+    username: String(row.username || "").trim(),
+    email: String(row.email || "").trim(),
+  };
 }
 
 function normalizeNameCompare(value) {
@@ -1434,6 +1537,25 @@ async function hasInvMapActionPermission(req, action) {
     if (allowedActions.includes(addActionKey)) return true;
   }
   return false;
+}
+
+async function hasPrinterConnectActionPermission(req, action) {
+  const role = String(req.user?.role || "").toLowerCase();
+  if (role !== "admin") return false;
+  const userId = Number(req.user?.id || req.user?.userId || 0);
+  if (!Number.isFinite(userId) || userId <= 0) return false;
+
+  const userDatabase = normalizeUserDatabase(req.databaseName || req.user?.database_name || INVENTORY_DB_NAME);
+  const actionKey = toActionKey(PRINTER_CONNECT_PATH, action);
+
+  let row = await findAccessFromMainDb(userId, userDatabase);
+  if (!row && userDatabase !== INVENTORY_DB_NAME) {
+    row = await findAccessFromMainDb(userId, INVENTORY_DB_NAME);
+  }
+
+  if (!row) return true;
+  const allowedActions = parseAllowedActions(row);
+  return allowedActions.includes(actionKey);
 }
 
 function normalizeInvMapFlags(raw) {
@@ -3255,6 +3377,212 @@ exports.saveMyQuotation3RenderVisibility = async (req, res) => {
 
 exports.saveMyInvoiceRenderVisibility = async (req, res) => {
   return saveMyQuotationRenderSettings(req, res, { quotationType: "invoice" });
+};
+
+exports.getMyPrinterConnect = async (req, res) => {
+  const cfg = getDbConfig();
+  const mainDbClient = new Client({
+    host: cfg.host,
+    port: cfg.port,
+    user: cfg.user,
+    password: cfg.password,
+    database: cfg.database || INVENTORY_DB_NAME,
+  });
+
+  try {
+    const needsPrinterConnectView = Boolean(req.query?.database_name || req.query?.user_ref);
+    if (needsPrinterConnectView) {
+      const canView = await hasPrinterConnectActionPermission(req, "view");
+      if (!canView) {
+        return res.status(403).json({ message: "Forbidden: Missing Printer Connect view permission." });
+      }
+    }
+
+    const target = await resolveInvoiceRenderTargetContext(req, {
+      databaseName: req.query?.database_name,
+      userRef: req.query?.user_ref,
+    });
+
+    await mainDbClient.connect();
+    await ensureUserPrinterConnectionTable(mainDbClient);
+    const rs = await mainDbClient.query(
+      `SELECT *
+       FROM ${USER_PRINTER_CONNECTION_TABLE}
+       WHERE user_id = $1 AND LOWER(database_name) = LOWER($2)
+       LIMIT 1`,
+      [Number(target.canonicalUserId || 0), target.databaseName]
+    );
+    const row = rs.rowCount ? rs.rows[0] : null;
+
+    res.json({
+      target_user_ref: `${target.targetUserRef.user_database}:${target.targetUserRef.user_id}`,
+      target_user_id: Number(target.canonicalUserId || 0),
+      database_name: target.databaseName,
+      mapping: row ? parsePrinterConnectRow(row) : null,
+    });
+  } catch (err) {
+    if (Number(err?.statusCode || 0) >= 400) {
+      return res.status(err.statusCode).json({ message: err.message || "Failed to load printer connection." });
+    }
+    res.status(500).json({ message: err.message || "Failed to load printer connection." });
+  } finally {
+    await mainDbClient.end().catch(() => {});
+  }
+};
+
+exports.listPrinterConnectEntries = async (req, res) => {
+  const canView = await hasPrinterConnectActionPermission(req, "view");
+  if (!canView) {
+    return res.status(403).json({ message: "Forbidden: Missing Printer Connect view permission." });
+  }
+
+  const cfg = getDbConfig();
+  const mainDbClient = new Client({
+    host: cfg.host,
+    port: cfg.port,
+    user: cfg.user,
+    password: cfg.password,
+    database: cfg.database || INVENTORY_DB_NAME,
+  });
+
+  try {
+    await mainDbClient.connect();
+    await ensureUserPrinterConnectionTable(mainDbClient);
+    const filterDatabaseName = normalizeDatabaseName(req.query?.database_name);
+    const params = [];
+    let whereSql = "";
+    if (filterDatabaseName) {
+      params.push(filterDatabaseName);
+      whereSql = `WHERE LOWER(upc.database_name) = LOWER($${params.length})`;
+    }
+
+    const rs = await mainDbClient.query(
+      `SELECT upc.*, u.username, u.email
+       FROM ${USER_PRINTER_CONNECTION_TABLE} upc
+       LEFT JOIN users u ON u.id = upc.user_id
+       ${whereSql}
+       ORDER BY LOWER(upc.database_name) ASC, upc.user_id ASC, upc.id ASC`,
+      params
+    );
+
+    res.json({
+      entries: (rs.rows || []).map((row) => parsePrinterConnectRow(row)),
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Failed to load printer connections." });
+  } finally {
+    await mainDbClient.end().catch(() => {});
+  }
+};
+
+exports.saveMyPrinterConnect = async (req, res) => {
+  const canEdit = await hasPrinterConnectActionPermission(req, "edit");
+  if (!canEdit) {
+    return res.status(403).json({ message: "Forbidden: Missing Printer Connect edit permission." });
+  }
+
+  const normalizedSettings = normalizePrinterConnectSettings(req.body);
+  if (!normalizedSettings.printer_name && !normalizedSettings.printer_alias) {
+    return res.status(400).json({ message: "Printer name or printer label is required." });
+  }
+
+  const cfg = getDbConfig();
+  const mainDbClient = new Client({
+    host: cfg.host,
+    port: cfg.port,
+    user: cfg.user,
+    password: cfg.password,
+    database: cfg.database || INVENTORY_DB_NAME,
+  });
+
+  try {
+    const target = await resolveInvoiceRenderTargetContext(req, {
+      databaseName: req.body?.database_name,
+      userRef: req.body?.user_ref,
+    });
+
+    await mainDbClient.connect();
+    await ensureUserPrinterConnectionTable(mainDbClient);
+    const rs = await mainDbClient.query(
+      `INSERT INTO ${USER_PRINTER_CONNECTION_TABLE}
+       (user_id, database_name, printer_name, printer_alias, station_name, print_mode, notes, is_active, created_by, "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, $8, NOW(), NOW())
+       ON CONFLICT (user_id, database_name)
+       DO UPDATE SET printer_name = EXCLUDED.printer_name,
+                     printer_alias = EXCLUDED.printer_alias,
+                     station_name = EXCLUDED.station_name,
+                     print_mode = EXCLUDED.print_mode,
+                     notes = EXCLUDED.notes,
+                     is_active = TRUE,
+                     "updatedAt" = NOW()
+       RETURNING *`,
+      [
+        Number(target.canonicalUserId || 0),
+        target.databaseName,
+        normalizedSettings.printer_name,
+        normalizedSettings.printer_alias,
+        normalizedSettings.station_name,
+        normalizedSettings.print_mode,
+        normalizedSettings.notes,
+        Number(req.user?.id || 0) || null,
+      ]
+    );
+
+    res.json({
+      message: "Printer connection saved.",
+      target_user_ref: `${target.targetUserRef.user_database}:${target.targetUserRef.user_id}`,
+      target_user_id: Number(target.canonicalUserId || 0),
+      database_name: target.databaseName,
+      mapping: parsePrinterConnectRow(rs.rows[0] || null),
+    });
+  } catch (err) {
+    if (Number(err?.statusCode || 0) >= 400) {
+      return res.status(err.statusCode).json({ message: err.message || "Failed to save printer connection." });
+    }
+    res.status(500).json({ message: err.message || "Failed to save printer connection." });
+  } finally {
+    await mainDbClient.end().catch(() => {});
+  }
+};
+
+exports.deletePrinterConnectEntry = async (req, res) => {
+  const canEdit = await hasPrinterConnectActionPermission(req, "edit");
+  if (!canEdit) {
+    return res.status(403).json({ message: "Forbidden: Missing Printer Connect edit permission." });
+  }
+
+  const entryId = Number(req.params.entryId || 0);
+  if (!Number.isFinite(entryId) || entryId <= 0) {
+    return res.status(400).json({ message: "Invalid printer connection id." });
+  }
+
+  const cfg = getDbConfig();
+  const mainDbClient = new Client({
+    host: cfg.host,
+    port: cfg.port,
+    user: cfg.user,
+    password: cfg.password,
+    database: cfg.database || INVENTORY_DB_NAME,
+  });
+
+  try {
+    await mainDbClient.connect();
+    await ensureUserPrinterConnectionTable(mainDbClient);
+    const rs = await mainDbClient.query(
+      `DELETE FROM ${USER_PRINTER_CONNECTION_TABLE}
+       WHERE id = $1
+       RETURNING id`,
+      [entryId]
+    );
+    if (!rs.rowCount) {
+      return res.status(404).json({ message: "Printer connection not found." });
+    }
+    res.json({ message: "Printer connection removed." });
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Failed to remove printer connection." });
+  } finally {
+    await mainDbClient.end().catch(() => {});
+  }
 };
 
 exports.getUserAccess = async (req, res) => {

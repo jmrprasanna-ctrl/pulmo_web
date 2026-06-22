@@ -33,12 +33,16 @@ const {
   verifyInvMap,
   saveInvMap,
   getMyInvMap,
-  saveMyInvoiceRenderVisibility,
-  saveMyQuotation2RenderVisibility,
-  saveMyQuotation3RenderVisibility,
-  getUserAccess,
-  saveUserAccess,
-  getMyAccess
+   saveMyInvoiceRenderVisibility,
+   saveMyQuotation2RenderVisibility,
+   saveMyQuotation3RenderVisibility,
+   getMyPrinterConnect,
+   listPrinterConnectEntries,
+   saveMyPrinterConnect,
+   deletePrinterConnectEntry,
+   getUserAccess,
+   saveUserAccess,
+   getMyAccess
 } = require("../controllers/userAccessController");
 const { getLoginLogs, clearLoginLogs } = require("../controllers/userLogController");
 const authMiddleware = require("../middleware/authMiddleware");
@@ -54,6 +58,7 @@ router.get("/inv-map/me", roleMiddleware(["admin","manager","user"]), getMyInvMa
 router.put("/inv-map/me/invoice-render-inputs", roleMiddleware(["admin","manager","user"]), saveMyInvoiceRenderVisibility);
 router.put("/inv-map/me/quotation2-render-inputs", roleMiddleware(["admin","manager","user"]), saveMyQuotation2RenderVisibility);
 router.put("/inv-map/me/quotation3-render-inputs", roleMiddleware(["admin","manager","user"]), saveMyQuotation3RenderVisibility);
+router.get("/printer-connect/me", roleMiddleware(["admin","manager","user"]), getMyPrinterConnect);
 router.get("/profiles", roleMiddleware(["admin","manager","user"]), getUserProfiles);
 router.get("/profiles/:userId", roleMiddleware(["admin","manager","user"]), getUserProfileByUserId);
 router.put("/profiles/:userId", roleMiddleware(["admin","manager","user"]), updateUserProfile);
@@ -82,6 +87,9 @@ router.delete("/inv-map/entries/:entryId", deleteInvMapEntry);
 router.get("/inv-map/:userId", getInvMapByUser);
 router.post("/inv-map/verify", verifyInvMap);
 router.post("/inv-map/save", saveInvMap);
+router.get("/printer-connect/entries", listPrinterConnectEntries);
+router.put("/printer-connect/me", saveMyPrinterConnect);
+router.delete("/printer-connect/entries/:entryId", deletePrinterConnectEntry);
 router.get("/logs", getLoginLogs);
 router.delete("/logs", clearLoginLogs);
 router.get("/access/:userId", getUserAccess);

@@ -8,6 +8,7 @@ const currentRole = String(localStorage.getItem("role") || "").trim().toLowerCas
 const canConfigurePreview = currentRole === "admin" || currentRole === "manager";
 let invMapFlags = null;
 let invMapData = null;
+let printerConnectData = null;
 const LOGO_STORAGE_KEY = "invoice_logo_with_name_data_url";
 const ADDRESS_STORAGE_KEY = "invoice_selected_address_key";
 const IMPORTANT_STORAGE_KEY = "invoice_default_important_text";
@@ -25,6 +26,15 @@ async function loadInvMapFlags(){
     }catch(_err){
         invMapData = null;
         invMapFlags = null;
+    }
+}
+
+async function loadPrinterConnectData(){
+    try{
+        const res = await request("/users/printer-connect/me", "GET");
+        printerConnectData = res?.mapping || null;
+    }catch(_err){
+        printerConnectData = null;
     }
 }
 const OVERLAY = {
@@ -1396,6 +1406,111 @@ async function emailInvoice(){
     }
 }
 
+function getPrinterConnectLabel(){
+    const printerName = String(printerConnectData?.printer_alias || printerConnectData?.printer_name || "").trim();
+    const stationName = String(printerConnectData?.station_name || "").trim();
+    if(printerName && stationName){
+        return `${printerName} (${stationName})`;
+    }
+    return printerName || stationName || "";
+}
+
+function openPdfPrintDialog(pdfBlob){
+    return new Promise((resolve, reject) => {
+        if(!(pdfBlob instanceof Blob)){
+            reject(new Error("Failed to prepare the invoice for printing."));
+            return;
+        }
+
+        const blobUrl = URL.createObjectURL(pdfBlob);
+        const frame = document.createElement("iframe");
+        frame.style.position = "fixed";
+        frame.style.right = "0";
+        frame.style.bottom = "0";
+        frame.style.width = "0";
+        frame.style.height = "0";
+        frame.style.opacity = "0";
+        frame.style.border = "0";
+        frame.setAttribute("aria-hidden", "true");
+
+        let cleaned = false;
+        const cleanup = (delay = 30000) => {
+            if(cleaned) return;
+            cleaned = true;
+            window.setTimeout(() => {
+                try{ frame.remove(); }catch(_err){}
+                URL.revokeObjectURL(blobUrl);
+            }, delay);
+        };
+
+        const fallbackToPopup = () => {
+            try{
+                const popup = window.open(blobUrl, "_blank", "noopener,noreferrer");
+                if(popup){
+                    popup.focus();
+                    resolve();
+                    cleanup(60000);
+                    return true;
+                }
+            }catch(_err){
+            }
+            return false;
+        };
+
+        frame.onload = () => {
+            window.setTimeout(() => {
+                try{
+                    const printWindow = frame.contentWindow;
+                    if(printWindow && typeof printWindow.print === "function"){
+                        if(typeof printWindow.focus === "function"){
+                            printWindow.focus();
+                        }
+                        printWindow.print();
+                        resolve();
+                        cleanup();
+                        return;
+                    }
+                }catch(_err){
+                }
+
+                if(fallbackToPopup()){
+                    return;
+                }
+                cleanup(1000);
+                reject(new Error("Browser blocked the print preview."));
+            }, 450);
+        };
+
+        frame.onerror = () => {
+            if(fallbackToPopup()){
+                return;
+            }
+            cleanup(1000);
+            reject(new Error("Failed to open the print preview."));
+        };
+
+        document.body.appendChild(frame);
+        frame.src = blobUrl;
+    });
+}
+
+async function printInvoiceDirect(){
+    if(!latestInvoiceData){
+        alert("Invoice preview is not ready yet.");
+        return;
+    }
+    try{
+        const rendered = await buildRenderedInvoicePdf();
+        await openPdfPrintDialog(rendered.pdfBlob);
+        const printerLabel = getPrinterConnectLabel();
+        if(printerLabel && typeof showMessageBox === "function"){
+            showMessageBox(`Opening print dialog for ${printerLabel}.`, "success", 2400);
+        }
+    }catch(err){
+        alert(err.message || "Failed to open print preview.");
+    }
+}
+
 async function deleteInvoiceWithRenderCleanup(){
     const invoiceId = new URLSearchParams(window.location.search).get("id");
     if(!invoiceId){
@@ -1599,7 +1714,7 @@ async function buildRenderedPdfFromQuotationPage(invoiceId, pageName, buildFnNam
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
-    await loadInvMapFlags();
+    await Promise.all([loadInvMapFlags(), loadPrinterConnectData()]);
     applyInvoiceRenderSettingsFromInvMap();
     const saveInvDateBtn = document.getElementById("saveInvDateBtn");
     if(saveInvDateBtn){

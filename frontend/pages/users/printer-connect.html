@@ -1,0 +1,134 @@
+<!--
+  System: PULMO WEB SYSTEM
+  Owner : CRONIT SOLLUTIONS
+  Author: JMR Prasanna
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Printer Connect - PULMO TECHNOLOGIES</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link rel="stylesheet" href="../../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../../assets/extracted/pages/users/printer-connect.inline-style-1.css?v=20260623printer1">
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <img src="../../assets/images/logo.png" alt="Company Logo">
+            <span>PULMO TECHNOLOGIES</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="../dashboard.html">Dashboard</a></li>
+            <li><a href="../products/product-list.html">Products</a></li>
+            <li><a href="../products/general-machine.html">Machines</a></li>
+            <li><a href="../customers/customer-list.html">Customers</a></li>
+            <li><a href="../invoices/invoice-list.html">Invoices</a></li>
+            <li><a href="../vendors/list-vendor.html">Vendors</a></li>
+            <li><a href="../expenses/expense-list.html">Expenses</a></li>
+            <li><a href="../reports/sales-report.html">Reports</a></li>
+            <li><a href="../analytics/sales-chart.html">Analytics</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <header class="page-head">
+            <h2>Printer Connect</h2>
+            <a class="icon-btn" href="inv-map.html" aria-label="Back to inv map" title="Back to inv map">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </a>
+        </header>
+
+        <section class="card printer-connect-hero">
+            <div class="printer-connect-grid">
+                <div class="printer-connect-field">
+                    <label for="mappedDatabaseName">Mapped Database</label>
+                    <select id="mappedDatabaseName"></select>
+                </div>
+                <div class="printer-connect-field" id="targetUserField">
+                    <label for="targetUserSelect">Login User</label>
+                    <select id="targetUserSelect"></select>
+                    <p class="printer-connect-hint" id="saveTargetText">Saving printer settings for your current login user.</p>
+                </div>
+                <div class="printer-connect-stat">
+                    <span>Print Method</span>
+                    <strong>Browser Print Dialog</strong>
+                    <p>Invoice print opens the browser print dialog. Silent direct printing needs a local print agent on that computer.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="card printer-connect-card">
+            <div class="printer-connect-card-head">
+                <div>
+                    <h3>Printer Mapping</h3>
+                    <p>Save one printer target for the selected database and login user.</p>
+                </div>
+            </div>
+
+            <div class="printer-connect-form-grid">
+                <div class="printer-connect-field">
+                    <label for="stationNameInput">Connected Computer / Station</label>
+                    <input id="stationNameInput" type="text" maxlength="160" placeholder="Reception PC">
+                </div>
+                <div class="printer-connect-field">
+                    <label for="printerNameInput">Printer / Queue Name</label>
+                    <input id="printerNameInput" type="text" maxlength="200" placeholder="HP-LaserJet-FrontDesk">
+                </div>
+                <div class="printer-connect-field">
+                    <label for="printerAliasInput">Printer Label</label>
+                    <input id="printerAliasInput" type="text" maxlength="200" placeholder="Front Desk Invoice Printer">
+                </div>
+                <div class="printer-connect-field printer-connect-field-wide">
+                    <label for="printerNotesInput">Notes</label>
+                    <textarea id="printerNotesInput" rows="4" maxlength="500" placeholder="Optional notes for this printer mapping"></textarea>
+                </div>
+            </div>
+
+            <div class="printer-connect-actions">
+                <button class="btn" type="button" id="savePrinterConnectBtn">Save Printer Connect</button>
+                <button class="btn btn-secondary" type="button" id="deletePrinterConnectBtn">Remove Mapping</button>
+            </div>
+
+            <p class="printer-connect-status" id="currentMappingStatus">No printer mapping loaded for the selected target.</p>
+        </section>
+
+        <section class="card printer-connect-card">
+            <div class="printer-connect-card-head printer-connect-table-head">
+                <div>
+                    <h3>Saved Printer Connections</h3>
+                    <p>These connections can be loaded back into the form and changed anytime.</p>
+                </div>
+                <button class="btn btn-secondary" type="button" id="refreshPrinterConnectBtn">Refresh</button>
+            </div>
+
+            <div class="table-scroll">
+                <table class="printer-connect-table">
+                    <thead>
+                        <tr>
+                            <th>Database</th>
+                            <th>Login User</th>
+                            <th>Computer</th>
+                            <th>Printer</th>
+                            <th>Mode</th>
+                            <th>Updated</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="printerConnectTableBody">
+                        <tr>
+                            <td colspan="7">Loading printer connections...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script src="../../assets/js/api.js"></script>
+    <script src="../../assets/extracted/pages/users/printer-connect.inline-script-1.js?v=20260623printer1"></script>
+</body>
+</html>
