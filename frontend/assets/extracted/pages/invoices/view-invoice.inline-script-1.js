@@ -472,6 +472,9 @@ function amountInWords(amount){
 }
 
 function getImportantNotes(invoice){
+    const configuredNotes = splitImportantLines(defaultImportantText);
+    if(configuredNotes.length) return configuredNotes;
+
     const rows = Array.isArray(invoice?.InvoiceImportants) ? invoice.InvoiceImportants : [];
     const fromRows = rows
         .map((row) => String(row?.note || "").trim())
@@ -484,7 +487,7 @@ function getImportantNotes(invoice){
             .filter(Boolean);
         if(fromArray.length) return fromArray;
     }
-    return splitImportantLines(defaultImportantText);
+    return [];
 }
 
 function mapFactory(){
