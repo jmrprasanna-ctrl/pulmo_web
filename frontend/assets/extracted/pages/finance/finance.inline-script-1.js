@@ -16,13 +16,6 @@ if(!canAccessFinance){
     window.location.href = "../dashboard.html";
 }
 
-const canAccessPayments = (role === "admin" || role === "manager")
-    ? true
-    : (role === "user" && allowedPaths.has("/finance/payments.html"));
-const canAccessPendings = (role === "admin" || role === "manager")
-    ? true
-    : (role === "user" && (allowedPaths.has("/finance/pendings.html") || allowedPaths.has("/finance/finance.html")));
-
 const PERIOD_KEYS = ["week", "month", "year"];
 const PERIOD_LABELS = { week: "Week", month: "Month", year: "Year" };
 const financeSnapshotDateEl = document.getElementById("financeSnapshotDate");
@@ -31,8 +24,6 @@ const expenseMonthFilterEl = document.getElementById("expenseMonthFilter");
 const refreshFinanceBtnEl = document.getElementById("refreshFinanceBtn");
 const exportFinanceExcelBtnEl = document.getElementById("exportFinanceExcelBtn");
 const exportFinancePdfBtnEl = document.getElementById("exportFinancePdfBtn");
-const paymentsBtnEl = document.getElementById("paymentsBtn");
-const pendingsBtnEl = document.getElementById("pendingsBtn");
 const financeHighlightsEl = document.getElementById("financeHighlights");
 const periodChartMetaEl = document.getElementById("periodChartMeta");
 const expenseChartMetaEl = document.getElementById("expenseChartMeta");
@@ -40,13 +31,6 @@ const expenseChartEmptyEl = document.getElementById("expenseChartEmpty");
 const selectedSnapshotLabelEl = document.getElementById("selectedSnapshotLabel");
 const selectedExpenseFocusLabelEl = document.getElementById("selectedExpenseFocusLabel");
 const lastRefreshLabelEl = document.getElementById("lastRefreshLabel");
-
-if(paymentsBtnEl && !canAccessPayments){
-    paymentsBtnEl.style.display = "none";
-}
-if(pendingsBtnEl && !canAccessPendings){
-    pendingsBtnEl.style.display = "none";
-}
 
 let lastFinanceData = null;
 let financePeriodChart = null;
