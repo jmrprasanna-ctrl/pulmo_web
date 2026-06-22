@@ -450,6 +450,26 @@
         min-width:620px;
     }
 }
+@media (max-width: 900px){
+    .toolbar,
+    .section-actions{
+        flex-direction:row !important;
+        align-items:center !important;
+        flex-wrap:nowrap !important;
+    }
+    .toolbar{
+        width:100%;
+    }
+    .section-actions{
+        width:max-content;
+        max-width:100%;
+    }
+    .toolbar > .icon-btn,
+    .section-actions > .icon-btn{
+        flex:0 0 40px !important;
+        align-self:auto !important;
+    }
+}
 @media (max-width: 1120px){
     .finance-hero,
     .analytics-grid,
