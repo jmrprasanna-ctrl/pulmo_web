@@ -11,7 +11,7 @@
 <title>Finance - AXIS CMS SYSTEM</title>
 <link rel="stylesheet" href="../../assets/css/style.css">
 <link rel="stylesheet" href="../../assets/css/dashboard.css">
-<link rel="stylesheet" href="../../assets/extracted/pages/finance/finance.inline-style-1.css?v=20260622mobile1">
+<link rel="stylesheet" href="../../assets/extracted/pages/finance/finance.inline-style-1.css?v=20260622export1">
 </head>
 <body>
 
@@ -82,8 +82,20 @@
             </div>
 
             <div class="toolbar">
-                <button class="toolbar-btn toolbar-btn--ghost" id="exportFinanceExcelBtn" type="button">Export Excel</button>
-                <button class="toolbar-btn toolbar-btn--ghost" id="exportFinancePdfBtn" type="button">Export PDF</button>
+                <button class="icon-btn export-icon-btn export-icon-btn--excel" id="exportFinanceExcelBtn" type="button" aria-label="Export finance as Excel" title="Export finance as Excel">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M8.5 11.5h7M8.5 15h7M11.75 10.5v8M15 10.5v8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <button class="icon-btn export-icon-btn export-icon-btn--pdf" id="exportFinancePdfBtn" type="button" aria-label="Export finance as PDF" title="Export finance as PDF">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M12 10.5v6M9.5 14l2.5 2.5 2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
                 <button class="icon-btn" id="refreshFinanceBtn" type="button" aria-label="Refresh finance data" title="Refresh finance data">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
@@ -182,8 +194,20 @@
                     <h3>Finance Summary by Period</h3>
                 </div>
                 <div class="section-actions">
-                    <button class="toolbar-btn toolbar-btn--ghost" id="summaryPdfBtn" type="button">PDF</button>
-                    <button class="toolbar-btn toolbar-btn--ghost" id="summaryXlsxBtn" type="button">Excel</button>
+                    <button class="icon-btn export-icon-btn export-icon-btn--pdf" id="summaryPdfBtn" type="button" aria-label="Export finance summary as PDF" title="Export finance summary as PDF">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M12 10.5v6M9.5 14l2.5 2.5 2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn export-icon-btn export-icon-btn--excel" id="summaryXlsxBtn" type="button" aria-label="Export finance summary as Excel" title="Export finance summary as Excel">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M8.5 11.5h7M8.5 15h7M11.75 10.5v8M15 10.5v8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
             <div class="table-scroll">
@@ -237,8 +261,20 @@
                     <h3>Sold Product Revenue</h3>
                 </div>
                 <div class="section-actions">
-                    <button class="toolbar-btn toolbar-btn--ghost" id="soldPdfBtn" type="button">PDF</button>
-                    <button class="toolbar-btn toolbar-btn--ghost" id="soldXlsxBtn" type="button">Excel</button>
+                    <button class="icon-btn export-icon-btn export-icon-btn--pdf" id="soldPdfBtn" type="button" aria-label="Export sold product revenue as PDF" title="Export sold product revenue as PDF">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M12 10.5v6M9.5 14l2.5 2.5 2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn export-icon-btn export-icon-btn--excel" id="soldXlsxBtn" type="button" aria-label="Export sold product revenue as Excel" title="Export sold product revenue as Excel">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M8.5 11.5h7M8.5 15h7M11.75 10.5v8M15 10.5v8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
             <div class="table-scroll">
@@ -260,8 +296,20 @@
                     <h3>Vendor Procurement</h3>
                 </div>
                 <div class="section-actions">
-                    <button class="toolbar-btn toolbar-btn--ghost" id="vendorPdfBtn" type="button">PDF</button>
-                    <button class="toolbar-btn toolbar-btn--ghost" id="vendorXlsxBtn" type="button">Excel</button>
+                    <button class="icon-btn export-icon-btn export-icon-btn--pdf" id="vendorPdfBtn" type="button" aria-label="Export vendor procurement as PDF" title="Export vendor procurement as PDF">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M12 10.5v6M9.5 14l2.5 2.5 2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn export-icon-btn export-icon-btn--excel" id="vendorXlsxBtn" type="button" aria-label="Export vendor procurement as Excel" title="Export vendor procurement as Excel">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M8.5 11.5h7M8.5 15h7M11.75 10.5v8M15 10.5v8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
             <div class="table-stack">
@@ -304,8 +352,20 @@
                 <h3>Rental Consumables Performance</h3>
             </div>
             <div class="section-actions">
-                <button class="toolbar-btn toolbar-btn--ghost" id="rentalPdfBtn" type="button">PDF</button>
-                <button class="toolbar-btn toolbar-btn--ghost" id="rentalXlsxBtn" type="button">Excel</button>
+                <button class="icon-btn export-icon-btn export-icon-btn--pdf" id="rentalPdfBtn" type="button" aria-label="Export rental consumables performance as PDF" title="Export rental consumables performance as PDF">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M12 10.5v6M9.5 14l2.5 2.5 2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <button class="icon-btn export-icon-btn export-icon-btn--excel" id="rentalXlsxBtn" type="button" aria-label="Export rental consumables performance as Excel" title="Export rental consumables performance as Excel">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        <path d="M8.5 11.5h7M8.5 15h7M11.75 10.5v8M15 10.5v8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                    </svg>
+                </button>
             </div>
         </div>
         <div class="triple-table-grid">

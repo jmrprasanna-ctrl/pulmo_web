@@ -167,6 +167,28 @@
     margin-top:0;
     flex:0 0 auto;
 }
+.export-icon-btn{
+    border-color:rgba(28, 52, 78, 0.14);
+}
+.export-icon-btn--pdf{
+    color:#b4232f;
+    background:#fff5f6;
+    border-color:#f0c4ca;
+}
+.export-icon-btn--excel{
+    color:#0f7a49;
+    background:#effbf4;
+    border-color:#bfe4cd;
+}
+.export-icon-btn:hover{
+    box-shadow:0 10px 20px rgba(15, 106, 191, 0.12);
+}
+.export-icon-btn--pdf:hover{
+    border-color:#e5a3ac;
+}
+.export-icon-btn--excel:hover{
+    border-color:#9ed2b4;
+}
 
 .kpi-grid{
     display:grid;
