@@ -130,6 +130,19 @@ function normalizeImportantText(value){
         .slice(0, 2000);
 }
 
+function getSystemDefaultImportantText(){
+    const selectedDb = String(localStorage.getItem("selectedDatabaseName") || "").trim().toLowerCase();
+    const notes = selectedDb === "demo"
+        ? [
+            "Ex-stock-subject to prior sale of Supply of items."
+        ]
+        : [
+            "Cheque's are to be drawn in favor of PULMO TECHNOLOGIES (1000606391) and crossed A/C Payee only.",
+            "Ex-stock-subject to prior sale of Supply of items."
+        ];
+    return normalizeImportantText(notes.join("\n"));
+}
+
 function splitImportantLines(value){
     return normalizeImportantText(value)
         .split("\n")
@@ -216,7 +229,7 @@ function applyInvoiceRenderSettingsFromInvMap(){
 
     const localImportantText = String(localStorage.getItem(IMPORTANT_STORAGE_KEY) || "").trim();
     const defaultImportantFromServer = overrides ? String(overrides.default_important_text || "").trim() : "";
-    defaultImportantText = normalizeImportantText(defaultImportantFromServer || localImportantText);
+    defaultImportantText = normalizeImportantText(defaultImportantFromServer || localImportantText || getSystemDefaultImportantText());
     localStorage.setItem(IMPORTANT_STORAGE_KEY, defaultImportantText);
     const defaultImportantInput = document.getElementById("defaultImportantTextInput");
     if(defaultImportantInput){

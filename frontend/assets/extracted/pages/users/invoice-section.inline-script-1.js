@@ -4,8 +4,6 @@
     const ADDRESS_STORAGE_KEY = "invoice_selected_address_key";
     const IMPORTANT_STORAGE_KEY = "invoice_default_important_text";
     const byId = (id) => document.getElementById(id);
-    const currentRole = String(localStorage.getItem("role") || "").trim().toLowerCase();
-    const isAdminRole = currentRole === "admin";
     const currentUserId = Number(localStorage.getItem("userId") || 0);
     const storedUserRef = String(localStorage.getItem("userRef") || "").trim().toLowerCase();
 
@@ -36,6 +34,7 @@
     let currentDefaultImportantText = "";
     let currentPreferenceSummary = null;
     let mappedTargetEntries = [];
+    let canTargetMappedUsers = false;
 
     function normalizeDatabaseName(value) {
         return String(value || "").trim().toLowerCase();
@@ -57,6 +56,19 @@
             .filter(Boolean)
             .join("\n")
             .slice(0, 2000);
+    }
+
+    function getSystemDefaultImportantText(databaseName) {
+        const normalizedDb = normalizeDatabaseName(databaseName);
+        const notes = normalizedDb === "demo"
+            ? [
+                "Ex-stock-subject to prior sale of Supply of items."
+            ]
+            : [
+                "Cheque's are to be drawn in favor of PULMO TECHNOLOGIES (1000606391) and crossed A/C Payee only.",
+                "Ex-stock-subject to prior sale of Supply of items."
+            ];
+        return normalizeImportantText(notes.join("\n"));
     }
 
     function safeObject(value) {
@@ -143,7 +155,7 @@
 
     function updateSaveTargetText() {
         if (!saveTargetTextEl) return;
-        const label = isAdminRole ? getSelectedTargetOptionLabel() : "your current login user";
+        const label = canTargetMappedUsers ? getSelectedTargetOptionLabel() : "your current login user";
         saveTargetTextEl.textContent = `Saving invoice defaults for ${label} in ${currentDatabaseName || "inventory"}.`;
     }
 
@@ -211,7 +223,7 @@
         if (currentDatabaseName) {
             params.set("database_name", currentDatabaseName);
         }
-        if (isAdminRole && currentTargetUserRef) {
+        if (canTargetMappedUsers && currentTargetUserRef) {
             params.set("user_ref", currentTargetUserRef);
         }
         const query = params.toString();
@@ -223,7 +235,7 @@
         if (currentDatabaseName) {
             params.set("database_name", currentDatabaseName);
         }
-        if (isAdminRole && currentTargetUserRef) {
+        if (canTargetMappedUsers && currentTargetUserRef) {
             params.set("user_ref", currentTargetUserRef);
         }
         const query = params.toString();
@@ -285,14 +297,18 @@
         const localImportantText = isSelfTarget()
             ? String(localStorage.getItem(IMPORTANT_STORAGE_KEY) || "").trim()
             : "";
-        currentDefaultImportantText = normalizeImportantText(invoiceOverrides.default_important_text || localImportantText);
+        currentDefaultImportantText = normalizeImportantText(
+            invoiceOverrides.default_important_text
+            || localImportantText
+            || getSystemDefaultImportantText(currentDatabaseName)
+        );
         if (defaultImportantTextEl) {
             defaultImportantTextEl.value = currentDefaultImportantText;
         }
 
         renderLogoPreview();
 
-        const targetLabel = isAdminRole ? getSelectedTargetOptionLabel() : "your current login user";
+        const targetLabel = canTargetMappedUsers ? getSelectedTargetOptionLabel() : "your current login user";
         if (mapping && mappingDbName === currentDatabaseName) {
             setMappingStatusText(`Mapped for ${targetLabel} in ${currentDatabaseName}.`);
         } else {
@@ -306,10 +322,6 @@
     }
 
     async function loadMappedTargetEntries() {
-        if (!isAdminRole) {
-            mappedTargetEntries = [];
-            return;
-        }
         try {
             const res = await request("/users/inv-map/entries", "GET");
             mappedTargetEntries = (Array.isArray(res?.entries) ? res.entries : [])
@@ -320,8 +332,10 @@
                     database_name: normalizeDatabaseName(entry?.database_name),
                 }))
                 .filter((entry) => entry.user_id > 0 && entry.database_name);
+            canTargetMappedUsers = true;
         } catch (_err) {
             mappedTargetEntries = [];
+            canTargetMappedUsers = false;
         }
     }
 
@@ -330,22 +344,20 @@
         const preferredDb = normalizeDatabaseName(currentDatabaseName || localDb || "inventory") || "inventory";
         let options = [];
 
-        if (isAdminRole) {
-            try {
-                const res = await request("/users/databases", "GET");
-                options = (Array.isArray(res?.databases) ? res.databases : [])
-                    .map((entry) => {
-                        const value = normalizeDatabaseName(entry?.name || entry?.database_name);
-                        if (!value) return null;
-                        return {
-                            value,
-                            label: buildDatabaseLabel(value, entry?.label || entry?.company_name || "")
-                        };
-                    })
-                    .filter(Boolean);
-            } catch (_err) {
-                options = [];
-            }
+        try {
+            const res = await request("/users/databases", "GET");
+            options = (Array.isArray(res?.databases) ? res.databases : [])
+                .map((entry) => {
+                    const value = normalizeDatabaseName(entry?.name || entry?.database_name);
+                    if (!value) return null;
+                    return {
+                        value,
+                        label: buildDatabaseLabel(value, entry?.label || entry?.company_name || "")
+                    };
+                })
+                .filter(Boolean);
+        } catch (_err) {
+            options = [];
         }
 
         if (!options.length && mappedTargetEntries.length) {
@@ -388,7 +400,7 @@
 
     function rebuildTargetUserOptions() {
         if (!targetUserFieldEl || !targetUserEl) return;
-        if (!isAdminRole) {
+        if (!canTargetMappedUsers) {
             currentTargetUserRef = normalizeUserRef(getSelfUserRef());
             targetUserFieldEl.style.display = "none";
             updateSaveTargetText();
@@ -456,7 +468,7 @@
                 default_important_text: normalizeImportantText(defaultImportantTextEl?.value || currentDefaultImportantText)
             }
         };
-        if (isAdminRole && currentTargetUserRef) {
+        if (canTargetMappedUsers && currentTargetUserRef) {
             payload.user_ref = currentTargetUserRef;
         }
         if (currentVisibility && Object.keys(currentVisibility).length) {
