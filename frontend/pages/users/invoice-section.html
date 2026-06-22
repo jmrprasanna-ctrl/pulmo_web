@@ -42,37 +42,92 @@
             </a>
         </header>
 
-        <section class="card invoice-section-card">
-            <div class="invoice-section-grid">
+        <section class="card invoice-section-card invoice-section-hero">
+            <div class="invoice-section-hero-head">
                 <div>
+                    <p class="invoice-section-eyebrow">Invoice Render Settings</p>
+                    <h3>Database, Login User, and Invoice Defaults</h3>
+                    <p class="invoice-section-subtitle">Choose the database, load a mapped login user if needed, and save the default Invoice Details setup for that target.</p>
+                </div>
+                <a class="btn btn-secondary invoice-section-link-btn" href="preference.html">Open Preference Uploads</a>
+            </div>
+
+            <div class="invoice-section-grid invoice-section-config-grid">
+                <div class="invoice-section-field">
                     <label for="mappedDatabaseName">Mapped Database</label>
                     <select id="mappedDatabaseName"></select>
                 </div>
-                <div>
+                <div class="invoice-section-field" id="targetUserField">
+                    <label for="targetUserSelect">Save For Login User</label>
+                    <select id="targetUserSelect"></select>
+                    <p class="invoice-section-hint" id="saveTargetText">Settings save to your current login user.</p>
+                </div>
+                <div class="invoice-section-field">
                     <label for="addressProfileSelect">Invoice Company Name</label>
                     <select id="addressProfileSelect">
                         <option value="v">Address V</option>
                         <option value="colombo">Colombo</option>
                     </select>
                 </div>
-                <div class="status-cell">
-                    <label>Mapping Status</label>
-                    <p id="mappingStatusText">-</p>
+                <div class="invoice-section-stat">
+                    <span>Mapping Status</span>
+                    <strong id="mappingStatusText">-</strong>
+                    <p>This status checks the selected database and target login user.</p>
                 </div>
             </div>
+        </section>
 
-            <div class="invoice-section-field">
-                <label for="invoiceLogoFileInput">Invoice Details Logo</label>
+        <section class="invoice-section-summary-grid">
+            <article class="card invoice-section-summary-card">
+                <div class="invoice-section-card-head">
+                    <div>
+                        <h3>Preference Uploads</h3>
+                        <p>Loaded from the selected database and target login user.</p>
+                    </div>
+                </div>
+                <div class="invoice-section-file-meta">
+                    <span>Invoice PDF</span>
+                    <strong id="invoiceTemplateFileNameText">-</strong>
+                    <p id="invoiceTemplatePathText">No invoice PDF uploaded yet.</p>
+                </div>
+                <div class="invoice-section-file-meta">
+                    <span>System Logo</span>
+                    <strong id="systemLogoFileNameText">-</strong>
+                    <p id="systemLogoPathText">No system logo uploaded yet.</p>
+                </div>
+                <div class="invoice-section-system-logo-preview" id="systemLogoPreviewWrap"></div>
+            </article>
+
+            <article class="card invoice-section-summary-card">
+                <div class="invoice-section-card-head">
+                    <div>
+                        <h3>Invoice Details Custom Logo</h3>
+                        <p>This logo is used inside Invoice Details when the logo option is enabled.</p>
+                    </div>
+                </div>
                 <input type="file" id="invoiceLogoFileInput" accept="image/*" hidden>
                 <div class="invoice-section-actions">
                     <button class="btn btn-secondary" type="button" id="invoiceLogoBrowseBtn">Browse Logo</button>
                     <button class="btn btn-secondary" type="button" id="invoiceLogoClearBtn">Clear Logo</button>
                 </div>
-                <p class="invoice-section-hint">This logo is used by Invoice Details render preview when logo checkbox is enabled.</p>
+                <p class="invoice-section-hint">Use this for the invoice preview logo only. System logo uploads still come from the Preference page.</p>
                 <div class="invoice-section-logo-preview" id="invoiceLogoPreviewWrap"></div>
-            </div>
+            </article>
+        </section>
 
-            <div class="invoice-section-actions">
+        <section class="card invoice-section-card">
+            <div class="invoice-section-card-head">
+                <div>
+                    <h3>Default Important Notes</h3>
+                    <p>These notes appear on Invoice Details when the invoice has no saved Important section lines.</p>
+                </div>
+            </div>
+            <div class="invoice-section-field">
+                <label for="defaultImportantText">Important Notes</label>
+                <textarea id="defaultImportantText" rows="6" placeholder="Enter one note per line"></textarea>
+                <p class="invoice-section-hint">One line becomes one important note item on the invoice preview.</p>
+            </div>
+            <div class="invoice-section-actions invoice-section-savebar">
                 <button class="btn" type="button" id="saveInvoiceSectionBtn">Save Invoice Section</button>
             </div>
         </section>

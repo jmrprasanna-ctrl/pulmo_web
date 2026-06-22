@@ -76,6 +76,7 @@ const INVOICE_RENDER_KEYS = new Set([
   ...QUOTATION3_RENDER_KEYS,
 ]);
 const MAX_INVOICE_LOGO_DATA_URL_LENGTH = 2_000_000;
+const MAX_DEFAULT_IMPORTANT_TEXT_LENGTH = 2_000;
 const ensuredUiSettingsDbSet = new Set();
 const DEFAULT_CATEGORIES = [
   "Photocopier",
@@ -856,10 +857,26 @@ function normalizeInvoiceRenderOverrides(raw) {
   if (logoWithNameDataUrl.length > MAX_INVOICE_LOGO_DATA_URL_LENGTH) {
     logoWithNameDataUrl = "";
   }
+  let defaultImportantText = String(source.default_important_text || "")
+    .replace(/\r/g, "")
+    .trim();
+  if (defaultImportantText.length > MAX_DEFAULT_IMPORTANT_TEXT_LENGTH) {
+    defaultImportantText = defaultImportantText.slice(0, MAX_DEFAULT_IMPORTANT_TEXT_LENGTH);
+  }
   return {
     layout_state: layoutState,
     selected_address_key: selectedAddressKey,
     logo_with_name_data_url: logoWithNameDataUrl,
+    default_important_text: defaultImportantText,
+  };
+}
+
+function emptyInvoiceRenderOverrides() {
+  return {
+    layout_state: {},
+    selected_address_key: "v",
+    logo_with_name_data_url: "",
+    default_important_text: "",
   };
 }
 
@@ -868,7 +885,7 @@ function parseInvoiceRenderOverrides(row) {
     const parsed = JSON.parse(String(row?.render_overrides_json || "{}"));
     return normalizeInvoiceRenderOverrides(parsed);
   } catch (_err) {
-    return { layout_state: {}, selected_address_key: "v", logo_with_name_data_url: "" };
+    return emptyInvoiceRenderOverrides();
   }
 }
 
@@ -1724,6 +1741,7 @@ exports.getDatabases = async (_req, res) => {
   const requesterDatabase = normalizeDatabaseName(
     _req?.databaseName || _req?.user?.database_name || _req?.headers?.["x-database-name"] || INVENTORY_DB_NAME
   ) || INVENTORY_DB_NAME;
+  const requesterRole = normalizeAccessRole(_req?.user?.role);
   const cfg = getDbConfig();
   const adminClient = new Client({
     host: cfg.host,
@@ -1770,10 +1788,12 @@ exports.getDatabases = async (_req, res) => {
     });
 
     const sortedDatabases = databases.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
-    const scopedDatabases = requesterDatabase !== INVENTORY_DB_NAME
+    const scopedDatabases = requesterRole === "admin"
+      ? [...sortedDatabases]
+      : requesterDatabase !== INVENTORY_DB_NAME
       ? sortedDatabases.filter((entry) => normalizeDatabaseName(entry?.name) === requesterDatabase)
       : sortedDatabases;
-    if (requesterDatabase !== INVENTORY_DB_NAME && !scopedDatabases.length) {
+    if (requesterRole !== "admin" && requesterDatabase !== INVENTORY_DB_NAME && !scopedDatabases.length) {
       const companyName = companyMap.get(requesterDatabase) || "";
       scopedDatabases.push({
         name: requesterDatabase,
@@ -2746,6 +2766,49 @@ async function resolveCanonicalInvMapUserId(userRef, userModel) {
   return Number(found || fallbackId || 0);
 }
 
+async function resolveInvoiceRenderTargetContext(req, options = {}) {
+  const requesterUserId = Number(req.user?.id || req.user?.userId || 0);
+  if (!Number.isFinite(requesterUserId) || requesterUserId <= 0) {
+    const err = new Error("Invalid token user.");
+    err.statusCode = 401;
+    throw err;
+  }
+
+  const requesterDatabase = normalizeDatabaseName(
+    req.databaseName || req.user?.database_name || req.headers["x-database-name"]
+  ) || INVENTORY_DB_NAME;
+  const requesterRole = normalizeAccessRole(req.user?.role);
+  const requestedDatabaseName = normalizeDatabaseName(options.databaseName);
+  const databaseName = requesterRole === "admin"
+    ? (requestedDatabaseName || requesterDatabase)
+    : requesterDatabase;
+  const requestedUserRef = requesterRole === "admin"
+    ? parseUserReference(options.userRef)
+    : null;
+  const targetUserRef = requestedUserRef || {
+    user_database: requesterDatabase,
+    user_id: requesterUserId,
+  };
+  const targetUserModel = await getUserFromDatabase(targetUserRef.user_database, targetUserRef.user_id);
+
+  if (requestedUserRef && !targetUserModel) {
+    const err = new Error("Target user not found.");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const canonicalUserId = await resolveCanonicalInvMapUserId(targetUserRef, targetUserModel);
+  return {
+    requesterUserId,
+    requesterRole,
+    requesterDatabase,
+    databaseName,
+    targetUserRef,
+    targetUserModel,
+    canonicalUserId,
+  };
+}
+
 exports.getInvMapByUser = async (req, res) => {
   const canView = await hasInvMapActionPermission(req, "view");
   if (!canView) {
@@ -2975,17 +3038,6 @@ exports.saveInvMap = async (req, res) => {
 };
 
 exports.getMyInvMap = async (req, res) => {
-  const userId = Number(req.user?.id || req.user?.userId || 0);
-  if (!Number.isFinite(userId) || userId <= 0) {
-    return res.status(401).json({ message: "Invalid token user." });
-  }
-
-  const requesterDatabase = normalizeDatabaseName(req.databaseName || req.user?.database_name || req.headers["x-database-name"]) || INVENTORY_DB_NAME;
-  const requesterRole = normalizeAccessRole(req.user?.role);
-  const requestedDatabaseName = normalizeDatabaseName(req.query?.database_name);
-  const databaseName = requesterRole === "admin"
-    ? (requestedDatabaseName || requesterDatabase)
-    : requesterDatabase;
   const cfg = getDbConfig();
   const mainDbClient = new Client({
     host: cfg.host,
@@ -2995,11 +3047,10 @@ exports.getMyInvMap = async (req, res) => {
     database: cfg.database || INVENTORY_DB_NAME,
   });
   try {
-    const requesterUser = await getUserFromDatabase(requesterDatabase, userId);
-    const canonicalUserId = await resolveCanonicalInvMapUserId(
-      { user_database: requesterDatabase, user_id: userId },
-      requesterUser
-    );
+    const target = await resolveInvoiceRenderTargetContext(req, {
+      databaseName: req.query?.database_name,
+      userRef: req.query?.user_ref,
+    });
 
     await mainDbClient.connect();
     await ensureUserInvoiceMappingTable(mainDbClient);
@@ -3009,7 +3060,7 @@ exports.getMyInvMap = async (req, res) => {
        FROM ${USER_INVOICE_MAPPING_TABLE}
        WHERE user_id = $1 AND LOWER(database_name) = LOWER($2)
        LIMIT 1`,
-      [canonicalUserId, databaseName]
+      [target.canonicalUserId, target.databaseName]
     );
     const row = rs.rowCount ? rs.rows[0] : null;
     const visibilityRs = await mainDbClient.query(
@@ -3017,7 +3068,7 @@ exports.getMyInvMap = async (req, res) => {
        FROM ${USER_QUOTATION_RENDER_TABLE}
        WHERE user_id = $1 AND LOWER(database_name) = LOWER($2) AND quotation_type = 'quotation2'
        LIMIT 1`,
-      [Number(canonicalUserId || row?.user_id || 0), databaseName]
+      [Number(target.canonicalUserId || row?.user_id || 0), target.databaseName]
     );
     const quotation2RenderVisibility = visibilityRs.rowCount
       ? parseQuotationRenderVisibility(visibilityRs.rows[0], QUOTATION2_RENDER_KEYS)
@@ -3030,7 +3081,7 @@ exports.getMyInvMap = async (req, res) => {
        FROM ${USER_QUOTATION_RENDER_TABLE}
        WHERE user_id = $1 AND LOWER(database_name) = LOWER($2) AND quotation_type = 'quotation3'
        LIMIT 1`,
-      [Number(canonicalUserId || row?.user_id || 0), databaseName]
+      [Number(target.canonicalUserId || row?.user_id || 0), target.databaseName]
     );
     const quotation3RenderVisibility = quotation3Rs.rowCount
       ? parseQuotationRenderVisibility(quotation3Rs.rows[0], QUOTATION3_RENDER_KEYS)
@@ -3043,17 +3094,20 @@ exports.getMyInvMap = async (req, res) => {
        FROM ${USER_QUOTATION_RENDER_TABLE}
        WHERE user_id = $1 AND LOWER(database_name) = LOWER($2) AND quotation_type = 'invoice'
        LIMIT 1`,
-      [Number(canonicalUserId || row?.user_id || 0), databaseName]
+      [Number(target.canonicalUserId || row?.user_id || 0), target.databaseName]
     );
     const invoiceRenderVisibility = invoiceRs.rowCount
       ? parseQuotationRenderVisibility(invoiceRs.rows[0], INVOICE_RENDER_KEYS)
       : {};
     const invoiceRenderOverrides = invoiceRs.rowCount
       ? parseInvoiceRenderOverrides(invoiceRs.rows[0])
-      : { layout_state: {}, selected_address_key: "v", logo_with_name_data_url: "" };
+      : emptyInvoiceRenderOverrides();
     res.json({
+      target_user_ref: `${target.targetUserRef.user_database}:${target.targetUserRef.user_id}`,
+      target_user_id: Number(target.canonicalUserId || 0),
+      database_name: target.databaseName,
       mapping: row ? {
-        user_id: Number(canonicalUserId || row.user_id || 0),
+        user_id: Number(target.canonicalUserId || row.user_id || 0),
         database_name: normalizeDatabaseName(row.database_name),
         is_verified: Boolean(row.is_verified),
       } : null,
@@ -3082,6 +3136,9 @@ exports.getMyInvMap = async (req, res) => {
       invoice_render_overrides: invoiceRenderOverrides,
     });
   } catch (err) {
+    if (Number(err?.statusCode || 0) >= 400) {
+      return res.status(err.statusCode).json({ message: err.message || "Failed to load your Inv Map." });
+    }
     res.status(500).json({ message: err.message || "Failed to load your Inv Map." });
   } finally {
     await mainDbClient.end().catch(() => {});
@@ -3105,13 +3162,6 @@ async function saveMyQuotationRenderSettings(req, res, options) {
     : quotationType === "invoice"
       ? "Invoice"
       : "Quotation 2";
-  const userId = Number(req.user?.id || req.user?.userId || 0);
-  if (!Number.isFinite(userId) || userId <= 0) {
-    return res.status(401).json({ message: "Invalid token user." });
-  }
-
-  const requesterDatabase = normalizeDatabaseName(req.databaseName || req.user?.database_name || req.headers["x-database-name"]) || INVENTORY_DB_NAME;
-  const databaseName = normalizeDatabaseName(req.body?.database_name) || requesterDatabase;
   const rawVisibility = req.body?.render_visibility;
   const rawOverrides = req.body?.render_overrides;
   const hasVisibilityPayload = rawVisibility && typeof rawVisibility === "object";
@@ -3139,11 +3189,10 @@ async function saveMyQuotationRenderSettings(req, res, options) {
   });
 
   try {
-    const requesterUser = await getUserFromDatabase(requesterDatabase, userId);
-    const canonicalUserId = await resolveCanonicalInvMapUserId(
-      { user_database: requesterDatabase, user_id: userId },
-      requesterUser
-    );
+    const target = await resolveInvoiceRenderTargetContext(req, {
+      databaseName: req.body?.database_name,
+      userRef: req.body?.user_ref,
+    });
 
     await mainDbClient.connect();
     await ensureUserQuotationRenderTable(mainDbClient);
@@ -3152,7 +3201,7 @@ async function saveMyQuotationRenderSettings(req, res, options) {
        FROM ${USER_QUOTATION_RENDER_TABLE}
        WHERE user_id = $1 AND LOWER(database_name) = LOWER($2) AND quotation_type = $3
        LIMIT 1`,
-      [Number(canonicalUserId || userId), databaseName, quotationType]
+      [Number(target.canonicalUserId || target.requesterUserId), target.databaseName, quotationType]
     );
     const existingRow = existingRs.rowCount ? existingRs.rows[0] : null;
     const finalVisibility = normalizedVisibility || parseQuotationRenderVisibility(existingRow, allowedKeys);
@@ -3169,8 +3218,8 @@ async function saveMyQuotationRenderSettings(req, res, options) {
                      render_overrides_json = EXCLUDED.render_overrides_json,
                      "updatedAt" = NOW()`,
       [
-        Number(canonicalUserId || userId),
-        databaseName,
+        Number(target.canonicalUserId || target.requesterUserId),
+        target.databaseName,
         quotationType,
         JSON.stringify(finalVisibility),
         JSON.stringify(finalOverrides),
@@ -3180,11 +3229,16 @@ async function saveMyQuotationRenderSettings(req, res, options) {
 
     res.json({
       message: `${label} render inputs saved.`,
-      database_name: databaseName,
+      database_name: target.databaseName,
+      target_user_ref: `${target.targetUserRef.user_database}:${target.targetUserRef.user_id}`,
+      target_user_id: Number(target.canonicalUserId || 0),
       render_visibility: finalVisibility,
       render_overrides: finalOverrides,
     });
   } catch (err) {
+    if (Number(err?.statusCode || 0) >= 400) {
+      return res.status(err.statusCode).json({ message: err.message || `Failed to save ${label.toLowerCase()} render inputs.` });
+    }
     res.status(500).json({ message: err.message || `Failed to save ${label.toLowerCase()} render inputs.` });
   } finally {
     await mainDbClient.end().catch(() => {});

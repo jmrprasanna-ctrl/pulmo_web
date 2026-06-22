@@ -10,6 +10,7 @@ let invMapFlags = null;
 let invMapData = null;
 const LOGO_STORAGE_KEY = "invoice_logo_with_name_data_url";
 const ADDRESS_STORAGE_KEY = "invoice_selected_address_key";
+const IMPORTANT_STORAGE_KEY = "invoice_default_important_text";
 function hasMappedFeature(featureKey){
     if(!invMapFlags) return true;
     return !!invMapFlags[featureKey];
@@ -113,9 +114,27 @@ const ADDRESS_TEXTS = {
     ]
 };
 let selectedAddressKey = "v";
+let defaultImportantText = "";
 
 function normalizeAddressKey(value){
     return String(value || "").trim().toLowerCase() === "colombo" ? "colombo" : "v";
+}
+
+function normalizeImportantText(value){
+    return String(value || "")
+        .replace(/\r/g, "")
+        .split("\n")
+        .map((line) => String(line || "").trim())
+        .filter(Boolean)
+        .join("\n")
+        .slice(0, 2000);
+}
+
+function splitImportantLines(value){
+    return normalizeImportantText(value)
+        .split("\n")
+        .map((line) => String(line || "").trim())
+        .filter(Boolean);
 }
 
 function getLayoutConfig(key){
@@ -193,6 +212,15 @@ function applyInvoiceRenderSettingsFromInvMap(){
     logoWithNameDataUrl = logoFromServer || localLogo;
     if(logoFromServer){
         localStorage.setItem(LOGO_STORAGE_KEY, logoFromServer);
+    }
+
+    const localImportantText = String(localStorage.getItem(IMPORTANT_STORAGE_KEY) || "").trim();
+    const defaultImportantFromServer = overrides ? String(overrides.default_important_text || "").trim() : "";
+    defaultImportantText = normalizeImportantText(defaultImportantFromServer || localImportantText);
+    localStorage.setItem(IMPORTANT_STORAGE_KEY, defaultImportantText);
+    const defaultImportantInput = document.getElementById("defaultImportantTextInput");
+    if(defaultImportantInput){
+        defaultImportantInput.value = defaultImportantText;
     }
 }
 
@@ -438,11 +466,12 @@ function getImportantNotes(invoice){
     if(fromRows.length) return fromRows;
 
     if(Array.isArray(invoice?.importants)){
-        return invoice.importants
+        const fromArray = invoice.importants
             .map((v) => String(v || "").trim())
             .filter(Boolean);
+        if(fromArray.length) return fromArray;
     }
-    return [];
+    return splitImportantLines(defaultImportantText);
 }
 
 function mapFactory(){
@@ -1207,12 +1236,15 @@ function initLayoutEditor(){
 }
 
 async function saveInvoiceRenderInputs(){
+    const defaultImportantInput = document.getElementById("defaultImportantTextInput");
+    defaultImportantText = normalizeImportantText(defaultImportantInput?.value || defaultImportantText);
     const payload = {
         render_visibility: collectInvoiceRenderVisibility(),
         render_overrides: {
             layout_state: collectInvoiceRenderLayoutState(),
             selected_address_key: normalizeAddressKey(selectedAddressKey),
-            logo_with_name_data_url: String(logoWithNameDataUrl || "").trim()
+            logo_with_name_data_url: String(logoWithNameDataUrl || "").trim(),
+            default_important_text: defaultImportantText
         }
     };
     const mappingDbName = invMapData && invMapData.mapping && invMapData.mapping.database_name
@@ -1228,6 +1260,10 @@ async function saveInvoiceRenderInputs(){
         invMapData.invoice_render_overrides = res?.render_overrides || payload.render_overrides;
         localStorage.setItem(ADDRESS_STORAGE_KEY, normalizeAddressKey(selectedAddressKey));
         localStorage.setItem(LOGO_STORAGE_KEY, String(logoWithNameDataUrl || "").trim());
+        localStorage.setItem(IMPORTANT_STORAGE_KEY, defaultImportantText);
+        if(defaultImportantInput){
+            defaultImportantInput.value = defaultImportantText;
+        }
         if(typeof showMessageBox === "function"){
             showMessageBox(res?.message || "Invoice render inputs saved.");
         }else{
@@ -1246,6 +1282,22 @@ function initSaveRenderInputsButton(){
         return;
     }
     saveBtn.addEventListener("click", saveInvoiceRenderInputs);
+}
+
+function initDefaultImportantInput(){
+    const card = document.getElementById("defaultImportantCard");
+    const input = document.getElementById("defaultImportantTextInput");
+    if(!card || !input) return;
+    if(!canConfigurePreview){
+        card.style.display = "none";
+        return;
+    }
+    input.value = defaultImportantText;
+    input.addEventListener("input", async () => {
+        defaultImportantText = normalizeImportantText(input.value);
+        localStorage.setItem(IMPORTANT_STORAGE_KEY, defaultImportantText);
+        await refreshPreviewFromLatest();
+    });
 }
 
 async function renderInvoice(){
@@ -1564,6 +1616,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         initLogoWithNameControl();
         initSupportTechnicianControl();
         initLayoutEditor();
+        initDefaultImportantInput();
         initSaveRenderInputsButton();
     }
     const deleteBtn = document.getElementById("deleteInvoiceBtn");

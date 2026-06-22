@@ -335,6 +335,20 @@ function guessMime(filePath) {
   return "image/jpeg";
 }
 
+function readImageDataUrl(filePath) {
+  const normalized = String(filePath || "").trim();
+  if (!normalized) return "";
+  const resolved = path.resolve(normalized);
+  if (!fs.existsSync(resolved)) return "";
+  try {
+    const fileBuffer = fs.readFileSync(resolved);
+    if (!fileBuffer.length) return "";
+    return `data:${guessMime(resolved)};base64,${fileBuffer.toString("base64")}`;
+  } catch (_err) {
+    return "";
+  }
+}
+
 function ensureDirForFile(targetPath) {
   const dir = path.dirname(targetPath);
   if (!fs.existsSync(dir)) {
@@ -361,17 +375,24 @@ exports.getPreferences = async (_req, res) => {
     const row = await getOrCreateSettings(target.databaseName);
     const userPref = await getUserPreferenceRow(target, true);
     const readPath = (column) => String(userPref?.[column] || "").trim();
+    const logoPath = readPath("logo_path");
+    const invoiceTemplatePath = readPath("invoice_template_pdf_path");
+    const quotationTemplatePath = readPath("quotation_template_pdf_path");
+    const quotation2TemplatePath = readPath("quotation2_template_pdf_path");
+    const quotation3TemplatePath = readPath("quotation3_template_pdf_path");
+    const updatedAt = userPref?.updatedAt || row.updatedAt;
     res.json({
-      logo_path: readPath("logo_path"),
-      logo_file_name: currentFileNameFromPath(readPath("logo_path")),
-      invoice_template_pdf_path: readPath("invoice_template_pdf_path"),
-      invoice_template_pdf_file_name: currentFileNameFromPath(readPath("invoice_template_pdf_path")),
-      quotation_template_pdf_path: readPath("quotation_template_pdf_path"),
-      quotation_template_pdf_file_name: currentFileNameFromPath(readPath("quotation_template_pdf_path")),
-      quotation2_template_pdf_path: readPath("quotation2_template_pdf_path"),
-      quotation2_template_pdf_file_name: currentFileNameFromPath(readPath("quotation2_template_pdf_path")),
-      quotation3_template_pdf_path: readPath("quotation3_template_pdf_path"),
-      quotation3_template_pdf_file_name: currentFileNameFromPath(readPath("quotation3_template_pdf_path")),
+      logo_path: logoPath,
+      logo_file_name: currentFileNameFromPath(logoPath),
+      logo_preview_data_url: readImageDataUrl(logoPath),
+      invoice_template_pdf_path: invoiceTemplatePath,
+      invoice_template_pdf_file_name: currentFileNameFromPath(invoiceTemplatePath),
+      quotation_template_pdf_path: quotationTemplatePath,
+      quotation_template_pdf_file_name: currentFileNameFromPath(quotationTemplatePath),
+      quotation2_template_pdf_path: quotation2TemplatePath,
+      quotation2_template_pdf_file_name: currentFileNameFromPath(quotation2TemplatePath),
+      quotation3_template_pdf_path: quotation3TemplatePath,
+      quotation3_template_pdf_file_name: currentFileNameFromPath(quotation3TemplatePath),
       sign_c_path: readPath("sign_c_path"),
       sign_c_file_name: currentFileNameFromPath(readPath("sign_c_path")),
       sign_v_path: readPath("sign_v_path"),
@@ -389,7 +410,7 @@ exports.getPreferences = async (_req, res) => {
       seal_q3_path: readPath("seal_q3_path"),
       seal_q3_file_name: currentFileNameFromPath(readPath("seal_q3_path")),
       logo_url: "/api/preferences/logo-file",
-      updated_at: row.updatedAt ? row.updatedAt.toISOString() : "",
+      updated_at: updatedAt ? new Date(updatedAt).toISOString() : "",
       target_user_id: Number(target.userId || 0),
       target_database_name: normalizeDbName(target.databaseName),
     });
