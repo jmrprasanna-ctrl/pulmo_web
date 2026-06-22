@@ -100,18 +100,14 @@ function getProductSearchText(product){
     const productId = String(product.product_id || `ID:${product.id}`);
     const description = String(product.description || "Unnamed");
     const category = String(product.Category ? (product.Category.name || "") : "");
-    const model = String(product.model || "");
-    const vendor = String(product.Vendor ? (product.Vendor.name || "") : "");
-    return `${productId} ${description} ${category} ${model} ${vendor}`.toLowerCase();
+    return `${productId} ${description} ${category}`.toLowerCase();
 }
 
 function productDisplayLabel(product){
     const productId = String(product.product_id || `ID:${product.id}`);
     const description = String(product.description || "Unnamed");
     const category = String(product.Category ? (product.Category.name || "-") : "-");
-    const model = String(product.model || "-");
-    const vendor = String(product.Vendor ? (product.Vendor.name || "-") : "-");
-    return `${productId} | ${description} | ${category} | ${model} | ${vendor}`;
+    return `${productId} | ${description} | ${category}`;
 }
 
 function renderProductSearchResults(query){
