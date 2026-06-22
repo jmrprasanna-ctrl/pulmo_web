@@ -429,6 +429,8 @@ function renderSidebarMenuByAccess(){
                 { path: "/users/profile-list.html", label: "Profile" },
                 { path: "/users/preference.html", label: "System Preference" },
                 { path: "/users/user-access.html", label: "Access" },
+                { path: "/users/backup.html", label: "Backup" },
+                { path: "/users/printer-connect.html", label: "Printer Connect" },
                 {
                     path: "/users/mapped.html",
                     label: "Mapped",
@@ -436,7 +438,8 @@ function renderSidebarMenuByAccess(){
                         { path: "/users/db-create.html", label: "DB Create" },
                         { path: "/users/company-create.html", label: "Company Create" },
                         { path: "/users/mapped.html", label: "Mapped" },
-                        { path: "/users/inv-map.html", label: "Inv Map" }
+                        { path: "/users/inv-map.html", label: "Inv Map" },
+                        { path: "/users/invoice-section.html", label: "Invoice Section" }
                     ]
                 },
                 { path: "/users/user-logged.html", label: "Logged" },
