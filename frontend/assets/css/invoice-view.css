@@ -96,48 +96,6 @@ body {
   box-shadow: 0 12px 28px rgba(16, 47, 76, 0.1);
 }
 
-.invoice-default-important-card {
-  margin: 0 0 12px;
-  padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid #d6e3f2;
-  border-radius: 14px;
-  box-shadow: 0 8px 20px rgba(18, 51, 84, 0.08);
-}
-
-.invoice-default-important-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.invoice-default-important-head h3 {
-  margin: 0;
-  color: #12324f;
-  font-size: 1rem;
-}
-
-.invoice-default-important-head p {
-  margin: 6px 0 0;
-  color: #4f6782;
-  font-size: 0.9rem;
-  line-height: 1.45;
-}
-
-.invoice-default-important-label {
-  display: block;
-  margin: 12px 0 8px;
-  color: #1d3655;
-  font-weight: 620;
-}
-
-.invoice-default-important-card textarea {
-  width: 100%;
-  min-height: 112px;
-  resize: vertical;
-}
-
 .invoice-image {
   width: min(100%, 820px);
   border: 1px solid #c7d5e4;
@@ -256,7 +214,6 @@ body.theme-dark .invoice-title {
 }
 
 body.theme-dark .invoice-address-controls,
-body.theme-dark .invoice-default-important-card,
 body.theme-dark .invoice-image-wrap,
 body.theme-dark .invoice-actions {
   background: rgba(33, 47, 60, 0.92);
@@ -264,17 +221,8 @@ body.theme-dark .invoice-actions {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 }
 
-body.theme-dark .invoice-address-controls label,
-body.theme-dark .invoice-default-important-label {
+body.theme-dark .invoice-address-controls label {
   color: #d8e7f7;
-}
-
-body.theme-dark .invoice-default-important-head h3 {
-  color: #e7f1fb;
-}
-
-body.theme-dark .invoice-default-important-head p {
-  color: #b8ccdf;
 }
 
 body.theme-dark .invoice-image {

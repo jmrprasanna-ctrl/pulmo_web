@@ -1297,22 +1297,6 @@ function initSaveRenderInputsButton(){
     saveBtn.addEventListener("click", saveInvoiceRenderInputs);
 }
 
-function initDefaultImportantInput(){
-    const card = document.getElementById("defaultImportantCard");
-    const input = document.getElementById("defaultImportantTextInput");
-    if(!card || !input) return;
-    if(!canConfigurePreview){
-        card.style.display = "none";
-        return;
-    }
-    input.value = defaultImportantText;
-    input.addEventListener("input", async () => {
-        defaultImportantText = normalizeImportantText(input.value);
-        localStorage.setItem(IMPORTANT_STORAGE_KEY, defaultImportantText);
-        await refreshPreviewFromLatest();
-    });
-}
-
 async function renderInvoice(){
     try{
         latestInvoiceData = await fetchInvoiceData();
@@ -1629,7 +1613,6 @@ window.addEventListener("DOMContentLoaded", async () => {
         initLogoWithNameControl();
         initSupportTechnicianControl();
         initLayoutEditor();
-        initDefaultImportantInput();
         initSaveRenderInputsButton();
     }
     const deleteBtn = document.getElementById("deleteInvoiceBtn");
