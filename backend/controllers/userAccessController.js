@@ -1132,6 +1132,59 @@ async function findMappedCompanyProfileByDatabase(databaseName) {
   }
 }
 
+async function findAccessFromCurrentDb(userId, userDatabase = INVENTORY_DB_NAME) {
+  try {
+    return await UserAccess.findOne({
+      where: { user_id: userId, user_database: normalizeUserDatabase(userDatabase) },
+      order: [["updatedAt", "DESC"], ["id", "DESC"]],
+    });
+  } catch (_err) {
+    return null;
+  }
+}
+
+function rowMatchesScopedFallbackDatabase(row, userDatabase) {
+  const fallbackDatabase = normalizeDatabaseName(row?.database_name);
+  if (!fallbackDatabase) {
+    return true;
+  }
+  return fallbackDatabase === normalizeUserDatabase(userDatabase);
+}
+
+async function findEffectiveAccessRow(userId, userDatabase, role, authScope) {
+  const normalizedRole = normalizeAccessRole(role);
+  const normalizedAuthScope = String(authScope || "").trim().toLowerCase();
+  const normalizedUserDatabase = normalizeUserDatabase(userDatabase);
+  const requiresScopedFallbackMatch =
+    normalizedUserDatabase !== INVENTORY_DB_NAME &&
+    (normalizedAuthScope === "directory" || normalizedRole === "admin" || normalizedRole === "manager");
+  const allowInventoryFallback =
+    normalizedUserDatabase === INVENTORY_DB_NAME ||
+    normalizedAuthScope === "directory" ||
+    normalizedRole === "admin" ||
+    normalizedRole === "manager";
+
+  let row = await findAccessFromMainDb(userId, normalizedUserDatabase);
+  if (!row) {
+    row = await findAccessFromCurrentDb(userId, normalizedUserDatabase);
+  }
+
+  if (!row && normalizedUserDatabase !== INVENTORY_DB_NAME && allowInventoryFallback) {
+    row = await findAccessFromMainDb(userId, INVENTORY_DB_NAME);
+    if (row && requiresScopedFallbackMatch && !rowMatchesScopedFallbackDatabase(row, normalizedUserDatabase)) {
+      row = null;
+    }
+    if (!row) {
+      row = await findAccessFromCurrentDb(userId, INVENTORY_DB_NAME);
+      if (row && requiresScopedFallbackMatch && !rowMatchesScopedFallbackDatabase(row, normalizedUserDatabase)) {
+        row = null;
+      }
+    }
+  }
+
+  return row;
+}
+
 function getDbConfig() {
   return {
     host: process.env.DB_HOST || "localhost",
@@ -1540,20 +1593,21 @@ async function hasInvMapActionPermission(req, action) {
 }
 
 async function hasPrinterConnectActionPermission(req, action) {
-  const role = String(req.user?.role || "").toLowerCase();
-  if (role !== "admin") return false;
+  const role = normalizeAccessRole(req.user?.role);
+  if (role !== "admin" && role !== "manager" && role !== "user") return false;
   const userId = Number(req.user?.id || req.user?.userId || 0);
   if (!Number.isFinite(userId) || userId <= 0) return false;
 
-  const userDatabase = normalizeUserDatabase(req.databaseName || req.user?.database_name || INVENTORY_DB_NAME);
+  const authScope = String(req.user?.auth_scope || req.user?.authScope || "").trim().toLowerCase();
+  const requestedDatabase = normalizeDatabaseName(req.headers?.["x-database-name"]);
+  const userDatabase = normalizeUserDatabase(
+    requestedDatabase || req.databaseName || req.user?.database_name || INVENTORY_DB_NAME
+  );
   const actionKey = toActionKey(PRINTER_CONNECT_PATH, action);
 
-  let row = await findAccessFromMainDb(userId, userDatabase);
-  if (!row && userDatabase !== INVENTORY_DB_NAME) {
-    row = await findAccessFromMainDb(userId, INVENTORY_DB_NAME);
-  }
+  const row = await findEffectiveAccessRow(userId, userDatabase, role, authScope);
 
-  if (!row) return true;
+  if (!row) return role === "admin";
   const allowedActions = parseAllowedActions(row);
   return allowedActions.includes(actionKey);
 }
@@ -3702,45 +3756,12 @@ exports.getMyAccess = async (req, res) => {
   }
   const role = normalizeAccessRole(req.user?.role);
   const authScope = String(req.user?.auth_scope || req.user?.authScope || "").trim().toLowerCase();
+  const requestedDatabase = normalizeDatabaseName(req.headers?.["x-database-name"]);
 
-  const userDatabase = normalizeUserDatabase(req.databaseName || req.user?.database_name || INVENTORY_DB_NAME);
-
-  const findAccessFromCurrentDb = async (targetDatabase) => {
-    try {
-      return await UserAccess.findOne({
-        where: { user_id: userId, user_database: targetDatabase },
-        order: [["updatedAt", "DESC"], ["id", "DESC"]],
-      });
-    } catch (_err) {
-      return null;
-    }
-  };
-
-                                                                              
-                                                                                        
-  let row = await findAccessFromMainDb(userId, userDatabase);
-  if (!row) {
-    row = await findAccessFromCurrentDb(userDatabase);
-  }
-  const allowInventoryFallback = userDatabase === INVENTORY_DB_NAME || authScope === "directory";
-  if (!row && userDatabase !== INVENTORY_DB_NAME && allowInventoryFallback) {
-    row = await findAccessFromMainDb(userId, INVENTORY_DB_NAME);
-    if (row && authScope === "directory") {
-      const fallbackDatabase = normalizeDatabaseName(row?.database_name);
-      if (fallbackDatabase && fallbackDatabase !== userDatabase) {
-        row = null;
-      }
-    }
-    if (!row) {
-      row = await findAccessFromCurrentDb(INVENTORY_DB_NAME);
-      if (row && authScope === "directory") {
-        const fallbackDatabase = normalizeDatabaseName(row?.database_name);
-        if (fallbackDatabase && fallbackDatabase !== userDatabase) {
-          row = null;
-        }
-      }
-    }
-  }
+  const userDatabase = normalizeUserDatabase(
+    requestedDatabase || req.databaseName || req.user?.database_name || INVENTORY_DB_NAME
+  );
+  const row = await findEffectiveAccessRow(userId, userDatabase, role, authScope);
   const parsedActions = parseAllowedActions(row);
   const parsedPages = derivePagesFromActions(parsedActions, parseAllowedPages(row));
   const hasStoredConfig = Boolean(row) || parsedPages.length > 0 || parsedActions.length > 0;
@@ -3762,7 +3783,7 @@ exports.getMyAccess = async (req, res) => {
   const mappedProfileForActiveDb = await findMappedCompanyProfileByDatabase(userDatabase);
   const resolvedMappedProfile = mappedProfileForActiveDb || mappedProfile;
   const resolvedCurrentDatabase =
-    normalizeDatabaseName(req.databaseName || req.user?.database_name) ||
+    normalizeDatabaseName(requestedDatabase || req.databaseName || req.user?.database_name) ||
     normalizeDatabaseName(resolvedMappedProfile?.database_name) ||
     normalizeDatabaseName(row?.database_name);
   const mappedCompanyCode = normalizeCompanyCode(resolvedMappedProfile?.company_code);

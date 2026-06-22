@@ -274,6 +274,7 @@ const authMiddleware = async (req, res, next) => {
     const userId = Number(decoded?.id || decoded?.userId || 0);
     const authScope = String(decoded?.auth_scope || decoded?.authScope || "").trim().toLowerCase();
     const directoryUserId = Number(decoded?.directory_user_id || decoded?.directoryUserId || 0);
+    const requestedDb = db.normalizeDatabaseName(req.headers["x-database-name"] || "");
 
     const tokenDb = db.normalizeDatabaseName(decoded?.database_name || "");
     if (tokenDb) {
@@ -302,12 +303,21 @@ const authMiddleware = async (req, res, next) => {
         } catch (_err) {
           return res.status(403).json({ message: "Invalid assigned database access." });
         }
-      } else if (resolvedDbInfo.mappedDb) {
-        try {
-          await ensureRegisteredDatabase(resolvedDbInfo.mappedDb);
-          targetDb = resolvedDbInfo.mappedDb;
-        } catch (_err) {
+      } else {
+        const preferredDb = requestedDb || resolvedDbInfo.mappedDb;
+        if (preferredDb) {
+          try {
+            await ensureRegisteredDatabase(preferredDb);
+            targetDb = preferredDb;
+          } catch (_err) {
+          }
         }
+      }
+    } else if (role !== "user" && requestedDb) {
+      try {
+        await ensureRegisteredDatabase(requestedDb);
+        targetDb = requestedDb;
+      } catch (_err) {
       }
     }
 
