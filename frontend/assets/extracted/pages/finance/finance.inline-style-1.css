@@ -138,7 +138,10 @@
     display:flex;
     gap:10px;
     align-items:center;
-    flex-wrap:wrap;
+    flex-wrap:nowrap;
+    justify-content:flex-end;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
 }
 .toolbar-btn{
     display:inline-flex;
@@ -406,7 +409,11 @@
 .section-actions{
     display:flex;
     gap:8px;
-    flex-wrap:wrap;
+    flex-wrap:nowrap;
+    align-items:center;
+    justify-content:flex-end;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
 }
 
 @media (max-width: 1400px){
@@ -428,7 +435,9 @@
         align-items:stretch;
     }
     .section-actions{
-        width:100%;
+        width:auto;
+        max-width:100%;
+        align-self:flex-start;
     }
     .section-actions .toolbar-btn{
         flex:1 1 0;
@@ -480,6 +489,6 @@
         min-width:0;
     }
     .toolbar .icon-btn{
-        margin-left:auto;
+        margin-left:0;
     }
 }
