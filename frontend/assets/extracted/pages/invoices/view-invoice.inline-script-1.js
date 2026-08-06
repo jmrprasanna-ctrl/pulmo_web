@@ -482,9 +482,6 @@ function amountInWords(amount){
 }
 
 function getImportantNotes(invoice){
-    const configuredNotes = splitImportantLines(defaultImportantText);
-    if(configuredNotes.length) return configuredNotes;
-
     const rows = Array.isArray(invoice?.InvoiceImportants) ? invoice.InvoiceImportants : [];
     const fromRows = rows
         .map((row) => String(row?.note || "").trim())
@@ -497,6 +494,9 @@ function getImportantNotes(invoice){
             .filter(Boolean);
         if(fromArray.length) return fromArray;
     }
+
+    const configuredNotes = splitImportantLines(defaultImportantText);
+    if(configuredNotes.length) return configuredNotes;
     return [];
 }
 
@@ -1060,15 +1060,10 @@ function initEditModeControl(){
     const editChk = document.getElementById("editModeChk");
     if(!editChk) return;
     const editLabel = editChk.closest("label");
-    const allowed = hasMappedFeature("invoice_formatting");
     editChk.checked = false;
-    editChk.disabled = !allowed;
+    editChk.disabled = false;
     if(editLabel){
-        editLabel.style.display = allowed ? "flex" : "none";
-    }
-    if(!allowed){
-        updateNavigationTileByEditToggle();
-        return;
+        editLabel.style.display = "flex";
     }
     editChk.addEventListener("change", () => {
         updateNavigationTileByEditToggle();
