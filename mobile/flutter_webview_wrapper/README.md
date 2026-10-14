@@ -1,6 +1,6 @@
-# Flutter WebView Wrapper (Pulmo)
+# AXIS CMS SYSTEM Flutter app
 
-This is a Flutter mobile wrapper for your existing web application.
+This Flutter app wraps your existing web application on mobile and Windows.
 
 ## What it does
 
@@ -23,7 +23,7 @@ Run with:
 flutter run --dart-define=WEB_APP_URL=https://your-domain.com/pages/login.html
 ```
 
-If you do not pass this define, it uses the fallback in `lib/main.dart`.
+If you do not pass this define, it uses the fallback in `lib/app_config.dart`.
 
 ## 2) Install dependencies
 
@@ -46,23 +46,36 @@ flutter run --dart-define=WEB_APP_URL=https://your-domain.com/pages/login.html
 
 ## Windows desktop build
 
-The Windows build opens the same system in a Pulmo app window using the
+The Windows build opens the same system in an AXIS CMS SYSTEM window using the
 Microsoft Edge WebView2 runtime. It does not launch a separate browser. The
 system still needs a connection to the configured server.
 
 Install Visual Studio 2022 Build Tools with the **Desktop development with C++**
-workload, then run:
+workload, NuGet CLI, and Inno Setup 6. Run the following from the repository root.
+The temporary W: drive keeps generated CMake paths short on Windows:
 
 ```powershell
-flutter create --platforms=windows .
-flutter pub get
-flutter build windows --release
-& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" .\pulmo_system_installer.iss
+$projectRoot = (Get-Location).Path
+$mobileRoot = Join-Path $projectRoot 'mobile'
+if (Test-Path 'W:\') { throw 'Drive W: is already in use.' }
+subst W: $mobileRoot
+try {
+  Set-Location W:\flutter_webview_wrapper
+  flutter pub get
+  if ($LASTEXITCODE -ne 0) { throw 'flutter pub get failed.' }
+  flutter build windows --release
+  if ($LASTEXITCODE -ne 0) { throw 'Flutter build failed.' }
+  & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" .\axis_cms_system_installer.iss
+  if ($LASTEXITCODE -ne 0) { throw 'Installer packaging failed.' }
+} finally {
+  Set-Location $projectRoot
+  subst W: /D
+}
 ```
 
 The release app and its supporting files are written under
 `build/windows/x64/runner/Release`. The installer script packages them into
-`build/installer/PulmoSystemSetup.exe`. The setup installs per-user and can add
+`build/installer/AxisCmsSystemSetup.exe`. The setup installs per-user and can add
 a desktop shortcut. Windows 11 includes WebView2. On Windows 10, install the
 WebView2 Runtime if it is not already present.
 

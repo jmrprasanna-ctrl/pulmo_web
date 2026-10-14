@@ -1,18 +1,18 @@
-#define AppName "Pulmo System"
+#define AppName "AXIS CMS SYSTEM"
 #define AppVersion "1.0.0"
 #define AppPublisher "Axis CMS"
-#define AppExeName "pulmo_system.exe"
+#define AppExeName "axis_cms_system.exe"
 
 [Setup]
 AppId={{5B7EBA43-107B-4EA0-B9C8-8A8F3C7F0A10}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
-DefaultDirName={localappdata}\Programs\Pulmo System
+DefaultDirName={localappdata}\Programs\AXIS CMS SYSTEM
 DefaultGroupName={#AppName}
 PrivilegesRequired=lowest
 OutputDir=build\installer
-OutputBaseFilename=PulmoSystemSetup
+OutputBaseFilename=AxisCmsSystemSetup
 SetupIconFile=windows\runner\resources\app_icon.ico
 UninstallDisplayIcon={app}\{#AppExeName}
 ArchitecturesInstallIn64BitMode=x64compatible

@@ -140,7 +140,7 @@ Future<void> main() async {
           await inapp.WebViewEnvironment.getAvailableVersion();
       if (webViewVersion == null) {
         webViewEnvironmentError =
-            'Microsoft Edge WebView2 Runtime is required to run Pulmo System.';
+            'Microsoft Edge WebView2 Runtime is required to run AXIS CMS SYSTEM.';
       } else {
         final Directory supportDirectory =
             await getApplicationSupportDirectory();
@@ -181,7 +181,7 @@ class PulmoWebMobileApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Pulmo System',
+      title: 'AXIS CMS SYSTEM',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0F6ABF)),

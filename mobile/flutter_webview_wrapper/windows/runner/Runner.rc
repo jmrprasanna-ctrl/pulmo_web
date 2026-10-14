@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "axiscms" "\0"
-            VALUE "FileDescription", "Pulmo System" "\0"
+            VALUE "FileDescription", "AXIS CMS SYSTEM" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "pulmo_system" "\0"
+            VALUE "InternalName", "axis_cms_system" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 axiscms. All rights reserved." "\0"
-            VALUE "OriginalFilename", "pulmo_system.exe" "\0"
-            VALUE "ProductName", "Pulmo System" "\0"
+            VALUE "OriginalFilename", "axis_cms_system.exe" "\0"
+            VALUE "ProductName", "AXIS CMS SYSTEM" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
