@@ -14,7 +14,7 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 const String kWebAppUrl = String.fromEnvironment(
   'WEB_APP_URL',
-  defaultValue: 'http://54.242.44.172/pages/login.html',
+  defaultValue: 'http://18.234.131.240/login.html',
 );
 const String _credentialsChannelName = 'AxisCredentialsBridge';
 const String _loginStatusChannelName = 'AxisLoginStatusBridge';
