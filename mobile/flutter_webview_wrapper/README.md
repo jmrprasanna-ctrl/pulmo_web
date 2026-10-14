@@ -44,6 +44,28 @@ or with URL override:
 flutter run --dart-define=WEB_APP_URL=https://your-domain.com/pages/login.html
 ```
 
+## Windows desktop build
+
+The Windows build opens the same system in a Pulmo app window using the
+Microsoft Edge WebView2 runtime. It does not launch a separate browser. The
+system still needs a connection to the configured server.
+
+Install Visual Studio 2022 Build Tools with the **Desktop development with C++**
+workload, then run:
+
+```powershell
+flutter create --platforms=windows .
+flutter pub get
+flutter build windows --release
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" .\pulmo_system_installer.iss
+```
+
+The release app and its supporting files are written under
+`build/windows/x64/runner/Release`. The installer script packages them into
+`build/installer/PulmoSystemSetup.exe`. The setup installs per-user and can add
+a desktop shortcut. Windows 11 includes WebView2. On Windows 10, install the
+WebView2 Runtime if it is not already present.
+
 ## 4) Notes
 
 - Android manifest already includes internet, camera, and microphone permissions.

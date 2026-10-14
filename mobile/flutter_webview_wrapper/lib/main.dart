@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart' as inapp;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
@@ -12,10 +13,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 
-const String kWebAppUrl = String.fromEnvironment(
-  'WEB_APP_URL',
-  defaultValue: 'http://18.234.131.240/login.html',
-);
+import 'app_config.dart';
+import 'windows_web_wrapper.dart';
+
 const String _credentialsChannelName = 'AxisCredentialsBridge';
 const String _loginStatusChannelName = 'AxisLoginStatusBridge';
 const String _pdfChannelName = 'AxisPdfBridge';
@@ -129,23 +129,70 @@ class _PendingFileTransfer {
   }
 }
 
-void main() {
-  runApp(const PulmoWebMobileApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  inapp.WebViewEnvironment? webViewEnvironment;
+  String? webViewEnvironmentError;
+  if (Platform.isWindows) {
+    try {
+      final String? webViewVersion =
+          await inapp.WebViewEnvironment.getAvailableVersion();
+      if (webViewVersion == null) {
+        webViewEnvironmentError =
+            'Microsoft Edge WebView2 Runtime is required to run Pulmo System.';
+      } else {
+        final Directory supportDirectory =
+            await getApplicationSupportDirectory();
+        final Directory webViewDataDirectory = Directory(
+          '${supportDirectory.path}${Platform.pathSeparator}'
+          'PulmoSystem${Platform.pathSeparator}WebView2Data',
+        );
+        await webViewDataDirectory.create(recursive: true);
+        webViewEnvironment = await inapp.WebViewEnvironment.create(
+          settings: inapp.WebViewEnvironmentSettings(
+            userDataFolder: webViewDataDirectory.path,
+          ),
+        );
+      }
+    } catch (error) {
+      webViewEnvironmentError = 'Could not start the embedded web view: $error';
+    }
+  }
+
+  runApp(
+    PulmoWebMobileApp(
+      webViewEnvironment: webViewEnvironment,
+      webViewEnvironmentError: webViewEnvironmentError,
+    ),
+  );
 }
 
 class PulmoWebMobileApp extends StatelessWidget {
-  const PulmoWebMobileApp({super.key});
+  const PulmoWebMobileApp({
+    super.key,
+    this.webViewEnvironment,
+    this.webViewEnvironmentError,
+  });
+
+  final inapp.WebViewEnvironment? webViewEnvironment;
+  final String? webViewEnvironmentError;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AXIS CMS SYSTEM',
+      title: 'Pulmo System',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0F6ABF)),
         useMaterial3: true,
       ),
-      home: const WebWrapperPage(),
+      home: Platform.isWindows
+          ? WindowsWebWrapperPage(
+              webViewEnvironment: webViewEnvironment,
+              environmentError: webViewEnvironmentError,
+            )
+          : const WebWrapperPage(),
     );
   }
 }
